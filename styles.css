@@ -1,0 +1,638 @@
+/* ============================================================
+   SISTEMA DE DISEÑO INSTITUCIONAL — DASHBOARD DE CONVENIOS
+   Gobernación de Antioquia — Secretaría de Infraestructura
+   ============================================================ */
+
+/* --- 1. TOKENS DE DISEÑO (Custom Properties) --- */
+:root {
+    /* Paleta de Estados — fuente única de verdad */
+    --color-liquidado:      #1a7f5a;
+    --color-liquidado-bg:   #edf7f3;
+    --color-liquidado-bdr:  #a7d9c5;
+
+    --color-por-liquidar:   #c0392b;
+    --color-por-liquidar-bg:#fdf1f0;
+    --color-por-liquidar-bdr:#f0b3ae;
+
+    --color-suspendido:     #b7791f;
+    --color-suspendido-bg:  #fdf8ee;
+    --color-suspendido-bdr: #e9c97a;
+
+    --color-ejecucion:      #2d6a9f;
+    --color-ejecucion-bg:   #eef4fb;
+    --color-ejecucion-bdr:  #9dc0e2;
+
+    /* Paleta institucional base */
+    --color-primary:        #0e5e40;
+    --color-primary-light:  #1a7f5a;
+    --color-primary-pale:   #edf7f3;
+
+    --color-accent:         #2d6a9f;
+    --color-accent-light:   #4a8fc0;
+    --color-accent-pale:    #eef4fb;
+
+    /* Escala de grises corporativos */
+    --color-surface:        #ffffff;
+    --color-bg:             #f3f5f8;
+    --color-border:         #e2e8f0;
+    --color-border-strong:  #cbd5e1;
+
+    --color-text-primary:   #0f172a;
+    --color-text-secondary: #475569;
+    --color-text-muted:     #94a3b8;
+
+    /* Tipografía */
+    --font-base: 'Inter', system-ui, sans-serif;
+
+    /* Sombras */
+    --shadow-xs:  0 1px 2px 0 rgba(15,23,42,0.04);
+    --shadow-sm:  0 2px 8px -1px rgba(15,23,42,0.06), 0 1px 3px -1px rgba(15,23,42,0.04);
+    --shadow-md:  0 8px 24px -4px rgba(15,23,42,0.09), 0 2px 8px -2px rgba(15,23,42,0.05);
+    --shadow-lg:  0 16px 40px -8px rgba(15,23,42,0.12), 0 4px 12px -4px rgba(15,23,42,0.07);
+    --shadow-premium: 0 10px 30px -5px rgba(15,23,42,0.08), 0 4px 6px -2px rgba(15,23,42,0.04);
+
+    /* Radios */
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.25rem;
+
+    /* Transiciones */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- 2. BASE GLOBAL --- */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    font-family: var(--font-base);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- 3. SCROLLBARS MINIMALISTAS --- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px;}
+
+.table-container-scroll::-webkit-scrollbar { height: 5px; width: 5px; }
+.table-container-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+/* --- 4. ANIMACIONES --- */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-16px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(10, 94, 64, 0.15); }
+    50%       { box-shadow: 0 0 0 8px rgba(10, 94, 64, 0); }
+}
+@keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- 5. NAVBAR INSTITUCIONAL --- */
+.navbar-institutional {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+}
+.navbar-accent-bar {
+    height: 3px;
+    background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 50%, var(--color-accent) 100%);
+}
+.navbar-logo-ring {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--color-primary-light);
+    padding: 2px;
+    overflow: hidden;
+    background: white;
+    box-shadow: var(--shadow-xs);
+}
+.navbar-online-dot {
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 11px; height: 11px;
+    background: var(--color-primary-light);
+    border: 2px solid white;
+    border-radius: 50%;
+}
+.navbar-user-pill {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 50px;
+    padding: 0.35rem 0.75rem;
+    transition: var(--transition-base);
+    cursor: pointer;
+}
+.navbar-user-pill:hover {
+    background: var(--color-primary-pale);
+    border-color: var(--color-primary-light);
+}
+
+/* --- 6. WELCOME SCREEN PREMIUM --- */
+.welcome-premium {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    animation: fadeIn 0.5s ease;
+}
+.welcome-header-band {
+    background: linear-gradient(135deg, var(--color-primary) 0%, #155e4a 40%, var(--color-accent) 100%);
+    padding: 2.5rem 2rem 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+.welcome-header-band::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* --- 7. KPI CARDS PREMIUM --- */
+.kpi-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1.1rem 1.25rem;
+    box-shadow: var(--shadow-xs);
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
+    animation: fadeInUp 0.4s ease both;
+    position: relative;
+    overflow: hidden;
+}
+.kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+.kpi-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px; height: 100%;
+    border-radius: 2px 0 0 2px;
+}
+.kpi-card.kpi-total::after      { background: var(--color-text-muted); }
+.kpi-card.kpi-ejecucion::after  { background: var(--color-ejecucion); }
+.kpi-card.kpi-por-liquidar::after { background: var(--color-por-liquidar); }
+.kpi-card.kpi-inversion::after  { background: #7c3aed; }
+.kpi-card.kpi-desembolsado::after { background: var(--color-accent); }
+.kpi-card.kpi-autorizado::after { background: var(--color-liquidado); }
+
+.kpi-icon {
+    width: 38px; height: 38px;
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+/* --- 8. BADGES DE ESTADO UNIFICADOS --- */
+.badge-estado {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.625rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid;
+    white-space: nowrap;
+}
+.badge-liquidado {
+    background-color: var(--color-liquidado-bg);
+    color: var(--color-liquidado);
+    border-color: var(--color-liquidado-bdr);
+}
+.badge-por-liquidar {
+    background-color: var(--color-por-liquidar-bg);
+    color: var(--color-por-liquidar);
+    border-color: var(--color-por-liquidar-bdr);
+}
+.badge-suspendido {
+    background-color: var(--color-suspendido-bg);
+    color: var(--color-suspendido);
+    border-color: var(--color-suspendido-bdr);
+}
+.badge-ejecucion {
+    background-color: var(--color-ejecucion-bg);
+    color: var(--color-ejecucion);
+    border-color: var(--color-ejecucion-bdr);
+}
+.badge-default {
+    background-color: #f8fafc;
+    color: var(--color-text-muted);
+    border-color: var(--color-border);
+}
+
+/* --- 9. BARRAS DE PROGRESO INSTITUCIONALES --- */
+.progress-track {
+    width: 100%;
+    height: 7px;
+    background: #e8edf3;
+    border-radius: 99px;
+    overflow: hidden;
+}
+.progress-fisico {
+    height: 100%;
+    border-radius: 99px;
+    background: var(--color-liquidado);
+    transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.progress-financiero {
+    height: 100%;
+    border-radius: 99px;
+    background: var(--color-accent);
+    transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* Barras del modal (más altas) */
+.progress-track-lg { height: 10px; }
+
+/* --- 10. FILTROS PREMIUM --- */
+.filter-section {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+    padding: 1.25rem 1.5rem;
+}
+.filter-label {
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.375rem;
+}
+.filter-control {
+    width: 100%;
+    font-size: 0.8125rem;
+    font-family: var(--font-base);
+    color: var(--color-text-primary);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.75rem;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    padding-right: 2rem;
+}
+.filter-control:focus {
+    border-color: var(--color-primary-light);
+    box-shadow: 0 0 0 3px rgba(26, 127, 90, 0.1);
+    background-color: var(--color-surface);
+}
+.filter-control-text { /* para el input de búsqueda */
+    background-image: none;
+    padding-right: 0.75rem;
+}
+
+/* --- 11. CHART CARDS --- */
+.chart-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow var(--transition-base);
+}
+.chart-card:hover { box-shadow: var(--shadow-sm); }
+.chart-title {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+.chart-subtitle {
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+    font-style: italic;
+    margin-top: 0.125rem;
+}
+
+/* Toggle de vista en gráfico */
+.chart-toggle-btn {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.3rem 0.7rem;
+    border-radius: 99px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.chart-toggle-btn.active {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+}
+.chart-toggle-btn:hover:not(.active) {
+    background: var(--color-primary-pale);
+    border-color: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+/* --- 12. TABLA PREMIUM --- */
+.shadow-premium {
+    box-shadow: var(--shadow-premium);
+}
+.table-section {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-premium);
+}
+.table-header-dark {
+    background: #0f172a;
+    color: white;
+}
+.sticky-header th {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background-color: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 1px 0 0 var(--color-border);
+}
+.table-row-hover {
+    transition: all var(--transition-base);
+}
+.table-row-hover:hover {
+    background-color: #f8fafc;
+    transform: translateY(-1px) scale(1.001);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    z-index: 10;
+}
+.municipio-chip {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-secondary);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.2rem 0.6rem;
+    white-space: nowrap;
+}
+.btn-gestion {
+    background: #0f172a;
+    color: white;
+    padding: 0.55rem 1.1rem;
+    border-radius: var(--radius-md);
+    font-size: 0.625rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all var(--transition-base);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.btn-gestion:hover {
+    background: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+.btn-gestion .icon-accent { color: #34d399; transition: color var(--transition-fast); }
+.btn-gestion:hover .icon-accent { color: white; }
+
+/* --- 13. MODAL PREMIUM --- */
+.modal-header-state-bar {
+    height: 4px;
+    width: 100%;
+    transition: background var(--transition-base);
+}
+.modal-overlay {
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(6px);
+}
+
+/* --- 14. SUMMARY CARD (Convenio seleccionado) --- */
+.placa-huella-pattern {
+    background-color: transparent;
+    background-image: linear-gradient(90deg,
+        rgba(255,255,255,0.04) 20%, transparent 20%, transparent 40%,
+        rgba(255,255,255,0.04) 40%, rgba(255,255,255,0.04) 60%,
+        transparent 60%, transparent 80%,
+        rgba(255,255,255,0.04) 80%);
+    background-size: 50px 100%;
+}
+
+/* --- 15. LEAFLET CUSTOMIZATION --- */
+.leaflet-container { z-index: 1 !important; border-radius: 0.5rem; }
+.leaflet-control-container { z-index: 5 !important; }
+.leaflet-bar {
+    box-shadow: var(--shadow-md) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-md) !important;
+    overflow: hidden;
+}
+.leaflet-bar a {
+    background-color: rgba(255,255,255,0.95) !important;
+    color: var(--color-text-primary) !important;
+    width: 32px !important; height: 32px !important; line-height: 32px !important;
+    transition: all var(--transition-fast);
+}
+.leaflet-bar a:hover {
+    background-color: var(--color-primary-light) !important;
+    color: white !important;
+}
+.custom-leaflet-tooltip {
+    background-color: rgba(255,255,255,0.97) !important;
+    border: 1px solid var(--color-border) !important;
+    box-shadow: var(--shadow-md) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 6px 12px !important;
+    font-family: var(--font-base);
+}
+.custom-leaflet-tooltip::before { border-top-color: rgba(255,255,255,0.97) !important; }
+
+/* --- 16. BOTONES UTILITARIOS --- */
+.btn-export {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    border-radius: var(--radius-md);
+    padding: 0.5rem 1.1rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all var(--transition-fast);
+}
+.btn-export:hover {
+    background: var(--color-surface);
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-xs);
+}
+.btn-reset {
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: var(--color-primary-light);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+.btn-reset:hover {
+    color: var(--color-primary);
+    background: var(--color-primary-pale);
+}
+.btn-icon-soft {
+    color: var(--color-text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    line-height: 1;
+}
+.btn-icon-soft:hover { color: var(--color-primary-light); background: var(--color-primary-pale); }
+
+/* Paginación */
+.btn-page {
+    padding: 0.45rem 1rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    border-radius: var(--radius-sm);
+    font-size: 0.6875rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-xs);
+}
+.btn-page:hover:not(:disabled) {
+    background: var(--color-primary-pale);
+    border-color: var(--color-primary-light);
+    color: var(--color-primary);
+}
+.btn-page:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* PDF Export button */
+.btn-pdf {
+    background: var(--color-accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 0.55rem 1.2rem;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all var(--transition-base);
+    box-shadow: 0 4px 12px rgba(45,106,159,0.35);
+}
+.btn-pdf:hover {
+    background: #245e8a;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(45,106,159,0.4);
+}
+
+/* --- 17. PDF REPORT --- */
+.pdf-report-container {
+    background: white;
+    font-family: var(--font-base);
+    color: #1e293b;
+    line-height: 1.5;
+}
+.section-block { page-break-inside: avoid; }
+
+/* --- 18. PRINT / SCREEN RULES --- */
+@media screen { .print-header { display: none !important; } }
+@media print  { .no-print { display: none !important; } }
+
+/* --- 19. ANCHO MÁXIMO Y RESPONSIVIDAD --- */
+.container-main { max-width: 1600px; margin: 0 auto; padding: 0 1.5rem; }
+
+/* File upload styled */
+.file-upload-zone {
+    display: block;
+    width: 100%;
+    border: 2px dashed var(--color-primary-light);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    background: var(--color-primary-pale);
+    text-align: center;
+}
+.file-upload-zone:hover {
+    border-color: var(--color-primary);
+    background: #d8f0e7;
+}
+
+/* Separador decorativo */
+.section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--color-border), transparent);
+    margin: 0.5rem 0;
+}
+
+/* Alerta de advertencia en tabla */
+.alert-icon-pulse {
+    color: var(--color-por-liquidar);
+    cursor: help;
+    margin-left: 0.4rem;
+    filter: drop-shadow(0 1px 2px rgba(192,57,43,0.25));
+}
