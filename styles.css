@@ -63,6 +63,34 @@
     --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.dark {
+    --color-surface:        #1e293b;
+    --color-bg:             #0f172a;
+    --color-border:         #334155;
+    --color-border-strong:  #475569;
+
+    --color-text-primary:   #f8fafc;
+    --color-text-secondary: #cbd5e1;
+    --color-text-muted:     #94a3b8;
+    
+    --color-liquidado-bg:   rgba(26, 127, 90, 0.15);
+    --color-por-liquidar-bg:rgba(192, 57, 43, 0.15);
+    --color-suspendido-bg:  rgba(183, 121, 31, 0.15);
+    --color-ejecucion-bg:   rgba(45, 106, 159, 0.15);
+    --color-default-bg:     rgba(255, 255, 255, 0.05);
+    
+    --color-primary-pale:   rgba(14, 94, 64, 0.15);
+    --color-accent-pale:    rgba(45, 106, 159, 0.15);
+
+    --color-bg-hover:       rgba(255, 255, 255, 0.03);
+
+    --shadow-xs:  0 1px 2px 0 rgba(0,0,0,0.3);
+    --shadow-sm:  0 2px 8px -1px rgba(0,0,0,0.4);
+    --shadow-md:  0 8px 24px -4px rgba(0,0,0,0.5);
+    --shadow-lg:  0 16px 40px -8px rgba(0,0,0,0.6);
+    --shadow-premium: 0 10px 30px -5px rgba(0,0,0,0.6);
+}
+
 /* --- 2. BASE GLOBAL --- */
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -247,7 +275,7 @@ body {
     border-color: var(--color-ejecucion-bdr);
 }
 .badge-default {
-    background-color: #f8fafc;
+    background-color: var(--color-default-bg, #f8fafc);
     color: var(--color-text-muted);
     border-color: var(--color-border);
 }
@@ -256,7 +284,7 @@ body {
 .progress-track {
     width: 100%;
     height: 7px;
-    background: #e8edf3;
+    background: var(--color-border);
     border-radius: 99px;
     overflow: hidden;
 }
@@ -398,7 +426,7 @@ body {
     transition: all var(--transition-base);
 }
 .table-row-hover:hover {
-    background-color: #f8fafc;
+    background-color: var(--color-bg-hover, #f8fafc);
     transform: translateY(-1px) scale(1.001);
     box-shadow: var(--shadow-sm);
     position: relative;

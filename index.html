@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: { inter: ['Inter', 'sans-serif'] },
@@ -31,14 +32,16 @@
     <!-- Annotation Plugin para Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/2.2.1/chartjs-plugin-annotation.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-omnivore/0.3.4/leaflet-omnivore.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-slate-50 text-slate-800 font-inter antialiased">
+<body class="bg-slate-50 dark:bg-slate-800/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-inter antialiased">
 
     <!-- NAVBAR INSTITUCIONAL -->
     <nav class="navbar-institutional no-print">
@@ -50,24 +53,48 @@
                         <img src="https://www.antioquia.gov.co/images/2024/escudo-de-armas%201.jpg" alt="Logo Antioquia" class="w-full h-full object-contain p-0.5" onerror="this.src='https://ui-avatars.com/api/?name=Gob+Ant&background=1a7f5a&color=fff'">
                     </div>
                     <div>
-                        <h1 class="text-lg sm:text-xl font-black text-slate-900 leading-none tracking-tight">Dashboard de Convenios</h1>
-                        <p class="text-[10px] font-bold text-institutional-light uppercase tracking-widest mt-0.5">Secretaría de Infraestructura</p>
+                        <h1 class="text-lg sm:text-xl font-black text-slate-900 dark:text-white leading-none tracking-tight">DASHBOARD CONVENIOS - SIF</h1>
+                        <p class="text-[10px] font-bold text-institutional-light uppercase tracking-widest mt-0.5">Dirección de Infraestructura y Apoyo Territorial</p>
                     </div>
                 </div>
                 
                 <div class="flex items-center gap-3 sm:gap-6">
-                    <div class="hidden lg:flex items-center text-[10px] font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+                    <div class="hidden lg:flex items-center text-[10px] font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
                         <i class="fa-solid fa-clock-rotate-left mr-1.5 text-institutional-accent"></i>
-                        Corte: <span id="fecha-actualizacion" class="ml-1 font-bold text-slate-700">Cargando...</span>
+                        Corte: <span id="fecha-actualizacion" class="ml-1 font-bold text-slate-700 dark:text-slate-200">Cargando...</span>
                     </div>
-                    <div class="h-6 w-px bg-slate-200 hidden md:block"></div>
+                    <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
+                    
+                    <div class="flex items-center gap-2">
+                        <button id="btn-theme-toggle" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-institutional-light hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors" title="Alternar modo oscuro">
+                            <i id="theme-icon" class="fa-solid fa-moon"></i>
+                        </button>
+                        
+                        <div class="relative">
+                            <button id="btn-nav-alerts" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-institutional-light hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors relative" title="Alertas">
+                                <i class="fa-solid fa-bell"></i>
+                                <span id="nav-alerts-badge" class="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 border-2 border-white dark:border-slate-900 rounded-full hidden"></span>
+                            </button>
+                            
+                            <div id="nav-alerts-dropdown" class="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 dark:border-slate-700 overflow-hidden hidden z-50 transform origin-top-right transition-all">
+                                <div class="p-3 border-b border-slate-100 dark:border-slate-700/50 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 dark:bg-slate-800/50">
+                                    <h4 class="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">Notificaciones</h4>
+                                    <span id="nav-alerts-count" class="text-[9px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 dark:text-slate-300 px-2 py-0.5 rounded-full">0</span>
+                                </div>
+                                <div id="nav-alerts-list" class="max-h-80 overflow-y-auto custom-scrollbar bg-white dark:bg-slate-800">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
                     <div class="navbar-user-pill flex items-center gap-3">
                         <div class="text-right hidden sm:block">
-                            <p class="text-[11px] font-black text-slate-800 leading-none">Margarita Lopera D.</p>
+                            <p class="text-[11px] font-black text-slate-800 dark:text-slate-100 leading-none">Margarita Lopera D.</p>
                             <p class="text-[9px] font-bold text-institutional-light uppercase tracking-widest mt-1">Supervisora</p>
                         </div>
                         <div class="relative">
-                            <div class="w-8 h-8 rounded-full overflow-hidden bg-white shadow-sm border border-slate-200">
+                            <div class="w-8 h-8 rounded-full overflow-hidden bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700">
                                 <img src="./assets/perfil_margarita.jpg" alt="Perfil" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Margarita+Lopera&background=1a7f5a&color=fff&bold=true';">
                             </div>
                             <div class="navbar-online-dot"></div>
@@ -88,11 +115,11 @@
                 <p class="text-institutional-pale text-xs font-medium mt-2 opacity-90">Gestión y control de infraestructura departamental</p>
             </div>
             <div class="p-8">
-                <p class="text-slate-500 text-sm mb-6">Selecciona el archivo maestro <strong>CONVENIOS MARGARITA.xlsx</strong> actualizado para cargar el dashboard.</p>
+                <p class="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm mb-6">Selecciona el archivo maestro <strong>CONVENIOS MARGARITA.xlsx</strong> actualizado para cargar el dashboard.</p>
                 <label class="file-upload-zone">
                     <i class="fa-solid fa-cloud-arrow-up text-3xl text-institutional-light mb-3"></i>
                     <span class="block text-sm font-bold text-institutional-primary">Explorar archivo Excel</span>
-                    <span class="block text-xs text-slate-400 mt-1">Formatos soportados: .xlsx, .xls</span>
+                    <span class="block text-xs text-slate-400 dark:text-slate-500 mt-1">Formatos soportados: .xlsx, .xls</span>
                     <input type="file" id="file-upload" accept=".xlsx, .xls, .csv" class="hidden" />
                 </label>
             </div>
@@ -123,7 +150,7 @@
                 <div>
                     <label class="filter-label">Búsqueda Libre</label>
                     <div class="relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 text-xs"></i>
                         <input type="text" id="filter-search" placeholder="Objeto, vía..." class="filter-control filter-control-text pl-8">
                     </div>
                 </div>
@@ -139,10 +166,10 @@
         <section class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-15 gap-4 mb-8">
             <div class="kpi-card kpi-total xl:col-span-2">
                 <div class="flex items-center gap-3">
-                    <div class="kpi-icon bg-slate-100 text-slate-500"><i class="fa-solid fa-layer-group"></i></div>
+                    <div class="kpi-icon bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 dark:text-slate-500"><i class="fa-solid fa-layer-group"></i></div>
                     <div>
-                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total Convenios</p>
-                        <h3 class="text-xl font-black text-slate-800 leading-none mt-1" id="kpi-total">0</h3>
+                        <p class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Total Convenios</p>
+                        <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mt-1" id="kpi-total">0</h3>
                     </div>
                 </div>
             </div>
@@ -151,7 +178,7 @@
                     <div class="kpi-icon bg-blue-50 text-institutional-accent"><i class="fa-solid fa-person-digging"></i></div>
                     <div>
                         <p class="text-[9px] font-bold text-institutional-accent uppercase tracking-widest">En Ejecución</p>
-                        <h3 class="text-xl font-black text-slate-800 leading-none mt-1" id="kpi-activos">0</h3>
+                        <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mt-1" id="kpi-activos">0</h3>
                     </div>
                 </div>
             </div>
@@ -160,7 +187,7 @@
                     <div class="kpi-icon bg-red-50 text-red-600"><i class="fa-solid fa-file-signature"></i></div>
                     <div>
                         <p class="text-[9px] font-bold text-red-600 uppercase tracking-widest">Por Liquidar</p>
-                        <h3 class="text-xl font-black text-slate-800 leading-none mt-1" id="kpi-por-liquidar">0</h3>
+                        <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mt-1" id="kpi-por-liquidar">0</h3>
                     </div>
                 </div>
             </div>
@@ -169,7 +196,7 @@
                     <div class="kpi-icon bg-purple-50 text-purple-600"><i class="fa-solid fa-sack-dollar"></i></div>
                     <div class="w-[calc(100%-50px)]">
                         <p class="text-[9px] font-bold text-purple-600 uppercase tracking-widest">Inversión Total</p>
-                        <h3 class="text-lg font-black text-slate-800 leading-none mt-1 truncate" id="kpi-inversion" title="$0">$0</h3>
+                        <h3 class="text-lg font-black text-slate-800 dark:text-slate-100 leading-none mt-1 truncate" id="kpi-inversion" title="$0">$0</h3>
                     </div>
                 </div>
             </div>
@@ -178,7 +205,7 @@
                     <div class="kpi-icon bg-blue-50 text-institutional-accent"><i class="fa-solid fa-money-bill-transfer"></i></div>
                     <div class="w-[calc(100%-50px)]">
                         <p class="text-[9px] font-bold text-institutional-accent uppercase tracking-widest">Desembolsado</p>
-                        <h3 class="text-lg font-black text-slate-800 leading-none mt-1 truncate" id="kpi-desembolsado" title="$0">$0</h3>
+                        <h3 class="text-lg font-black text-slate-800 dark:text-slate-100 leading-none mt-1 truncate" id="kpi-desembolsado" title="$0">$0</h3>
                     </div>
                 </div>
             </div>
@@ -187,7 +214,7 @@
                     <div class="kpi-icon bg-emerald-50 text-institutional-light"><i class="fa-solid fa-file-invoice-dollar"></i></div>
                     <div class="w-[calc(100%-50px)]">
                         <p class="text-[9px] font-bold text-institutional-light uppercase tracking-widest">Autorizado</p>
-                        <h3 class="text-lg font-black text-slate-800 leading-none mt-1 truncate" id="kpi-autorizado" title="$0">$0</h3>
+                        <h3 class="text-lg font-black text-slate-800 dark:text-slate-100 leading-none mt-1 truncate" id="kpi-autorizado" title="$0">$0</h3>
                     </div>
                 </div>
             </div>
@@ -195,34 +222,34 @@
 
         <!-- SUMMARY CARD OCULTO POR DEFECTO -->
         <div id="summary-card-container" class="mb-8 hidden">
-            <div class="bg-white rounded-2xl shadow-premium overflow-hidden flex flex-col lg:flex-row border border-slate-200 relative">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-premium overflow-hidden flex flex-col lg:flex-row border border-slate-200 dark:border-slate-700 relative">
                 
                 <div class="p-8 lg:w-5/12 flex flex-col justify-center relative z-10">
-                    <span class="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-2 border-b border-slate-100 pb-1 inline-block w-max flex items-center gap-1.5"><i class="fa-solid fa-bolt text-amber-400"></i> Vista Detallada Rápida</span>
-                    <h2 class="text-4xl font-black text-slate-800 tracking-tight" id="summary-num">--</h2>
+                    <span class="text-slate-400 dark:text-slate-500 text-[9px] font-black uppercase tracking-[0.2em] mb-2 border-b border-slate-100 dark:border-slate-700/50 pb-1 inline-block w-max flex items-center gap-1.5"><i class="fa-solid fa-bolt text-amber-400"></i> Vista Detallada Rápida</span>
+                    <h2 class="text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tight" id="summary-num">--</h2>
                     <p class="text-institutional-light text-sm font-semibold mt-2 mb-6 flex items-center"><i class="fa-solid fa-location-dot mr-1.5"></i><span id="summary-municipio">MUNICIPIO</span></p>
                     
                     <div class="grid grid-cols-2 gap-4 mt-auto">
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm transition hover:shadow-md">
-                            <p id="lbl-alcance" class="text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">Contratado</p>
-                            <p class="text-xl font-black text-slate-800"><span id="summary-alcance">0</span> <span id="unit-alcance" class="text-xs font-normal text-slate-400">m</span></p>
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 shadow-sm transition hover:shadow-md">
+                            <p id="lbl-alcance" class="text-[9px] text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wider mb-1">Contratado</p>
+                            <p class="text-xl font-black text-slate-800 dark:text-slate-100"><span id="summary-alcance">0</span> <span id="unit-alcance" class="text-xs font-normal text-slate-400 dark:text-slate-500">m</span></p>
                         </div>
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm transition hover:shadow-md">
-                            <p id="lbl-ejecutado" class="text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">Ejecutado</p>
-                            <p class="text-xl font-black text-slate-800"><span id="summary-ejecutado">0</span> <span id="unit-ejecutado" class="text-xs font-normal text-slate-400">m</span></p>
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 shadow-sm transition hover:shadow-md">
+                            <p id="lbl-ejecutado" class="text-[9px] text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wider mb-1">Ejecutado</p>
+                            <p class="text-xl font-black text-slate-800 dark:text-slate-100"><span id="summary-ejecutado">0</span> <span id="unit-ejecutado" class="text-xs font-normal text-slate-400 dark:text-slate-500">m</span></p>
                         </div>
                     </div>
                 </div>
                 
-                <div class="p-6 lg:w-3/12 flex items-center justify-center gap-6 relative z-10 border-y lg:border-y-0 lg:border-x border-slate-100 bg-white">
+                <div class="p-6 lg:w-3/12 flex items-center justify-center gap-6 relative z-10 border-y lg:border-y-0 lg:border-x border-slate-100 dark:border-slate-700/50 bg-white dark:bg-slate-800">
                     <div class="relative w-28 h-28 flex items-center justify-center">
                         <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                             <circle cx="50" cy="50" r="40" stroke="#f1f5f9" stroke-width="8" fill="none" />
                             <circle id="gauge-fisico" cx="50" cy="50" r="40" stroke="#1a7f5a" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
                         </svg>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="summary-fisico-txt" class="text-xl font-black text-slate-800 leading-none mb-1">0%</span>
-                            <span class="text-[8px] text-slate-400 uppercase tracking-widest font-bold">Físico</span>
+                            <span id="summary-fisico-txt" class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mb-1">0%</span>
+                            <span class="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold">Físico</span>
                         </div>
                     </div>
                     <div class="relative w-28 h-28 flex items-center justify-center">
@@ -231,16 +258,16 @@
                             <circle id="gauge-financiero" cx="50" cy="50" r="40" stroke="#2d6a9f" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
                         </svg>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="summary-financiero-txt" class="text-xl font-black text-slate-800 leading-none mb-1">0%</span>
-                            <span class="text-[8px] text-slate-400 uppercase tracking-widest font-bold">Financiero</span>
+                            <span id="summary-financiero-txt" class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mb-1">0%</span>
+                            <span class="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold">Financiero</span>
                         </div>
                     </div>
                 </div>
                 
-                <div class="lg:w-4/12 relative min-h-[200px] lg:min-h-full z-10 bg-slate-50 border-l border-slate-100">
+                <div class="lg:w-4/12 relative min-h-[200px] lg:min-h-full z-10 bg-slate-50 dark:bg-slate-800/50 border-l border-slate-100 dark:border-slate-700/50">
                     <div id="summary-map" class="absolute inset-0 w-full h-full z-0"></div>
-                    <div id="summary-map-overlay" class="absolute inset-0 bg-white/80 flex items-center justify-center z-10 backdrop-blur-sm transition-opacity duration-300">
-                        <span id="summary-map-msg" class="text-slate-600 text-xs font-semibold tracking-wide flex items-center"><i class="fa-solid fa-satellite-dish fa-fade mr-2 text-institutional-light"></i>Ubicando trazado...</span>
+                    <div id="summary-map-overlay" class="absolute inset-0 bg-white dark:bg-slate-800/80 flex items-center justify-center z-10 backdrop-blur-sm transition-opacity duration-300">
+                        <span id="summary-map-msg" class="text-slate-600 dark:text-slate-300 text-xs font-semibold tracking-wide flex items-center"><i class="fa-solid fa-satellite-dish fa-fade mr-2 text-institutional-light"></i>Ubicando trazado...</span>
                     </div>
                 </div>
             </div>
@@ -265,12 +292,12 @@
             
             <!-- ALERTAS DE RIESGO -->
             <div class="chart-card lg:col-span-7 relative group flex flex-col">
-                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-3 border-b border-slate-100 pb-3">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-3 border-b border-slate-100 dark:border-slate-700/50 pb-3">
                     <div>
                         <h3 class="chart-title flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Convenios en Riesgo</h3>
                         <p class="chart-subtitle">Panel de control proactivo y alertas automáticas</p>
                     </div>
-                    <div class="text-[10px] font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+                    <div class="text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
                         <span id="alerts-count" class="text-red-600 font-black">0</span> Alertas Detectadas
                     </div>
                 </div>
@@ -278,9 +305,10 @@
                 <!-- FILTROS DE RIESGO -->
                 <div class="flex flex-wrap gap-2 mb-3">
                     <button class="alert-filter-btn active bg-slate-800 text-white hover:bg-slate-700 px-2.5 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors shadow-sm" data-filter="all">Todas</button>
-                    <button class="alert-filter-btn bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 border border-slate-200 px-2.5 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors shadow-sm" data-filter="competencia">Pérdida Competencia</button>
-                    <button class="alert-filter-btn bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 border border-slate-200 px-2.5 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors shadow-sm" data-filter="desfase">Desfase Financiero</button>
-                    <button class="alert-filter-btn bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 border border-slate-200 px-2.5 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors shadow-sm" data-filter="vencido">Vencido sin Liquidar</button>
+                    <button class="alert-filter-btn bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:bg-slate-700 hover:text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors shadow-sm" data-filter="proximos">Próximos a Terminar</button>
+                    <button class="alert-filter-btn bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:bg-slate-700 hover:text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors shadow-sm" data-filter="competencia">Pérdida Competencia</button>
+                    <button class="alert-filter-btn bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:bg-slate-700 hover:text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors shadow-sm" data-filter="desfase">Desfase Financiero</button>
+                    <button class="alert-filter-btn bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:bg-slate-700 hover:text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors shadow-sm" data-filter="vencido">Vencido sin Liquidar</button>
                 </div>
 
                 <div id="alert-feed" class="flex-1 overflow-y-auto max-h-[220px] space-y-3 pr-2 table-container-scroll relative">
@@ -291,36 +319,36 @@
 
         <!-- TABLA PRINCIPAL -->
         <section class="table-section mb-8">
-            <div class="p-5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white gap-4 relative overflow-hidden">
+            <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-slate-800 gap-4 relative overflow-hidden">
                 <div class="absolute top-0 left-0 w-1.5 h-full bg-institutional-primary"></div>
                 <div class="pl-3">
-                    <h2 class="text-xl font-black text-slate-800 tracking-tight">Directorio de Convenios</h2>
-                    <p class="text-xs text-slate-500 mt-0.5 font-medium">Listado detallado con indicadores de progreso</p>
+                    <h2 class="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Directorio de Convenios</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-0.5 font-medium">Listado detallado con indicadores de progreso</p>
                 </div>
                 <button id="btn-export" class="btn-export">
                     <i class="fa-solid fa-file-csv text-institutional-light"></i> Exportar CSV
                 </button>
             </div>
             
-            <div class="overflow-x-auto max-h-[600px] table-container-scroll bg-white">
+            <div class="overflow-x-auto max-h-[600px] table-container-scroll bg-white dark:bg-slate-800">
                 <table class="w-full text-sm text-left border-collapse">
-                    <thead class="text-[10px] font-bold text-slate-400 uppercase tracking-widest sticky-header">
+                    <thead class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky-header">
                         <tr>
-                            <th class="px-5 py-4 cursor-pointer hover:text-slate-800 transition bg-slate-50 border-b border-slate-200" onclick="sortTable('CONVENIO')">ID Convenio <i class="fa-solid fa-sort ml-1 opacity-40"></i></th>
-                            <th class="px-5 py-4 cursor-pointer hover:text-slate-800 transition bg-slate-50 border-b border-slate-200" onclick="sortTable('MUNICIPIO')">Municipio <i class="fa-solid fa-sort ml-1 opacity-40"></i></th>
-                            <th class="px-5 py-4 w-[200px] bg-slate-50 border-b border-slate-200">Objeto / Clasificación</th>
-                            <th class="px-5 py-4 bg-slate-50 border-b border-slate-200">Estado</th>
-                            <th class="px-5 py-4 w-48 bg-slate-50 border-b border-slate-200">Avance Físico</th>
-                            <th class="px-5 py-4 w-48 bg-slate-50 border-b border-slate-200">Avance Financiero</th>
-                            <th class="px-5 py-4 text-center bg-slate-50 border-b border-slate-200 w-28">Gestión</th>
+                            <th class="px-5 py-4 cursor-pointer hover:text-slate-800 dark:text-slate-100 transition bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700" onclick="sortTable('CONVENIO')">ID Convenio <i class="fa-solid fa-sort ml-1 opacity-40"></i></th>
+                            <th class="px-5 py-4 cursor-pointer hover:text-slate-800 dark:text-slate-100 transition bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700" onclick="sortTable('MUNICIPIO')">Municipio <i class="fa-solid fa-sort ml-1 opacity-40"></i></th>
+                            <th class="px-5 py-4 w-[200px] bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Objeto / Clasificación</th>
+                            <th class="px-5 py-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Estado</th>
+                            <th class="px-5 py-4 w-48 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Avance Físico</th>
+                            <th class="px-5 py-4 w-48 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Avance Financiero</th>
+                            <th class="px-5 py-4 text-center bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 w-28">Gestión</th>
                         </tr>
                     </thead>
-                    <tbody id="table-body" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                    <tbody id="table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-200"></tbody>
                 </table>
             </div>
             
-            <div class="p-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
-                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest" id="table-info">Mostrando registros...</span>
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+                <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase tracking-widest" id="table-info">Mostrando registros...</span>
                 <div class="flex gap-2">
                     <button id="btn-prev" class="btn-page">Anterior</button>
                     <button id="btn-next" class="btn-page">Siguiente</button>
@@ -331,18 +359,18 @@
 
     <!-- MODAL DE DETALLE PREMIUM -->
     <div id="modal-detalle" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center p-4 sm:p-6 no-print">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[96vh] overflow-hidden flex flex-col transform transition-all relative">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-7xl max-h-[96vh] overflow-hidden flex flex-col transform transition-all relative">
             
             <!-- Banda de color de estado -->
             <div id="modal-state-band" class="modal-header-state-bar bg-slate-400"></div>
 
-            <div class="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-white z-10 shrink-0">
+            <div class="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-white dark:bg-slate-800 z-10 shrink-0">
                 <div>
                     <div class="flex items-center gap-3 mb-1">
                         <span id="modal-badge" class="badge-estado badge-default">Estado</span>
-                        <h2 class="text-xl sm:text-2xl font-black text-slate-800 tracking-tight" id="modal-title">Convenio</h2>
+                        <h2 class="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight" id="modal-title">Convenio</h2>
                     </div>
-                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="modal-subtitle">Municipio - Año</p>
+                    <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase tracking-widest" id="modal-subtitle">Municipio - Año</p>
                 </div>
                 <div class="flex items-center gap-2 sm:gap-4">
                     <a id="btn-open-source-pdf" href="#" target="_blank" class="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white px-3 sm:px-4 py-2 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wide transition-all shadow-sm border border-red-100 hover:border-red-600 flex items-center gap-2">
@@ -351,14 +379,14 @@
                     <button id="btn-export-pdf" class="btn-pdf">
                         <i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Generar Ficha</span>
                     </button>
-                    <div class="w-px h-8 bg-slate-200 hidden sm:block"></div>
-                    <button id="btn-close-modal" class="text-slate-400 hover:text-institutional-primary bg-slate-100 hover:bg-institutional-pale rounded-full w-10 h-10 flex items-center justify-center transition-colors shrink-0">
+                    <div class="w-px h-8 bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
+                    <button id="btn-close-modal" class="text-slate-400 dark:text-slate-500 hover:text-institutional-primary bg-slate-100 dark:bg-slate-800 hover:bg-institutional-pale rounded-full w-10 h-10 flex items-center justify-center transition-colors shrink-0">
                         <i class="fa-solid fa-xmark text-lg"></i>
                     </button>
                 </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar bg-slate-50/50">
+            <div class="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar bg-slate-50 dark:bg-slate-800/50/50">
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     
                     <!-- COLUMNA IZQUIERDA: DATOS -->
@@ -366,16 +394,16 @@
                         
                         <!-- Progreso -->
                         <div class="grid grid-cols-2 gap-4">
-                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                                 <div class="flex justify-between items-end mb-2">
-                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Físico</span>
+                                    <span class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Físico</span>
                                     <span id="mod-txt-fisico" class="text-lg font-black text-institutional-light">0%</span>
                                 </div>
                                 <div class="progress-track progress-track-lg"><div id="mod-bar-fisico" class="progress-fisico"></div></div>
                             </div>
-                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                                 <div class="flex justify-between items-end mb-2">
-                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Financiero</span>
+                                    <span class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Financiero</span>
                                     <span id="mod-txt-financiero" class="text-lg font-black text-institutional-accent">0%</span>
                                 </div>
                                 <div class="progress-track progress-track-lg"><div id="mod-bar-financiero" class="progress-financiero"></div></div>
@@ -383,53 +411,57 @@
                         </div>
                         
                         <!-- Técnico -->
-                        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                            <h5 class="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                <span class="w-6 h-6 rounded bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-helmet-safety"></i></span>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <h5 class="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 dark:text-slate-500"><i class="fa-solid fa-helmet-safety"></i></span>
                                 Datos Técnicos
                             </h5>
                             <div class="space-y-4">
-                                <div><span class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Objeto del Convenio</span><p id="mod-objeto" class="text-slate-700 font-medium text-[11px] leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100"></p></div>
+                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Objeto del Convenio</span><p id="mod-objeto" class="text-slate-700 dark:text-slate-200 font-medium text-[11px] leading-relaxed break-words whitespace-normal bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50"></p></div>
                                 <div class="grid grid-cols-2 gap-3">
-                                    <div class="col-span-2"><span class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Vía Priorizada</span><div id="mod-via" class="text-slate-800 font-bold text-xs truncate"></div></div>
-                                    <div><span class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Alcance Contratado</span><div id="mod-alcance" class="text-institutional-primary font-bold text-xs"></div></div>
-                                    <div><span class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ejecución Real</span><div id="mod-ejecutado-areas" class="text-institutional-accent font-bold text-xs"></div></div>
+                                    <div class="col-span-2"><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Vía Priorizada</span><div id="mod-via" class="text-slate-800 dark:text-slate-100 font-bold text-[11px] leading-tight break-words whitespace-normal"></div></div>
+                                    <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Alcance Contratado</span><div id="mod-alcance" class="text-institutional-primary font-bold text-xs"></div></div>
+                                    <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Ejecución Real</span><div id="mod-ejecutado-areas" class="text-institutional-accent font-bold text-xs"></div></div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Financiero -->
-                        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                            <h5 class="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                <span class="w-6 h-6 rounded bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-solid fa-coins"></i></span>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <h5 class="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 dark:text-slate-500"><i class="fa-solid fa-coins"></i></span>
                                 Finanzas
                             </h5>
                             <div class="space-y-3">
-                                <div class="flex justify-between items-center border-b border-slate-100 pb-2"><span class="text-[10px] font-bold text-slate-500 uppercase">Valor Total (Adiciones)</span><span id="mod-valor-total" class="text-slate-900 font-black text-sm"></span></div>
-                                <div class="flex justify-between items-center"><span class="text-[9px] font-bold text-slate-400 uppercase">Aporte Departamento</span><span id="mod-aporte-depto" class="text-slate-700 font-bold text-xs"></span></div>
-                                <div class="flex justify-between items-center"><span class="text-[9px] font-bold text-slate-400 uppercase">Aporte Municipio</span><span id="mod-aporte-mun" class="text-slate-700 font-bold text-xs"></span></div>
-                                <div class="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100">
-                                    <div class="bg-blue-50/50 p-2 rounded-lg border border-blue-100 text-center"><span class="block text-[8px] font-bold text-institutional-accent uppercase mb-0.5">Total Desembolsado</span><span id="mod-desembolsado-full" class="text-institutional-accent font-black text-xs block"></span></div>
+                                <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-700/50 pb-2"><span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase">Valor Total (Adiciones)</span><span id="mod-valor-total" class="text-slate-900 dark:text-white font-black text-sm"></span></div>
+                                <div class="flex justify-between items-center"><span class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Aporte Departamento</span><span id="mod-aporte-depto" class="text-slate-700 dark:text-slate-200 font-bold text-xs"></span></div>
+                                <div class="flex justify-between items-center"><span class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Aporte Municipio</span><span id="mod-aporte-mun" class="text-slate-700 dark:text-slate-200 font-bold text-xs"></span></div>
+                                <div class="flex justify-between items-center"><span class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Adición Departamento</span><span id="mod-adicion-depto" class="text-slate-700 dark:text-slate-200 font-bold text-xs"></span></div>
+                                <div class="flex justify-between items-center"><span class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Adición Municipio</span><span id="mod-adicion-mun" class="text-slate-700 dark:text-slate-200 font-bold text-xs"></span></div>
+                                <div class="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+                                    <div class="bg-blue-50/50 p-2 rounded-lg border border-blue-100 text-center cursor-help" title="Este valor corresponde al traslado de recursos a la cuenta del IDEA"><span class="block text-[8px] font-bold text-institutional-accent uppercase mb-0.5">Total Desembolsado</span><span id="mod-desembolsado-full" class="text-institutional-accent font-black text-xs block"></span></div>
                                     <div class="bg-emerald-50/50 p-2 rounded-lg border border-emerald-100 text-center"><span class="block text-[8px] font-bold text-institutional-light uppercase mb-0.5">Total Autorizado Depto.</span><span id="mod-autorizado-full" class="text-institutional-light font-black text-xs block"></span></div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Tiempos -->
-                        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                            <h5 class="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                <span class="w-6 h-6 rounded bg-slate-100 flex items-center justify-center text-slate-500"><i class="fa-regular fa-calendar-days"></i></span>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <h5 class="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 dark:text-slate-500"><i class="fa-regular fa-calendar-days"></i></span>
                                 Novedades y Plazos
                             </h5>
                             <div class="grid grid-cols-2 gap-x-4 gap-y-3">
-                                <div><span class="block text-[9px] font-bold text-slate-400 uppercase">Acta Inicio</span><span id="mod-inicio" class="text-slate-700 font-semibold text-xs block mt-0.5"></span></div>
-                                <div><span class="block text-[9px] font-bold text-slate-400 uppercase">Plazo Inicial</span><span id="mod-plazo-inicial" class="text-slate-700 font-semibold text-xs block mt-0.5"></span></div>
-                                <div><span class="block text-[9px] font-bold text-slate-400 uppercase">Terminación Original</span><span id="mod-terminacion" class="text-slate-700 font-semibold text-xs block mt-0.5"></span></div>
-                                <div><span class="block text-[9px] font-bold text-slate-400 uppercase">Prórrogas</span><span id="mod-prorrogas" class="text-slate-700 text-xs block mt-0.5"></span></div>
-                                <div><span class="block text-[9px] font-bold text-slate-400 uppercase">Suspensiones</span><span id="mod-suspensiones" class="text-slate-700 text-xs block mt-0.5"></span></div>
+                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Suscripción</span><span id="mod-suscripcion" class="text-slate-700 dark:text-slate-200 font-semibold text-xs block mt-0.5"></span></div>
+                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Acta Inicio</span><span id="mod-inicio" class="text-slate-700 dark:text-slate-200 font-semibold text-xs block mt-0.5"></span></div>
+                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Plazo Inicial</span><span id="mod-plazo-inicial" class="text-slate-700 dark:text-slate-200 font-semibold text-xs block mt-0.5"></span></div>
+                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Plazo Total</span><span id="mod-plazo-total" class="text-slate-700 dark:text-slate-200 font-semibold text-xs block mt-0.5"></span></div>
+                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Terminación Original</span><span id="mod-terminacion" class="text-slate-700 dark:text-slate-200 font-semibold text-xs block mt-0.5"></span></div>
+                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Prórrogas</span><span id="mod-prorrogas" class="text-slate-700 dark:text-slate-200 text-xs block mt-0.5"></span></div>
+                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Suspensiones</span><span id="mod-suspensiones" class="text-slate-700 dark:text-slate-200 text-xs block mt-0.5"></span></div>
                                 <div class="col-span-2 bg-amber-50 p-2 rounded border border-amber-100 mt-1"><span class="block text-[9px] font-bold text-amber-700 uppercase text-center">Nueva Fecha Terminación</span><span id="mod-nueva-terminacion" class="text-amber-800 font-black text-sm block mt-0.5 text-center"></span></div>
                             </div>
-                            <div class="mt-4"><span class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Observaciones Técnicas</span><div id="mod-observaciones" class="text-slate-600 text-[11px] leading-relaxed italic bg-slate-50 p-3 rounded-lg border border-slate-100 max-h-24 overflow-y-auto custom-scrollbar"></div></div>
+                            <div class="mt-4"><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Observaciones Técnicas</span><div id="mod-observaciones" class="text-slate-700 dark:text-slate-200 text-xs font-medium leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50 max-h-24 overflow-y-auto custom-scrollbar"></div></div>
                         </div>
 
                     </div>
@@ -438,26 +470,26 @@
                     <div class="lg:col-span-7 flex flex-col gap-6">
                         
                         <!-- Mapa -->
-                        <div class="bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm h-[350px] relative flex flex-col">
-                            <div class="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 z-20 shrink-0">
-                                <h5 class="text-[10px] font-black text-slate-700 uppercase tracking-widest"><i class="fa-solid fa-map-location-dot mr-1.5 text-institutional-primary"></i> Visor Geográfico</h5>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm h-[350px] relative flex flex-col">
+                            <div class="p-3 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50/80 z-20 shrink-0">
+                                <h5 class="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest"><i class="fa-solid fa-map-location-dot mr-1.5 text-institutional-primary"></i> Visor Geográfico</h5>
                             </div>
                             <div class="flex-1 relative flex flex-row">
-                                <div id="map-sidebar" class="w-1/3 min-w-[200px] bg-white border-r border-slate-200 hidden flex-col z-20 h-full overflow-hidden shadow-md">
-                                    <div class="p-2 border-b border-slate-100 bg-slate-50 text-center"><span class="text-[9px] font-bold text-slate-500 uppercase">Tramos Extraídos</span></div>
+                                <div id="map-sidebar" class="w-1/3 min-w-[200px] bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 hidden flex-col z-20 h-full overflow-hidden shadow-md">
+                                    <div class="p-2 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 text-center"><span class="text-[9px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase">Tramos Extraídos</span></div>
                                     <div id="map-feature-list" class="flex-1 overflow-y-auto p-1.5 space-y-1 custom-scrollbar"></div>
-                                    <div id="map-feature-details" class="hidden flex-col border-t border-slate-200 bg-slate-50 p-2.5">
-                                        <h6 class="font-bold text-slate-700 text-[9px] uppercase mb-2 truncate" id="coord-name">--</h6>
-                                        <div class="mb-1.5"><span class="text-[8px] font-bold text-slate-400 uppercase block">Inicio</span>
-                                            <div class="flex gap-1"><input type="text" id="coord-start" class="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-[9px] font-mono" readonly><button onclick="copyCoord('coord-start', this)" class="bg-slate-200 text-slate-600 hover:bg-institutional-primary hover:text-white p-1 rounded transition"><i class="fa-regular fa-copy"></i></button></div>
+                                    <div id="map-feature-details" class="hidden flex-col border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-2.5">
+                                        <h6 class="font-bold text-slate-700 dark:text-slate-200 text-[9px] uppercase mb-2 truncate" id="coord-name">--</h6>
+                                        <div class="mb-1.5"><span class="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase block">Inicio</span>
+                                            <div class="flex gap-1"><input type="text" id="coord-start" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-1 text-[9px] font-mono" readonly><button onclick="copyCoord('coord-start', this)" class="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-institutional-primary hover:text-white p-1 rounded transition"><i class="fa-regular fa-copy"></i></button></div>
                                         </div>
-                                        <div><span class="text-[8px] font-bold text-slate-400 uppercase block">Fin</span>
-                                            <div class="flex gap-1"><input type="text" id="coord-end" class="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-[9px] font-mono" readonly><button onclick="copyCoord('coord-end', this)" class="bg-slate-200 text-slate-600 hover:bg-institutional-primary hover:text-white p-1 rounded transition"><i class="fa-regular fa-copy"></i></button></div>
+                                        <div><span class="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase block">Fin</span>
+                                            <div class="flex gap-1"><input type="text" id="coord-end" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-1 text-[9px] font-mono" readonly><button onclick="copyCoord('coord-end', this)" class="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-institutional-primary hover:text-white p-1 rounded transition"><i class="fa-regular fa-copy"></i></button></div>
                                         </div>
                                     </div>
                                 </div>
-                                <div id="map" class="flex-1 relative z-0 h-full bg-slate-100"></div>
-                                <div id="map-overlay" class="absolute inset-0 bg-slate-100/90 flex items-center justify-center z-30 transition-opacity backdrop-blur-sm"><span id="map-msg" class="text-slate-500 font-semibold text-xs"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Cargando trazado...</span></div>
+                                <div id="map" class="flex-1 relative z-0 h-full bg-slate-100 dark:bg-slate-800"></div>
+                                <div id="map-overlay" class="absolute inset-0 bg-slate-100 dark:bg-slate-800/90 flex items-center justify-center z-30 transition-opacity backdrop-blur-sm"><span id="map-msg" class="text-slate-500 dark:text-slate-400 dark:text-slate-500 font-semibold text-xs"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Cargando trazado...</span></div>
                             </div>
                         </div>
                         
@@ -467,7 +499,7 @@
                             <h4 class="text-[10px] font-black text-white uppercase tracking-widest mb-4 border-b border-white/10 pb-2 relative z-10 flex justify-between items-center">
                                 <span><i class="fa-solid fa-camera mr-1.5 opacity-70"></i> Registro Fotográfico</span>
                             </h4>
-                            <div id="mod-galeria" class="grid grid-cols-3 gap-3 relative z-10 overflow-y-auto custom-scrollbar pr-1 max-h-[250px]"></div>
+                            <div id="mod-galeria" class="grid grid-cols-3 gap-3 relative z-10 overflow-y-auto custom-scrollbar pr-1 flex-1 content-start"></div>
                             <div id="mod-galeria-empty" class="hidden flex-1 flex flex-col items-center justify-center py-8 text-white/40 text-xs relative z-10">
                                 <i class="fa-regular fa-images text-3xl mb-2 opacity-50"></i>
                                 No se encontraron fotografías anexas
@@ -480,20 +512,26 @@
         </div>
     </div>
 
-    <!-- PLANTILLA PDF OCULTA -->
-    <div style="position: absolute; left: -9999px; top: -9999px; width: 210mm;">
-        <div id="pdf-template" class="pdf-report-container bg-white"></div>
-    </div>
+
 
     <!-- LIGHTBOX GALERÍA -->
     <div id="modal-lightbox" class="fixed inset-0 bg-slate-950/95 z-[60] hidden flex items-center justify-center select-none backdrop-blur-md no-print">
-        <button id="btn-close-lightbox" class="absolute top-6 right-6 sm:right-8 text-white/50 hover:text-white bg-white/10 hover:bg-white/20 rounded-full w-12 h-12 flex items-center justify-center transition-all z-10"><i class="fa-solid fa-xmark text-2xl"></i></button>
+        <button id="btn-close-lightbox" class="absolute top-6 right-6 sm:right-8 text-white/50 hover:text-white bg-white dark:bg-slate-800/10 hover:bg-white dark:bg-slate-800/20 rounded-full w-12 h-12 flex items-center justify-center transition-all z-10"><i class="fa-solid fa-xmark text-2xl"></i></button>
         <button id="btn-prev-img" class="absolute left-4 sm:left-10 top-1/2 transform -translate-y-1/2 text-white hover:text-institutional-light text-3xl bg-black/40 hover:bg-black/70 w-14 h-14 rounded-full flex items-center justify-center z-10 hidden transition-all backdrop-blur-sm"><i class="fa-solid fa-chevron-left"></i></button>
         <div class="relative w-full max-w-6xl flex justify-center items-center h-full max-h-[90vh] p-4 flex-col">
             <img id="lightbox-img" src="" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl transition-opacity duration-300">
             <div id="lightbox-counter" class="mt-5 text-white/80 text-xs font-bold tracking-widest bg-black/50 px-4 py-1.5 rounded-full backdrop-blur-sm"></div>
         </div>
         <button id="btn-next-img" class="absolute right-4 sm:right-10 top-1/2 transform -translate-y-1/2 text-white hover:text-institutional-light text-3xl bg-black/40 hover:bg-black/70 w-14 h-14 rounded-full flex items-center justify-center z-10 hidden transition-all backdrop-blur-sm"><i class="fa-solid fa-chevron-right"></i></button>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast-notification" class="fixed bottom-6 right-6 bg-emerald-600 text-white px-5 py-3.5 rounded-xl shadow-2xl shadow-emerald-900/20 transform translate-y-20 opacity-0 transition-all duration-300 z-[70] flex items-center gap-3 border border-emerald-500/50 no-print">
+        <i class="fa-solid fa-circle-check text-xl text-emerald-200"></i>
+        <div>
+            <h4 class="text-xs font-black uppercase tracking-wider">Ficha Descargada</h4>
+            <p class="text-[10px] text-emerald-100 font-medium">El archivo PDF se generó exitosamente.</p>
+        </div>
     </div>
 
     <script src="script.js"></script>

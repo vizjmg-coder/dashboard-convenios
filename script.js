@@ -42,7 +42,7 @@ const parseExcelDate = (excelNum) => {
     return excelNum;
 };
 
-// --- SISTEMA DE DISEÑO: MAPEO INSTITUCIONAL DE ESTADOS ---
+// --- SISTEMA DE DISE�'O: MAPEO INSTITUCIONAL DE ESTADOS ---
 // Se sincroniza con las variables de CSS
 function getSystemState(estado) {
     const est = String(estado || 'N/A').toLowerCase();
@@ -107,182 +107,355 @@ function getCoords(layer) {
     };
 }
 
-// ------ FUNCIÓN EXPORTAR PDF (Plantilla base en memoria) ------
-function generateProfessionalPDF(row) {
-    const template = document.getElementById('pdf-template');
-    const convenio = row['CONVENIO'];
-    const municipio = row['MUNICIPIO'];
-    
-    const sysState = getSystemState(row['ESTADO CONVENIO']);
+// ------ FUNCI�"N EXPORTAR PDF (Motor pdfmake - Vectorial Institucional) ------
 
-    // HTML del PDF
-    template.innerHTML = `
-        <div class="p-10 bg-white" style="width: 297mm;"> 
-            <div class="flex justify-between items-end border-b-4 border-[#0e5e40] pb-4 mb-6">
-                <div class="flex items-center gap-4">
-                    <img src="https://www.antioquia.gov.co/images/2024/escudo-de-armas%201.jpg" class="w-16 h-16 object-contain" />
-                    <div>
-                        <h1 class="text-2xl font-black text-slate-900 uppercase tracking-tighter">Ficha Técnica de Seguimiento</h1>
-                        <p class="text-[#1a7f5a] font-bold tracking-widest text-xs uppercase mt-1">Gobernación de Antioquia - Secretaría de Infraestructura</p>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase">Convenio N°</p>
-                    <p class="text-2xl font-black text-slate-800">${convenio}</p>
-                </div>
-            </div>
-
-            <div class="section-block mb-6">
-                <h3 class="bg-slate-800 text-white px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-t-lg">1. Identificación del Proyecto</h3>
-                <div class="grid grid-cols-4 border border-slate-200 rounded-b-lg overflow-hidden text-xs">
-                    <div class="p-3 border-r border-b border-slate-100 bg-slate-50"><span class="block text-[8px] font-bold text-slate-400 uppercase">Municipio</span><span class="font-bold text-slate-700">${municipio}</span></div>
-                    <div class="p-3 border-r border-b border-slate-100 bg-slate-50"><span class="block text-[8px] font-bold text-slate-400 uppercase">Vigencia</span><span class="font-bold text-slate-700">${row['VIGENCIA']}</span></div>
-                    <div class="p-3 border-r border-b border-slate-100 bg-slate-50"><span class="block text-[8px] font-bold text-slate-400 uppercase">Indicador</span><span class="font-bold text-slate-700">${row['INDICADOR'] || '-'}</span></div>
-                    <div class="p-3 border-b border-slate-100 bg-slate-50"><span class="block text-[8px] font-bold text-slate-400 uppercase">Clasificación</span><span class="font-bold text-slate-700">${row['CLASIFICACIÓN'] || '-'}</span></div>
-                    
-                    <div class="p-3 border-r border-slate-100 col-span-2"><span class="block text-[8px] font-bold text-slate-400 uppercase">Estado Actual</span><span class="px-2 py-0.5 rounded text-[9px] font-black uppercase border inline-block mt-1" style="background:${sysState.hex}15; color:${sysState.hex}; border-color:${sysState.hex}40;">${sysState.label}</span></div>
-                    <div class="p-3 col-span-2"><span class="block text-[8px] font-bold text-slate-400 uppercase">Supervisión</span><span class="font-bold text-slate-700 mt-1 block">Margarita Rosa Lopera Duque</span></div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4 mb-6 section-block">
-                <div class="border border-slate-200 p-4 rounded-xl bg-white flex items-center justify-between shadow-sm">
-                    <div class="w-2/3">
-                        <span class="text-[9px] font-black text-slate-400 uppercase">Avance Físico Global</span>
-                        <div class="w-full bg-slate-100 h-3 rounded-full mt-1.5 overflow-hidden border border-slate-200">
-                            <div class="h-full rounded-full" style="width: ${row['FISICO_NORM']}%; background: #1a7f5a;"></div>
-                        </div>
-                    </div>
-                    <span class="text-2xl font-black text-[#1a7f5a]">${row['FISICO_NORM'].toFixed(1)}%</span>
-                </div>
-                <div class="border border-slate-200 p-4 rounded-xl bg-white flex items-center justify-between shadow-sm">
-                    <div class="w-2/3">
-                        <span class="text-[9px] font-black text-slate-400 uppercase">Avance Financiero</span>
-                        <div class="w-full bg-slate-100 h-3 rounded-full mt-1.5 overflow-hidden border border-slate-200">
-                            <div class="h-full rounded-full" style="width: ${row['FINANCIERO_NORM']}%; background: #2d6a9f;"></div>
-                        </div>
-                    </div>
-                    <span class="text-2xl font-black text-[#2d6a9f]">${row['FINANCIERO_NORM'].toFixed(1)}%</span>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-12 gap-6 mb-6 section-block">
-                <div class="col-span-7">
-                    <h3 class="bg-slate-800 text-white px-4 py-1.5 text-[10px] font-black uppercase rounded-t-lg">2. Resumen Técnico</h3>
-                    <div class="border border-slate-200 p-4 bg-white rounded-b-lg space-y-3">
-                        <div><span class="text-[8px] font-bold text-slate-400 uppercase">Objeto del Contrato:</span><p class="text-[11px] text-slate-700 italic leading-relaxed mt-0.5">${row['OBJETO']}</p></div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-100"><span class="text-[8px] font-bold text-slate-400 uppercase block">Vía Priorizada</span><span class="text-[10px] font-bold text-slate-800">${row['VIA_PRIORIZADA']}</span></div>
-                            <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-100"><span class="text-[8px] font-bold text-slate-400 uppercase block">Metas / Alcance</span><span class="text-[10px] font-bold text-slate-800">${formatNumber(row['ALCANCE (M)'])} m / ${formatNumber(row['ALCANCE (M2)'])} m²</span></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-span-5">
-                    <h3 class="bg-slate-800 text-white px-4 py-1.5 text-[10px] font-black uppercase rounded-t-lg">3. Detalle Financiero</h3>
-                    <div class="border border-slate-200 p-4 bg-white rounded-b-lg space-y-2">
-                        <div class="flex justify-between border-b border-slate-100 pb-1.5"><span class="text-[9px] text-slate-500">Valor Total</span><span class="font-bold text-xs">${formatCurrency(row['VALOR TOTAL'])}</span></div>
-                        <div class="flex justify-between border-b border-slate-100 pb-1.5"><span class="text-[9px] text-slate-500">Aporte Depto.</span><span class="font-bold text-xs">${formatCurrency(row['APORTE DEPARTAMENTO'])}</span></div>
-                        <div class="flex justify-between border-b border-slate-100 pb-1.5"><span class="text-[9px] text-slate-500">Aporte Municipio</span><span class="font-bold text-xs">${formatCurrency(row['APORTE MUNICIPIO'])}</span></div>
-                        <div class="flex justify-between pt-1"><span class="text-[9px] text-[#2d6a9f] font-bold">Total Desembolsado</span><span class="font-black text-sm text-[#2d6a9f]">${formatCurrency(row['VALOR TOTAL DESEMBOLSADO'])}</span></div>
-                        <div class="flex justify-between"><span class="text-[9px] text-[#1a7f5a] font-bold">Total Autorizado</span><span class="font-black text-sm text-[#1a7f5a]">${formatCurrency(row['VALOR TOTAL AUTORIZADO'])}</span></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section-block mb-6" style="page-break-before: always;">
-                 <h3 class="bg-slate-800 text-white px-4 py-1.5 text-[10px] font-black uppercase rounded-t-lg">4. Detalle Geográfico y Tramos</h3>
-                 <div class="grid grid-cols-12 border border-slate-200 rounded-b-lg overflow-hidden">
-                    <div class="col-span-12 p-5 bg-white border-b border-slate-200">
-                        <table class="w-full text-left text-[9px]">
-                            <thead class="bg-slate-100 text-slate-600 uppercase font-black">
-                                <tr>
-                                    <th class="p-2 border border-slate-200">Nombre del Tramo / Segmento</th>
-                                    <th class="p-2 border border-slate-200 text-center">Punto Inicial (Lat, Lng)</th>
-                                    <th class="p-2 border border-slate-200 text-center">Punto Final (Lat, Lng)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="pdf-coords-body">
-                                </tbody>
-                        </table>
-                    </div>
-                 </div>
-            </div>
-
-            <div class="section-block mb-6">
-                 <h3 class="bg-slate-800 text-white px-4 py-1.5 text-[10px] font-black uppercase rounded-t-lg">5. Tiempos y Observaciones Técnicas</h3>
-                 <div class="border border-slate-200 p-5 bg-white rounded-b-lg">
-                    <div class="grid grid-cols-4 gap-3 mb-4 pb-4 border-b border-slate-100">
-                        <div><span class="block text-[8px] font-bold text-slate-400 uppercase">Inicio</span><span class="font-semibold text-xs text-slate-700">${row['FECHA DE ACTA DE INICIO']}</span></div>
-                        <div><span class="block text-[8px] font-bold text-slate-400 uppercase">Terminación</span><span class="font-semibold text-xs text-slate-700">${row['FECHA DE TERMINACIÓN']}</span></div>
-                        <div><span class="block text-[8px] font-bold text-slate-400 uppercase">Prórrogas / Susp.</span><span class="font-semibold text-xs text-slate-700">${row['PRÓRROGA (MESES)']} m / ${row['SUSPENSIÓN(MESES)']} m</span></div>
-                        <div><span class="block text-[8px] font-bold text-amber-600 uppercase">Nueva Terminación</span><span class="font-black text-xs text-amber-700">${row['NUEVA FECHA DE TERMINACIÓN'] || 'N/A'}</span></div>
-                    </div>
-                    <p class="text-[10px] text-slate-600 leading-relaxed italic">${row['OBSERVACIONES'] || 'No se registran observaciones adicionales en el sistema a la fecha de corte.'}</p>
-                 </div>
-            </div>
-
-            <div class="section-block">
-                 <h3 class="bg-slate-800 text-white px-4 py-1.5 text-[10px] font-black uppercase rounded-t-lg">6. Registro Fotográfico de Obra</h3>
-                 <div class="border border-slate-200 p-5 bg-white rounded-b-lg grid grid-cols-4 gap-3" id="pdf-gallery-content">
-                 </div>
-            </div>
-
-            <div class="mt-8 text-center border-t border-slate-200 pt-3">
-                <p class="text-[8px] text-slate-400 uppercase tracking-widest">Documento generado automáticamente por el Sistema de Seguimiento - Secretaría de Infraestructura, Gobernación de Antioquia</p>
-            </div>
-        </div>
-    `;
-
-    // Inyectar Coordenadas en la Tabla del PDF
-    const coordsBody = template.querySelector('#pdf-coords-body');
-    if (currentExtractedFeatures.length > 0) {
-        currentExtractedFeatures.forEach(feat => {
-            const coords = getCoords(feat.layer);
-            if(coords){
-                coordsBody.innerHTML += `
-                    <tr>
-                        <td class="p-2 border border-slate-200 font-bold">${feat.name}</td>
-                        <td class="p-2 border border-slate-200 text-center font-mono">${coords.start}</td>
-                        <td class="p-2 border border-slate-200 text-center font-mono">${coords.end}</td>
-                    </tr>`;
-            }
-        });
-    } else {
-        coordsBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400 italic">No se dispone de trazado geométrico para extraer tramos.</td></tr>`;
-    }
-
-    // Inyectar Fotos
-    const galleryCont = template.querySelector('#pdf-gallery-content');
-    const imagesInModal = document.querySelectorAll('#mod-galeria img');
-    if(imagesInModal.length > 0) {
-        imagesInModal.forEach(img => {
-            const wrap = document.createElement('div');
-            wrap.className = 'border border-slate-200 rounded-lg overflow-hidden shadow-sm';
-            wrap.innerHTML = `<img src="${img.src}" class="w-full h-32 object-cover">`;
-            galleryCont.appendChild(wrap);
-        });
-    } else {
-        galleryCont.innerHTML = '<p class="col-span-4 text-center text-slate-400 italic py-4">No se adjuntan fotografías al presente reporte.</p>';
-    }
-
-    // Configuración para guardar
-    const opt = {
-        margin: 0,
-        filename: `Ficha_Tecnica_Convenio_${convenio}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-    };
-
-    html2pdf().set(opt).from(template).save();
+async function getBase64ImageFromURL(url) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = () => reject(new Error('Image load error: ' + url));
+        img.src = url;
+    });
 }
 
-// Inicialización
+async function getBase64FromHtmlElement(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return null;
+    try {
+        const canvas = await html2canvas(el, { useCORS: true, scale: 2, logging: false });
+        return canvas.toDataURL('image/jpeg', 0.85);
+    } catch (e) {
+        console.warn('Error capturing map:', e);
+        return null;
+    }
+}
+
+async function generateProfessionalPDF(row) {
+    const btnPdf = document.getElementById('btn-export-pdf');
+    const originalText = btnPdf.innerHTML;
+    btnPdf.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Generando PDF...';
+    btnPdf.disabled = true;
+
+    try {
+        // ===== 1. CAPTURA ASÍNCRONA DE RECURSOS =====
+        const logoBase64 = await getBase64ImageFromURL('https://www.antioquia.gov.co/images/2024/escudo-de-armas%201.jpg').catch(() => null);
+        const mapBase64 = await getBase64FromHtmlElement('map-view');
+
+        const imagesInModal = document.querySelectorAll('#mod-galeria img');
+        const galleryBase64 = await Promise.all(
+            Array.from(imagesInModal).map(img => getBase64ImageFromURL(img.src).catch(() => null))
+        );
+        const validPhotos = galleryBase64.filter(Boolean);
+
+        const sysState = getSystemState(row['ESTADO CONVENIO']);
+
+        // ===== 2. ESTILOS REUTILIZABLES =====
+        const thCell = (text) => ({ text, fontSize: 9, bold: true, color: '#ffffff', fillColor: '#1e293b', margin: [6, 5, 6, 5] });
+        const tdCell = (text, opts = {}) => ({ text: String(text ?? '-'), fontSize: 9, color: '#334155', margin: [6, 4, 6, 4], ...opts });
+        const tdRight = (text, opts = {}) => tdCell(text, { alignment: 'right', ...opts });
+
+        // ===== 3. TABLA DE TRAMOS GEOGRÁFICOS =====
+        const geoRows = (currentExtractedFeatures && currentExtractedFeatures.length > 0)
+            ? currentExtractedFeatures.map(feat => {
+                const c = getCoords(feat.layer) || { start: 'N/A', end: 'N/A' };
+                return [tdCell(feat.name), tdRight(c.start), tdRight(c.end)];
+              })
+            : [[{ text: 'No hay datos geográficos disponibles para este convenio.', colSpan: 3, alignment: 'center', italics: true, fontSize: 9, color: '#94a3b8', margin: [6, 8, 6, 8] }, {}, {}]];
+
+        // ===== 4. GALERÍA DE FOTOS (2 por fila) =====
+        const photoRows = [];
+        if (validPhotos.length > 0) {
+            for (let i = 0; i < validPhotos.length; i += 2) {
+                const left  = { image: validPhotos[i],   width: 245, height: 170, margin: [0, 4, 4, 4] };
+                const right = validPhotos[i + 1]
+                    ? { image: validPhotos[i + 1], width: 245, height: 170, margin: [4, 4, 0, 4] }
+                    : {};
+                photoRows.push([left, right]);
+            }
+        }
+
+        // ===== 5. FECHA DE GENERACI�"N =====
+        const generatedAt = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        // ===== 6. DOCUMENTO =====
+        const docDefinition = {
+            pageSize: 'A4',
+            pageOrientation: 'portrait',
+            pageMargins: [40, 65, 40, 45],
+
+            header: (currentPage, pageCount) => ({
+                margin: [40, 18, 40, 0],
+                columns: [
+                    { text: `Dashboard de Convenios · Secretaría de Infraestructura · Convenio ${row['CONVENIO']}`, fontSize: 7.5, color: '#64748b' },
+                    { text: `Página ${currentPage} de ${pageCount}`, alignment: 'right', fontSize: 7.5, color: '#64748b' }
+                ]
+            }),
+
+            footer: () => ({
+                margin: [40, 8, 40, 0],
+                text: `Generado el ${generatedAt} · Documento institucional �?" no modifique sin autorización`,
+                alignment: 'center', fontSize: 7, color: '#94a3b8'
+            }),
+
+            content: [
+                // ============================================================
+                // PÁGINA 1 �?" PORTADA EJECUTIVA
+                // ============================================================
+                {
+                    columns: [
+                        logoBase64 ? { image: logoBase64, width: 52, margin: [0, 0, 12, 0] } : {},
+                        {
+                            stack: [
+                                { text: 'FICHA T�?CNICA DE SEGUIMIENTO', fontSize: 17, bold: true, color: '#0f172a' },
+                                { text: 'Gobernación de Antioquia · Secretaría de Infraestructura', fontSize: 9, color: '#1a7f5a', bold: true, margin: [0, 3, 0, 0] }
+                            ]
+                        },
+                        {
+                            stack: [
+                                { text: 'Convenio N°', fontSize: 8.5, color: '#64748b', alignment: 'right' },
+                                { text: String(row['CONVENIO']), fontSize: 20, bold: true, color: '#0f172a', alignment: 'right' }
+                            ]
+                        }
+                    ],
+                    margin: [0, 0, 0, 8]
+                },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2.5, lineColor: '#1a7f5a' }], margin: [0, 0, 0, 16] },
+
+                // --- BLOQUE IDENTIFICACI�"N ---
+                { text: '1. IDENTIFICACI�"N DEL PROYECTO', style: 'secHeader' },
+                {
+                    table: {
+                        widths: ['*', 'auto', 'auto', '*'],
+                        body: [
+                            [thCell('Municipio'), thCell('Vigencia'), thCell('Estado Contractual'), thCell('Clasificación')],
+                            [
+                                tdCell(row['MUNICIPIO']),
+                                tdCell(row['VIGENCIA']),
+                                { text: sysState.label, fontSize: 9, bold: true, color: sysState.hex, margin: [6, 4, 6, 4] },
+                                tdCell(row['CLASIFICACI�"N'])
+                            ]
+                        ]
+                    },
+                    layout: 'lightHorizontalLines',
+                    margin: [0, 0, 0, 16]
+                },
+
+                // --- KPIs ---
+                {
+                    columns: [
+                        {
+                            table: {
+                                widths: ['*'],
+                                body: [
+                                    [{ text: 'AVANCE FÍSICO', fontSize: 8, bold: true, color: '#1a7f5a', alignment: 'center', margin: [0, 6, 0, 2] }],
+                                    [{ text: `${(row['FISICO_NORM'] || 0).toFixed(1)}%`, fontSize: 26, bold: true, color: '#1a7f5a', alignment: 'center', margin: [0, 0, 0, 6] }]
+                                ]
+                            },
+                            layout: { hLineColor: '#a7d9c5', vLineColor: '#a7d9c5', hLineWidth: () => 0.5, vLineWidth: () => 0.5 },
+                            margin: [0, 0, 8, 0]
+                        },
+                        {
+                            table: {
+                                widths: ['*'],
+                                body: [
+                                    [{ text: 'AVANCE FINANCIERO', fontSize: 8, bold: true, color: '#2d6a9f', alignment: 'center', margin: [0, 6, 0, 2] }],
+                                    [{ text: `${(row['FINANCIERO_NORM'] || 0).toFixed(1)}%`, fontSize: 26, bold: true, color: '#2d6a9f', alignment: 'center', margin: [0, 0, 0, 6] }]
+                                ]
+                            },
+                            layout: { hLineColor: '#9dc0e2', vLineColor: '#9dc0e2', hLineWidth: () => 0.5, vLineWidth: () => 0.5 },
+                            margin: [8, 0, 0, 0]
+                        }
+                    ],
+                    margin: [0, 0, 0, 16]
+                },
+
+                // --- RESUMEN EJECUTIVO ---
+                { text: 'RESUMEN EJECUTIVO', style: 'secHeader' },
+                { text: 'Objeto del Convenio', style: 'fieldLabel' },
+                { text: row['OBJETO'] || 'Sin objeto definido.', fontSize: 10, alignment: 'justify', margin: [0, 2, 0, 10] },
+                { text: 'Vía Priorizada', style: 'fieldLabel' },
+                { text: row['VIA_PRIORIZADA'] || 'N/A', fontSize: 10, margin: [0, 2, 0, 10] },
+                { text: 'Observaciones Técnicas', style: 'fieldLabel' },
+                { text: row['OBSERVACIONES'] || 'Sin observaciones registradas.', fontSize: 9.5, color: '#475569', margin: [0, 2, 0, 0] },
+
+                // ============================================================
+                // PÁGINA 2 �?" LOCALIZACI�"N Y MAPA
+                // ============================================================
+                { text: '2. LOCALIZACI�"N Y GEORREFERENCIACI�"N', style: 'secHeader', pageBreak: 'before' },
+                mapBase64
+                    ? { image: mapBase64, width: 515, margin: [0, 4, 0, 14], alignment: 'center' }
+                    : { text: 'Mapa no disponible (sin trazado GeoJSON cargado).', italics: true, color: '#94a3b8', margin: [0, 4, 0, 14] },
+                {
+                    table: {
+                        headerRows: 1,
+                        widths: ['*', 'auto', 'auto'],
+                        body: [
+                            [thCell('Nombre del Tramo / Segmento'), thCell('Inicio (Lat, Lng)'), thCell('Fin (Lat, Lng)')],
+                            ...geoRows
+                        ]
+                    },
+                    layout: 'lightHorizontalLines'
+                },
+
+                // ============================================================
+                // PÁGINA 3 �?" REGISTRO FOTOGRÁFICO
+                // ============================================================
+                { text: '3. REGISTRO FOTOGRÁFICO DE OBRA', style: 'secHeader', pageBreak: 'before' },
+                validPhotos.length > 0
+                    ? { table: { widths: ['*', '*'], body: photoRows }, layout: 'noBorders', margin: [0, 4, 0, 0] }
+                    : { text: 'No hay fotografías disponibles para este convenio.', italics: true, color: '#94a3b8', margin: [0, 8, 0, 0] },
+
+                // ============================================================
+                // PÁGINA 4 �?" DETALLE FINANCIERO Y TIEMPOS
+                // ============================================================
+                { text: '4. DETALLE FINANCIERO Y CONTRACTUAL', style: 'secHeader', pageBreak: 'before' },
+
+                { text: 'Recursos del Proyecto', style: 'subHeader' },
+                {
+                    table: {
+                        widths: ['*', 'auto'],
+                        body: [
+                            [thCell('Concepto'), thCell('Valor')],
+                            [tdCell('Valor Total del Proyecto'), tdRight(formatCurrency(row['VALOR TOTAL']), { bold: true })],
+                            [tdCell('Aporte Departamento'), tdRight(formatCurrency(row['APORTE DEPARTAMENTO']))],
+                            [tdCell('Aporte Municipio'), tdRight(formatCurrency(row['APORTE MUNICIPIO']))],
+                            [tdCell('Adición Departamento'), tdRight(formatCurrency(row['ADICIONES RECURSOS DEPARTAMENTO']))],
+                            [tdCell('Adición Municipio'), tdRight(formatCurrency(row['ADICIONES RECURSOS MUNICIPIO']))],
+                            [tdCell('Total Desembolsado (Traslado IDEA)', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), { bold: true, color: '#2d6a9f' })],
+                            [tdCell('Total Autorizado Departamento', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO']), { bold: true, color: '#1a7f5a' })]
+                        ]
+                    },
+                    layout: 'lightHorizontalLines',
+                    margin: [0, 0, 0, 16]
+                },
+
+                { text: 'Tiempos y Plazos', style: 'subHeader' },
+                {
+                    table: {
+                        widths: ['*', 'auto'],
+                        body: [
+                            [thCell('Campo'), thCell('Valor')],
+                            [tdCell('Fecha de Suscripción'), tdRight(row['FECHA DE SUSCRIPCI�"N'])],
+                            [tdCell('Fecha Acta de Inicio'), tdRight(row['FECHA DE ACTA DE INICIO'])],
+                            [tdCell('Fecha de Terminación Original'), tdRight(row['FECHA DE TERMINACI�"N'])],
+                            [tdCell('Prórrogas'), tdRight((row['PR�"RROGA (MESES)'] || 0) + ' meses')],
+                            [tdCell('Suspensiones'), tdRight((row['SUSPENSI�"N(MESES)'] || 0) + ' meses')],
+                            [tdCell('Nueva Fecha de Terminación', { bold: true }), tdRight(row['NUEVA FECHA DE TERMINACI�"N'] || 'Sin cambios', { bold: true, color: '#b7791f' })]
+                        ]
+                    },
+                    layout: 'lightHorizontalLines'
+                }
+            ],
+
+            styles: {
+                secHeader: {
+                    fontSize: 10,
+                    bold: true,
+                    color: '#ffffff',
+                    fillColor: '#1e293b',
+                    margin: [0, 8, 0, 10]
+                },
+                subHeader: {
+                    fontSize: 10,
+                    bold: true,
+                    color: '#1e293b',
+                    margin: [0, 4, 0, 6]
+                },
+                fieldLabel: {
+                    fontSize: 9,
+                    bold: true,
+                    color: '#64748b',
+                    margin: [0, 0, 0, 2]
+                }
+            }
+        };
+
+        // Envolver secHeaders en tabla para fondo con padding
+        docDefinition.content.forEach(item => {
+            if (item && item.style === 'secHeader') {
+                const txt = item.text;
+                const pb = item.pageBreak;
+                delete item.text;
+                delete item.pageBreak;
+                item.table = { widths: ['*'], body: [[{ text: txt, fontSize: 10, bold: true, color: '#ffffff', margin: [6, 5, 6, 5] }]] };
+                item.layout = 'noBorders';
+                item.fillColor = '#1e293b';
+                if (pb) item.pageBreak = pb;
+            }
+        });
+
+        // ===== 7. DESCARGAR =====
+        pdfMake.createPdf(docDefinition).download(`Ficha_Tecnica_Convenio_${row['CONVENIO']}.pdf`);
+
+        btnPdf.innerHTML = originalText;
+        btnPdf.disabled = false;
+
+        const toast = document.getElementById('toast-notification');
+        if (toast) {
+            toast.classList.remove('opacity-0', 'translate-y-20');
+            setTimeout(() => toast.classList.add('opacity-0', 'translate-y-20'), 3500);
+        }
+
+    } catch (err) {
+        console.error('Error generando PDF:', err);
+        alert('Ocurrió un error al generar el PDF. Revisa la consola para más detalles.');
+        btnPdf.innerHTML = originalText;
+        btnPdf.disabled = false;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     try {
         const today = new Date();
         document.getElementById('fecha-actualizacion').textContent = today.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
         
+        // Dark mode setup
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            const themeIcon = document.getElementById('theme-icon');
+            if (themeIcon) themeIcon.classList.replace('fa-moon', 'fa-sun');
+        }
+        
+        const btnThemeToggle = document.getElementById('btn-theme-toggle');
+        if (btnThemeToggle) {
+            btnThemeToggle.addEventListener('click', () => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                const icon = document.getElementById('theme-icon');
+                if (isDark) {
+                    icon.classList.replace('fa-moon', 'fa-sun');
+                } else {
+                    icon.classList.replace('fa-sun', 'fa-moon');
+                }
+                
+                // Redraw charts to update canvas text colors
+                if(filteredData.length > 0) updateCharts();
+            });
+        }
+        
+        // Nav Alerts setup
+        const btnNavAlerts = document.getElementById('btn-nav-alerts');
+        const navAlertsDropdown = document.getElementById('nav-alerts-dropdown');
+        if (btnNavAlerts && navAlertsDropdown) {
+            btnNavAlerts.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navAlertsDropdown.classList.toggle('hidden');
+            });
+            document.addEventListener('click', (e) => {
+                if (!navAlertsDropdown.contains(e.target) && !btnNavAlerts.contains(e.target)) {
+                    navAlertsDropdown.classList.add('hidden');
+                }
+            });
+        }
+
         document.getElementById('file-upload').addEventListener('change', handleFileUpload);
         document.getElementById('btn-reset-filters').addEventListener('click', resetFilters);
         document.getElementById('btn-close-modal').addEventListener('click', closeModal);
@@ -324,12 +497,33 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadExcelFile() {
+    const sheetId = '1e77sxPrebximM3AchhD8GBrcBIpxmJ6I';
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
+    const localUrl = './data/convenios.xlsx';
+    
     try {
-        const response = await fetch('./data/convenios.xlsx');
-        if (!response.ok) throw new Error();
+        const fechaEl = document.getElementById('fecha-actualizacion');
+        if (fechaEl) fechaEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1 text-institutional-accent"></i>Sincronizando con nube...';
+        
+        let response = await fetch(sheetUrl);
+        if (!response.ok) throw new Error('No se pudo conectar a Google Sheets');
+        
         const arrayBuffer = await response.arrayBuffer();
         processExcelData(arrayBuffer);
-    } catch (error) {} 
+    } catch (error) {
+        console.warn('Fallo al cargar desde Google Sheets, intentando cargar archivo local...', error);
+        try {
+            const fallbackResponse = await fetch(localUrl);
+            if (!fallbackResponse.ok) throw new Error('No se pudo cargar el archivo local');
+            
+            const arrayBuffer = await fallbackResponse.arrayBuffer();
+            processExcelData(arrayBuffer);
+        } catch (localError) {
+            console.error('Error cargando datos:', localError);
+            const fechaEl = document.getElementById('fecha-actualizacion');
+            if (fechaEl) fechaEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-red-500 mr-1"></i>Error de conexión';
+        }
+    } 
 }
 
 function handleFileUpload(e) {
@@ -341,39 +535,80 @@ function handleFileUpload(e) {
 }
 
 function processExcelData(data) {
-    if (typeof XLSX === 'undefined') { alert("SheetJS no cargó."); return; }
+    if (typeof XLSX === 'undefined') { alert("SheetJS no cargo."); return; }
     const workbook = XLSX.read(data, { type: 'array' });
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
     let json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-    rawData = json.map(row => {
-        let pfis = parseNum(row['% EJECUCIÓN FÍSICA']); if(pfis > 0 && pfis <= 1) pfis *= 100;
-        let pfin = parseNum(row['% EJECUCIÓN FINANCIERA (RECURSOS DEPARTAMENTO)'] || row['% EJECUCIÓN FINANCIERA']); if(pfin > 0 && pfin <= 1) pfin *= 100;
-        return {
-            ...row,
-            'VIGENCIA': String(row['VIGENCIA'] || '').trim() || 'Sin Año',
-            'VALOR TOTAL': parseNum(row['VALOR TOTAL'] || row['VALOR TOTAL CON ADICIONES']),
-            'APORTE DEPARTAMENTO': parseNum(row['APORTE DEPARTAMENTO']), 
-            'APORTE MUNICIPIO': parseNum(row['APORTE MUNICIPIO']),       
-            'VALOR TOTAL DESEMBOLSADO': parseNum(row['VALOR TOTAL DESEMBOLSADO']),
-            'VALOR TOTAL AUTORIZADO': parseNum(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO']),
-            'VIA_PRIORIZADA': row['NOMBRE VIAS PRIORIZADAS'] || 'No especificada',
-            'ALCANCE (M)': parseNum(row['ALCANCE (M)']),
-            'ALCANCE (M2)': parseNum(row['ALCANCE (M2)']),
-            'LONGITUD EJECUTADA': parseNum(row['LONGITUD EJECUTADA']),
-            'AREA EJECUTADA (M2)': parseNum(row['AREA EJECUTADA (M2)']),
+
+    // Helper: find column tolerant to accents and encoding issues
+    function col(row) {
+        var keys = Object.keys(row);
+        var norm = function(s) {
+            return String(s || '').replace(/[\u00C0-\u024F]/g, function(c) {
+                return c.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            }).toUpperCase().replace(/\s+/g, ' ').trim();
+        };
+        return function() {
+            var candidates = Array.prototype.slice.call(arguments);
+            for (var i = 0; i < candidates.length; i++) {
+                var c = candidates[i];
+                if (row[c] !== undefined && row[c] !== '') return row[c];
+                var normC = norm(c);
+                for (var j = 0; j < keys.length; j++) {
+                    if (norm(keys[j]) === normC && row[keys[j]] !== '') return row[keys[j]];
+                }
+            }
+            return '';
+        };
+    }
+
+    rawData = json.map(function(row) {
+        var c = col(row);
+        var pfis = parseNum(c('% EJECUCION FISICA', '% EJECUCION FISCA'));
+        if (pfis > 0 && pfis <= 1) pfis *= 100;
+        var pfin = parseNum(c('% EJECUCION FINANCIERA (RECURSOS DEPARTAMENTO)', '% EJECUCION FINANCIERA'));
+        if (pfin > 0 && pfin <= 1) pfin *= 100;
+        var adicionDepto = parseNum(c('ADICIONES RECURSOS DEPARTAMENTO'));
+        var adicionMun = parseNum(c('ADICIONES RECURSOS MUNICIPIO'));
+        return Object.assign({}, row, {
+            'VIGENCIA': String(c('VIGENCIA') || '').trim() || 'Sin Ano',
+            'VALOR TOTAL': parseNum(c('VALOR TOTAL', 'VALOR TOTAL CON ADICIONES')),
+            'APORTE DEPARTAMENTO': parseNum(c('APORTE DEPARTAMENTO')),
+            'APORTE MUNICIPIO': parseNum(c('APORTE MUNICIPIO')),
+            'ADICION DEPARTAMENTO': adicionDepto,
+            'ADICION MUNICIPIO': adicionMun,
+            'ADICIONES RECURSOS DEPARTAMENTO': adicionDepto,
+            'ADICIONES RECURSOS MUNICIPIO': adicionMun,
+            'VALOR TOTAL DESEMBOLSADO': parseNum(c('VALOR TOTAL DESEMBOLSADO')),
+            'VALOR TOTAL AUTORIZADO': parseNum(c('VALOR TOTAL AUTORIZADO DEPARTAMENTO', 'VALOR TOTAL AUTORIZADO')),
+            'VALOR TOTAL AUTORIZADO DEPARTAMENTO': parseNum(c('VALOR TOTAL AUTORIZADO DEPARTAMENTO', 'VALOR TOTAL AUTORIZADO')),
+            'VIA_PRIORIZADA': c('NOMBRE VIAS PRIORIZADAS', 'NOMBRE VIAS PRIORITARIAS') || 'No especificada',
+            'ALCANCE (M)': parseNum(c('ALCANCE (M)')),
+            'ALCANCE (M2)': parseNum(c('ALCANCE (M2)')),
+            'LONGITUD EJECUTADA': parseNum(c('LONGITUD EJECUTADA')),
+            'AREA EJECUTADA (M2)': parseNum(c('AREA EJECUTADA (M2)')),
             'FISICO_NORM': pfis,
             'FINANCIERO_NORM': pfin,
-            'FECHA DE ACTA DE INICIO': parseExcelDate(row['FECHA DE ACTA DE INICIO']),
-            'FECHA DE SUSCRIPCIÓN': parseExcelDate(row['FECHA DE SUSCRIPCIÓN']),
-            'FECHA DE TERMINACIÓN': parseExcelDate(row['FECHA DE TERMINACIÓN']),
-            'NUEVA FECHA DE TERMINACIÓN': parseExcelDate(row['NUEVA FECHA DE TERMINACIÓN']),
-            'PRÓRROGA (MESES)': parseNum(row['PRÓRROGA (MESES)']),
-            'SUSPENSIÓN(MESES)': parseNum(row['SUSPENSIÓN(MESES)'])
-        };
+            'FECHA DE ACTA DE INICIO': parseExcelDate(c('FECHA DE ACTA DE INICIO')),
+            'FECHA DE SUSCRIPCION': parseExcelDate(c('FECHA DE SUSCRIPCION')),
+            'FECHA DE SUSCRIPCION': parseExcelDate(c('FECHA DE SUSCRIPCION')),
+            'FECHA DE TERMINACION': parseExcelDate(c('FECHA DE TERMINACION')),
+            'FECHA DE TERMINACION': parseExcelDate(c('FECHA DE TERMINACION')),
+            'NUEVA FECHA DE TERMINACION': parseExcelDate(c('NUEVA FECHA DE TERMINACION')),
+            'NUEVA FECHA DE TERMINACION': parseExcelDate(c('NUEVA FECHA DE TERMINACION')),
+            'PRORROGA (MESES)': parseNum(c('PRORROGA (MESES)')),
+            'SUSPENSION(MESES)': parseNum(c('SUSPENSION(MESES)', 'SUSPENSION (MESES)'))
+        });
     });
     document.getElementById('welcome-screen').style.display = 'none';
     document.getElementById('main-content').style.display = 'block';
     applyFilters(); 
+    
+    const today = new Date();
+    const fechaEl = document.getElementById('fecha-actualizacion');
+    if(fechaEl) {
+        fechaEl.innerHTML = `<i class="fa-solid fa-clock-rotate-left mr-1.5 text-institutional-accent"></i>Corte: <span class="ml-1 font-bold text-slate-700 dark:text-slate-200">${today.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}</span>`;
+    }
 }
 
 function updateFilterOptions(currentSearch, currentVigencia, currentMunicipio, currentEstado, currentConvenioNum) {
@@ -468,7 +703,7 @@ function updateKPIs() {
     let activos = 0, porLiquidar = 0, sumInv = 0, sumDes = 0, sumAut = 0;
     filteredData.forEach(r => {
         const est = String(r['ESTADO CONVENIO']).toLowerCase();
-        if(est.includes('ejecución')) activos++;
+        if(est.includes('ejecuci')) activos++;  // tolera ejecuci�n / ejecucion
         if(est.includes('por liquidar')) porLiquidar++; 
         sumInv += r['VALOR TOTAL'] || 0;
         sumDes += r['VALOR TOTAL DESEMBOLSADO'] || 0;
@@ -501,40 +736,44 @@ function renderTable() {
 
     paginated.forEach(row => {
         const tr = document.createElement('tr');
-        tr.className = 'table-row-hover border-b border-slate-100 group';
+        tr.className = 'table-row-hover border-b border-slate-100 dark:border-slate-700/50 group';
         
         const sysState = getSystemState(row['ESTADO CONVENIO']);
+        const estStr = String(row['ESTADO CONVENIO'] || '').toLowerCase();
         
         // Alertas automáticas
         let alertIcon = '';
         let warnings = [];
-        if (row['FISICO_NORM'] > (row['FINANCIERO_NORM'] + 5)) {
-            warnings.push("Desfase: Avance físico es mayor al financiero.");
-        }
         
-        const tieneGeo = String(row['TIENE_GEOJSON'] || 'SI').toUpperCase();
-        const tieneFotos = String(row['TIENE_FOTOS'] || 'SI').toUpperCase();
-        if (tieneGeo === 'NO') warnings.push("Falta trazado espacial.");
-        if (tieneFotos === 'NO') warnings.push("Sin registro fotográfico.");
-        
-        if (warnings.length > 0) {
-            alertIcon = `<span class="alert-icon-pulse" title="${warnings.join(' \n')}"><i class="fa-solid fa-triangle-exclamation text-xs fa-beat-fade" style="--fa-animation-duration: 2.5s;"></i></span>`;
+        if (!estStr.includes('liquidado') && !estStr.includes('resciliado')) {
+            if (row['FISICO_NORM'] > (row['FINANCIERO_NORM'] + 5)) {
+                warnings.push("Desfase: Avance físico es mayor al financiero.");
+            }
+            
+            const tieneGeo = String(row['TIENE_GEOJSON'] || 'SI').toUpperCase();
+            const tieneFotos = String(row['TIENE_FOTOS'] || 'SI').toUpperCase();
+            if (tieneGeo === 'NO') warnings.push("Falta trazado espacial.");
+            if (tieneFotos === 'NO') warnings.push("Sin registro fotográfico.");
+            
+            if (warnings.length > 0) {
+                alertIcon = `<span class="alert-icon-pulse" title="${warnings.join(' \n')}"><i class="fa-solid fa-triangle-exclamation text-xs fa-beat-fade" style="--fa-animation-duration: 2.5s;"></i></span>`;
+            }
         }
 
         tr.innerHTML = `
             <td class="px-5 py-3">
                 <div class="flex items-center">
-                    <span class="font-black text-slate-800 text-sm">${row['CONVENIO'] || 'S/N'}</span>
+                    <span class="font-black text-slate-800 dark:text-slate-100 text-sm">${row['CONVENIO'] || 'S/N'}</span>
                     ${alertIcon}
                 </div>
             </td>
             <td class="px-5 py-3">
-                <span class="municipio-chip">${row['MUNICIPIO'] || 'N/A'}</span>
+                <span class="municipio-chip dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">${row['MUNICIPIO'] || 'N/A'}</span>
             </td>
             <td class="px-5 py-3">
                 <div class="w-[200px]">
-                    <p class="text-[11px] font-bold text-slate-700 truncate" title="${row['INDICADOR'] || '-'}">${row['INDICADOR'] || '-'}</p>
-                    <p class="text-[9px] text-slate-400 uppercase tracking-widest mt-1 truncate">${row['CLASIFICACIÓN'] || '-'}</p>
+                    <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate" title="${row['INDICADOR'] || '-'}">${row['INDICADOR'] || '-'}</p>
+                    <p class="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 truncate">${row['CLASIFICACI�"N'] || '-'}</p>
                 </div>
             </td>
             <td class="px-5 py-3">
@@ -543,7 +782,7 @@ function renderTable() {
             <td class="px-5 py-3">
                 <div class="flex flex-col gap-1.5">
                     <div class="flex justify-between items-end">
-                        <span class="text-[10px] font-black text-slate-700">${row['FISICO_NORM'].toFixed(1)}%</span>
+                        <span class="text-[10px] font-black text-slate-700 dark:text-slate-200">${row['FISICO_NORM'].toFixed(1)}%</span>
                     </div>
                     <div class="progress-track"><div class="progress-fisico" style="width: ${row['FISICO_NORM']}%"></div></div>
                 </div>
@@ -551,7 +790,7 @@ function renderTable() {
             <td class="px-5 py-3">
                 <div class="flex flex-col gap-1.5">
                     <div class="flex justify-between items-end">
-                        <span class="text-[10px] font-black text-slate-700">${row['FINANCIERO_NORM'].toFixed(1)}%</span>
+                        <span class="text-[10px] font-black text-slate-700 dark:text-slate-200">${row['FINANCIERO_NORM'].toFixed(1)}%</span>
                     </div>
                     <div class="progress-track"><div class="progress-financiero" style="width: ${row['FINANCIERO_NORM']}%"></div></div>
                 </div>
@@ -587,19 +826,36 @@ function renderAlerts() {
 
     filteredData.forEach(row => {
         const est = String(row['ESTADO CONVENIO'] || '').trim();
+        if (est.toLowerCase().includes('liquidado') || est.toLowerCase().includes('resciliado')) return;
+
         const conv = row['CONVENIO'] || 'S/N';
         const mun = row['MUNICIPIO'] || 'N/A';
         const fisico = row['FISICO_NORM'] || 0;
         const financiero = row['FINANCIERO_NORM'] || 0;
         const desembolsado = row['VALOR TOTAL DESEMBOLSADO'] || 0;
-        const suspMeses = row['SUSPENSIÓN(MESES)'] || 0;
+        const suspMeses = row['SUSPENSION(MESES)'] || row['SUSPENSI�N(MESES)'] || 0;
         const tieneFotos = String(row['TIENE_FOTOS'] || 'SI').toUpperCase();
         
-        let termStr = row['NUEVA FECHA DE TERMINACIÓN'] || row['FECHA DE TERMINACIÓN'];
+        let termStr = row['NUEVA FECHA DE TERMINACION'] || row['NUEVA FECHA DE TERMINACI�N'] || row['FECHA DE TERMINACION'] || row['FECHA DE TERMINACI�N'];
         let termDate = parseCOPDate(termStr);
 
+        // 0. Próximos a terminar (<= 30 días)
+        if (termDate && termDate >= today) {
+            const msLeft = termDate.getTime() - today.getTime();
+            const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+            
+            if (daysLeft <= 30) {
+                alerts.push({
+                    type: 'proximos', icon: 'fa-hourglass-half text-purple-500', bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800/50',
+                    title: 'Próximo a Terminar',
+                    desc: `Faltan ${daysLeft} ${daysLeft === 1 ? 'día' : 'días'} para su fecha de terminación (${termStr}).`,
+                    conv, mun
+                });
+            }
+        }
+
         // 1. Riesgo de pérdida de competencia (Límite 30 meses)
-        if (est.toLowerCase() !== 'liquidado' && termDate && termDate < today) {
+        if (termDate && termDate < today) {
             const msPassed = today.getTime() - termDate.getTime();
             const monthsPassed = msPassed / (1000 * 60 * 60 * 24 * 30.436875);
             
@@ -610,18 +866,18 @@ function renderAlerts() {
                 
                 const monthsLeft = (30 - monthsPassed).toFixed(1);
                 const faltanTxt = monthsLeft > 0 
-                    ? `<span class="inline-block mt-1 font-bold bg-red-200 text-red-900 px-1.5 py-0.5 rounded shadow-sm border border-red-300">¡Faltan ${monthsLeft} meses!</span>` 
-                    : `<span class="inline-block mt-1 font-black bg-red-600 text-white px-1.5 py-0.5 rounded shadow-sm">¡Límite superado por ${Math.abs(monthsLeft).toFixed(1)} meses!</span>`;
+                    ? `<span class="inline-block mt-1 font-bold bg-red-200 dark:bg-red-900/50 text-red-900 dark:text-red-200 px-1.5 py-0.5 rounded shadow-sm border border-red-300 dark:border-red-500/30">¡Faltan ${monthsLeft} meses!</span>` 
+                    : `<span class="inline-block mt-1 font-black bg-red-600 dark:bg-red-500 text-white px-1.5 py-0.5 rounded shadow-sm">¡Límite superado por ${Math.abs(monthsLeft).toFixed(1)} meses!</span>`;
                 
                 alerts.push({
-                    type: 'competencia', icon: 'fa-gavel text-red-600 fa-beat-fade', bg: 'bg-red-50', border: 'border-red-300',
+                    type: 'competencia', icon: 'fa-gavel text-red-600 fa-beat-fade', bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-300 dark:border-red-800/50',
                     title: 'Riesgo: Pérdida de Competencia',
                     desc: `Finalizó el ${termStr}. Límite legal es a los 30 meses (${limitStr}).<br>${faltanTxt}`,
                     conv, mun
                 });
             } else {
                 alerts.push({
-                    type: 'vencido', icon: 'fa-calendar-xmark text-orange-500', bg: 'bg-orange-50', border: 'border-orange-100',
+                    type: 'vencido', icon: 'fa-calendar-xmark text-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/20', border: 'border-orange-100 dark:border-orange-800/50',
                     title: 'Vencido sin liquidar',
                     desc: `Finalizó el ${termStr} y sigue en ${est}.`,
                     conv, mun
@@ -632,7 +888,7 @@ function renderAlerts() {
         // 2. Pagos adelantados (Desfase > 15%)
         if (financiero > fisico + 15) {
             alerts.push({
-                type: 'desfase', icon: 'fa-money-bill-trend-up text-amber-500', bg: 'bg-amber-50', border: 'border-amber-100',
+                type: 'desfase', icon: 'fa-money-bill-trend-up text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-100 dark:border-amber-800/50',
                 title: 'Desfase Financiero Crítico',
                 desc: `Financiero (${financiero.toFixed(1)}%) supera al físico (${fisico.toFixed(1)}%) por >15%.`,
                 conv, mun
@@ -642,7 +898,7 @@ function renderAlerts() {
         // 3. Sin evidencia
         if (tieneFotos === 'NO') {
             alerts.push({
-                type: 'evidencia', icon: 'fa-camera-slash text-slate-500', bg: 'bg-slate-50', border: 'border-slate-200',
+                type: 'evidencia', icon: 'fa-camera-slash text-slate-500', bg: 'bg-slate-50 dark:bg-slate-800/50', border: 'border-slate-200 dark:border-slate-700/50',
                 title: 'Sin Evidencia Fotográfica',
                 desc: `No hay registro fotográfico cargado en el sistema.`,
                 conv, mun
@@ -673,20 +929,56 @@ function renderAlerts() {
     const finalAlerts = currentAlertFilter === 'all' ? alerts : alerts.filter(a => a.type === currentAlertFilter);
     countSpan.textContent = finalAlerts.length;
 
+    const navFeed = document.getElementById('nav-alerts-list');
+    const navCountSpan = document.getElementById('nav-alerts-count');
+    const navBadge = document.getElementById('nav-alerts-badge');
+
+    if (navCountSpan) navCountSpan.textContent = alerts.length;
+    if (navBadge) {
+        if (alerts.length > 0) navBadge.classList.remove('hidden');
+        else navBadge.classList.add('hidden');
+    }
+
+    window.showSummaryCard = function(conv) {
+        document.getElementById('filter-convenio-num').value = conv;
+        applyFilters();
+        window.scrollTo({top: 0, behavior: 'smooth'});
+        const drop = document.getElementById('nav-alerts-dropdown');
+        if(drop) drop.classList.add('hidden');
+    };
+
+    if (navFeed) {
+        if (alerts.length === 0) {
+            navFeed.innerHTML = '<div class="p-6 text-center text-slate-400 font-medium"><i class="fa-solid fa-shield-check text-2xl mb-2 text-emerald-400 opacity-50 block"></i>Todo en orden</div>';
+        } else {
+            navFeed.innerHTML = alerts.map(a => `
+                <div class="p-3 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition" onclick="showSummaryCard('${a.conv}')">
+                    <div class="flex gap-3">
+                        <div class="mt-0.5"><i class="fa-solid ${a.icon} text-base"></i></div>
+                        <div>
+                            <h4 class="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">${a.title}</h4>
+                            <p class="text-[9px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate w-48">${a.mun} - ${a.conv}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
     if (finalAlerts.length === 0) {
         feed.innerHTML = `<div class="p-6 text-center text-slate-400 font-medium border border-dashed border-slate-200 rounded-xl"><i class="fa-solid fa-shield-check text-3xl mb-3 block text-emerald-400 opacity-50"></i>No se detectaron riesgos en la selección actual para este filtro.</div>`;
         return;
     }
 
     feed.innerHTML = finalAlerts.map(a => `
-        <div class="p-3 rounded-xl border ${a.border} ${a.bg} flex gap-3 items-start transition hover:shadow-sm cursor-pointer" onclick="const row=filteredData.find(r=>String(r['CONVENIO']).trim()==='${a.conv}'); if(row) openModal(row);">
+        <div class="p-3 rounded-xl border ${a.border} ${a.bg} flex gap-3 items-start transition hover:shadow-sm cursor-pointer" onclick="showSummaryCard('${a.conv}')">
             <div class="mt-0.5"><i class="fa-solid ${a.icon} text-lg"></i></div>
             <div>
-                <h4 class="text-[11px] font-black text-slate-800 uppercase tracking-tight">${a.title}</h4>
-                <p class="text-[10px] text-slate-600 font-medium leading-tight mt-0.5">${a.desc}</p>
+                <h4 class="text-[11px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">${a.title}</h4>
+                <p class="text-[10px] text-slate-600 dark:text-slate-300 font-medium leading-tight mt-0.5">${a.desc}</p>
                 <div class="mt-1.5 flex gap-2 items-center">
-                    <span class="text-[9px] font-bold bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-700">${a.conv}</span>
-                    <span class="text-[9px] font-semibold text-slate-500 truncate max-w-[120px]">${a.mun}</span>
+                    <span class="text-[9px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded text-slate-700 dark:text-slate-300">${a.conv}</span>
+                    <span class="text-[9px] font-semibold text-slate-500 dark:text-slate-400 truncate max-w-[120px]">${a.mun}</span>
                 </div>
             </div>
         </div>
@@ -725,14 +1017,15 @@ function updateCharts() {
                 const fontSize = (height / 114).toFixed(2);
                 ctx.font = `900 ${fontSize}em Inter`;
                 ctx.textBaseline = "middle";
-                ctx.fillStyle = "#1e293b";
+                const isDark = document.documentElement.classList.contains('dark');
+                ctx.fillStyle = isDark ? "#f8fafc" : "#1e293b";
                 const text = totalCount.toString();
                 const textX = Math.round((width - ctx.measureText(text).width) / 2);
                 const textY = height / 2;
                 ctx.fillText(text, textX, textY);
                 
                 ctx.font = `700 ${(height / 250).toFixed(2)}em Inter`;
-                ctx.fillStyle = "#64748b";
+                ctx.fillStyle = isDark ? "#94a3b8" : "#64748b";
                 const text2 = "TOTAL";
                 const text2X = Math.round((width - ctx.measureText(text2).width) / 2);
                 ctx.fillText(text2, text2X, textY - (height/8));
@@ -765,17 +1058,17 @@ function updateCharts() {
                 const stat = estMap[label];
                 const pct = totalCount > 0 ? Math.round((stat.count / totalCount) * 100) : 0;
                 return `
-                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition cursor-pointer border border-transparent hover:border-slate-100" onclick="document.getElementById('filter-estado').value='${label}'; applyFilters();">
+                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition cursor-pointer border border-transparent hover:border-slate-100 dark:hover:border-slate-700/50" onclick="document.getElementById('filter-estado').value='${label}'; applyFilters();">
                     <div class="flex items-center gap-3">
                         <div class="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm" style="background-color: ${sysState.hex}"></div>
                         <div>
-                            <p class="text-[10px] font-black text-slate-700 uppercase tracking-tight">${label}</p>
-                            <p class="text-[9px] font-semibold text-slate-500 mt-0.5">${formatCurrency(stat.inversion)}</p>
+                            <p class="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-tight">${label}</p>
+                            <p class="text-[9px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">${formatCurrency(stat.inversion)}</p>
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-xs font-black text-slate-800">${stat.count}</p>
-                        <p class="text-[9px] font-bold text-slate-400">${pct}%</p>
+                        <p class="text-xs font-black text-slate-800 dark:text-slate-100">${stat.count}</p>
+                        <p class="text-[9px] font-bold text-slate-400 dark:text-slate-500">${pct}%</p>
                     </div>
                 </div>
                 `;
@@ -784,7 +1077,7 @@ function updateCharts() {
     }
 }
 
-// ------ MAPA HÍBRIDO CON TOOLTIPS Y EXTRACCIÓN DE COORDENADAS ------
+// ------ MAPA HÍBRIDO CON TOOLTIPS Y EXTRACCI�"N DE COORDENADAS ------
 async function renderMap(row, mapId, overlayId, msgId, inst, cb) {
     const ov = document.getElementById(overlayId), ms = document.getElementById(msgId);
     ov.classList.remove('hidden'); ms.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Trazando Geometría...';
@@ -871,7 +1164,7 @@ async function renderMap(row, mapId, overlayId, msgId, inst, cb) {
             currentExtractedFeatures.forEach((item) => {
                 const btn = document.createElement('button');
                 btn.id = `btn-feat-${mapId}-${item.name.replace(/[^a-zA-Z0-9]/g, '-')}`;
-                btn.className = 'w-full text-left px-2 py-2 text-[9px] font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-800 rounded-lg transition border border-transparent focus:outline-none truncate';
+                btn.className = 'w-full text-left px-3 py-2 text-[11px] leading-tight font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-800 rounded-lg transition border border-transparent focus:outline-none break-words whitespace-normal';
                 btn.title = item.name;
                 btn.innerHTML = `<i class="fa-solid fa-route mr-1 opacity-50"></i> ${item.name}`;
 
@@ -913,10 +1206,16 @@ async function renderMap(row, mapId, overlayId, msgId, inst, cb) {
         }
     }
 
-    if(ok) ov.classList.add('hidden'); else ms.innerHTML = "Sin trazado geográfico";
+    if(ok) {
+        ov.classList.add('hidden');
+    } else {
+        ms.innerHTML = '<i class="fa-solid fa-map-location-dot text-3xl mb-2 text-slate-400 opacity-50 block"></i>Sin trazado geográfico';
+        ms.classList.remove('text-xs');
+        ms.classList.add('text-sm', 'flex', 'flex-col', 'items-center', 'justify-center');
+    }
 }
 
-// ------ LÓGICA MODAL DETALLE ------
+// ------ L�"GICA MODAL DETALLE ------
 function openModal(row) {
     const sysState = getSystemState(row['ESTADO CONVENIO']);
     
@@ -932,6 +1231,7 @@ function openModal(row) {
     document.getElementById('btn-open-source-pdf').href = `./assets/pdfs/${String(row['CONVENIO']).trim()}.pdf`;
     
     document.getElementById('mod-objeto').textContent = row['OBJETO'] || 'Sin descripción u objeto definido.';
+    
     document.getElementById('mod-via').textContent = row['VIA_PRIORIZADA'];
     document.getElementById('mod-alcance').textContent = `${formatNumber(row['ALCANCE (M)'])} m / ${formatNumber(row['ALCANCE (M2)'])} m²`;
     document.getElementById('mod-ejecutado-areas').textContent = `${formatNumber(row['LONGITUD EJECUTADA'])} m / ${formatNumber(row['AREA EJECUTADA (M2)'])} m²`;
@@ -939,24 +1239,31 @@ function openModal(row) {
     document.getElementById('mod-valor-total').textContent = formatCurrency(row['VALOR TOTAL']);
     document.getElementById('mod-aporte-depto').textContent = formatCurrency(row['APORTE DEPARTAMENTO']);
     document.getElementById('mod-aporte-mun').textContent = formatCurrency(row['APORTE MUNICIPIO']);
+    document.getElementById('mod-adicion-depto').textContent = formatCurrency(row['ADICION DEPARTAMENTO']);
+    document.getElementById('mod-adicion-mun').textContent = formatCurrency(row['ADICION MUNICIPIO']);
     document.getElementById('mod-desembolsado-full').textContent = formatCurrency(row['VALOR TOTAL DESEMBOLSADO']);
     document.getElementById('mod-autorizado-full').textContent = formatCurrency(row['VALOR TOTAL AUTORIZADO']);
 
+    document.getElementById('mod-suscripcion').textContent = row['FECHA DE SUSCRIPCION'] || row['FECHA DE SUSCRIPCI�N'] || 'Por definir';
     document.getElementById('mod-inicio').textContent = row['FECHA DE ACTA DE INICIO'] || 'Por definir';
     
     let plazoVal = 0;
     for (let key in row) {
         if (key.toUpperCase().trim() === 'PLAZO INICIAL' || key.toUpperCase().trim().includes('PLAZO INICIAL')) {
-            plazoVal = row[key];
+            plazoVal = parseNum(row[key]);
             break;
         }
     }
     
-    document.getElementById('mod-plazo-inicial').textContent = (plazoVal || 0) + ' Meses';
-    document.getElementById('mod-terminacion').textContent = row['FECHA DE TERMINACIÓN'];
-    document.getElementById('mod-nueva-terminacion').textContent = row['NUEVA FECHA DE TERMINACIÓN'] || 'Sin cambios';
-    document.getElementById('mod-prorrogas').textContent = (row['PRÓRROGA (MESES)'] || 0) + ' Meses';
-    document.getElementById('mod-suspensiones').textContent = (row['SUSPENSIÓN(MESES)'] || 0) + ' Meses';
+    const prorrogasVal = parseNum(row['PRORROGA (MESES)'] || row['PR�RROGA (MESES)']) || 0;
+    const plazoTotal = plazoVal + prorrogasVal;
+    
+    document.getElementById('mod-plazo-inicial').textContent = plazoVal + ' Meses';
+    document.getElementById('mod-plazo-total').textContent = plazoTotal + ' Meses';
+    document.getElementById('mod-terminacion').textContent = row['FECHA DE TERMINACION'] || row['FECHA DE TERMINACI�N'] || '-';
+    document.getElementById('mod-nueva-terminacion').textContent = row['NUEVA FECHA DE TERMINACION'] || row['NUEVA FECHA DE TERMINACI�N'] || 'Sin cambios';
+    document.getElementById('mod-prorrogas').textContent = prorrogasVal + ' Meses';
+    document.getElementById('mod-suspensiones').textContent = (row['SUSPENSION(MESES)'] || row['SUSPENSI�N(MESES)'] || 0) + ' Meses';
     document.getElementById('mod-observaciones').innerHTML = row['OBSERVACIONES'] ? row['OBSERVACIONES'].replace(/\n/g, '<br>') : 'Sin observaciones adicionales registradas.';
     
     const pf = row['FISICO_NORM'] || 0, pfn = row['FINANCIERO_NORM'] || 0;
@@ -1027,3 +1334,5 @@ document.addEventListener('click', (e) => {
         renderAlerts();
     }
 });
+
+
