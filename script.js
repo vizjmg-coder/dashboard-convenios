@@ -272,11 +272,41 @@ async function getBase64ImageFromURL(url) {
 async function getBase64FromHtmlElement(elementId) {
     const el = document.getElementById(elementId);
     if (!el) return null;
+    
+    const mapPane = el.querySelector('.leaflet-map-pane');
+    let oldTransform = '';
+    let oldLeft = '';
+    let oldTop = '';
+    
+    if (mapPane) {
+        oldTransform = mapPane.style.transform;
+        const match = oldTransform.match(/translate3d\(([-0-9.]+)px,\s*([-0-9.]+)px/);
+        if (match) {
+            mapPane.style.transform = '';
+            oldLeft = mapPane.style.left;
+            oldTop = mapPane.style.top;
+            mapPane.style.left = match[1] + 'px';
+            mapPane.style.top = match[2] + 'px';
+        }
+    }
+    
     try {
-        const canvas = await html2canvas(el, { useCORS: true, scale: 2, logging: false });
+        const canvas = await html2canvas(el, { useCORS: true, allowTaint: true, scale: 2, logging: false });
+        
+        if (mapPane && oldTransform) {
+            mapPane.style.transform = oldTransform;
+            mapPane.style.left = oldLeft;
+            mapPane.style.top = oldTop;
+        }
+        
         return canvas.toDataURL('image/jpeg', 0.85);
     } catch (e) {
         console.warn('Error capturing map:', e);
+        if (mapPane && oldTransform) {
+            mapPane.style.transform = oldTransform;
+            mapPane.style.left = oldLeft;
+            mapPane.style.top = oldTop;
+        }
         return null;
     }
 }
@@ -288,22 +318,50 @@ async function generateProfessionalPDF(row) {
     btnPdf.disabled = true;
 
     try {
+        const getVal = (keywords, isDate = false) => {
+            const normalize = str => String(str).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/["“”]/g, "");
+            const normalizedKeywords = keywords.map(normalize);
+            const key = Object.keys(row).find(k => {
+                const normK = normalize(k);
+                return normalizedKeywords.some(kw => normK.includes(kw));
+            });
+            let val = key ? row[key] : '';
+            if (isDate && typeof parseExcelDate === 'function') {
+                val = parseExcelDate(val);
+            }
+            return val;
+        };
+
         // ===== 1. CAPTURA ASÍNCRONA DE RECURSOS =====
         const logoBase64 = await getBase64ImageFromURL('https://yt3.googleusercontent.com/-hL8n3r9B7lKAgprKcWs7kIvwynbPUQYhJsDGE5gvnhwhajQl88Fz-kIn-64E2rnsFHjDqZmXU4=s900-c-k-c0x00ffffff-no-rj').catch(() => null);
-        const mapBase64 = await getBase64FromHtmlElement('map-view');
+        const mapBase64 = await getBase64FromHtmlElement('map');
 
-        const imagesInModal = document.querySelectorAll('#mod-galeria img');
-        const galleryBase64 = await Promise.all(
-            Array.from(imagesInModal).map(img => getBase64ImageFromURL(img.src).catch(() => null))
-        );
-        const validPhotos = galleryBase64.filter(Boolean);
+        const antesImgs = document.querySelectorAll('#mod-galeria-antes img');
+        const despuesImgs = document.querySelectorAll('#mod-galeria-despues img');
+        
+        const antesBase64 = await Promise.all(Array.from(antesImgs).map(img => getBase64ImageFromURL(img.src).catch(() => null)));
+        const despuesBase64 = await Promise.all(Array.from(despuesImgs).map(img => getBase64ImageFromURL(img.src).catch(() => null)));
+        
+        const validAntes = antesBase64.filter(Boolean);
+        const validDespues = despuesBase64.filter(Boolean);
+        const hasPhotos = validAntes.length > 0 || validDespues.length > 0;
 
         const sysState = getSystemState(row['ESTADO CONVENIO']);
 
         // ===== 2. ESTILOS REUTILIZABLES =====
-        const thCell = (text) => ({ text, fontSize: 9, bold: true, color: '#ffffff', fillColor: '#1e293b', margin: [6, 5, 6, 5] });
+        const thCell = (text) => ({ text, fontSize: 9, bold: true, color: '#ffffff', fillColor: '#1a7f5a', margin: [6, 5, 6, 5] });
         const tdCell = (text, opts = {}) => ({ text: String(text ?? '-'), fontSize: 9, color: '#334155', margin: [6, 4, 6, 4], ...opts });
         const tdRight = (text, opts = {}) => tdCell(text, { alignment: 'right', ...opts });
+
+        const zebraLayout = {
+            fillColor: function (rowIndex, node, columnIndex) {
+                return (rowIndex % 2 === 0) ? '#f8fafc' : null;
+            },
+            hLineColor: function (i, node) { return '#e2e8f0'; },
+            vLineColor: function (i, node) { return '#e2e8f0'; },
+            hLineWidth: function (i, node) { return (i === 0 || i === node.table.body.length) ? 0 : 1; },
+            vLineWidth: function (i, node) { return 0; }
+        };
 
         // ===== 3. TABLA DE TRAMOS GEOGRÁFICOS =====
         const geoRows = (currentExtractedFeatures && currentExtractedFeatures.length > 0)
@@ -313,19 +371,32 @@ async function generateProfessionalPDF(row) {
               })
             : [[{ text: 'No hay datos geográficos disponibles para este convenio.', colSpan: 3, alignment: 'center', italics: true, fontSize: 9, color: '#94a3b8', margin: [6, 8, 6, 8] }, {}, {}]];
 
-        // ===== 4. GALERÍA DE FOTOS (2 por fila) =====
+        // ===== 4. GALERÍA DE FOTOS (Antes y Después) =====
         const photoRows = [];
-        if (validPhotos.length > 0) {
-            for (let i = 0; i < validPhotos.length; i += 2) {
-                const left  = { image: validPhotos[i],   width: 245, height: 170, margin: [0, 4, 4, 4] };
-                const right = validPhotos[i + 1]
-                    ? { image: validPhotos[i + 1], width: 245, height: 170, margin: [4, 4, 0, 4] }
-                    : {};
+        if (hasPhotos) {
+            const maxPhotos = Math.max(validAntes.length, validDespues.length);
+            for (let i = 0; i < maxPhotos; i++) {
+                const left = validAntes[i] ? {
+                    stack: [
+                        { text: 'ANTES', alignment: 'center', fontSize: 10, bold: true, margin: [0, 0, 0, 4], color: '#475569' },
+                        { image: validAntes[i], fit: [230, 180], alignment: 'center', margin: [0, 0, 0, 12] }
+                    ],
+                    margin: [0, 4, 6, 4]
+                } : { text: 'Sin foto (ANTES)', italics: true, color: '#94a3b8', margin: [0, 14, 6, 4], alignment: 'center' };
+                
+                const right = validDespues[i] ? {
+                    stack: [
+                        { text: 'DESPUÉS', alignment: 'center', fontSize: 10, bold: true, margin: [0, 0, 0, 4], color: '#475569' },
+                        { image: validDespues[i], fit: [230, 180], alignment: 'center', margin: [0, 0, 0, 12] }
+                    ],
+                    margin: [6, 4, 0, 4]
+                } : { text: 'Sin foto (DESPUÉS)', italics: true, color: '#94a3b8', margin: [6, 14, 0, 4], alignment: 'center' };
+                
                 photoRows.push([left, right]);
             }
         }
 
-        // ===== 5. FECHA DE GENERACI�"N =====
+        // ===== 5. FECHA DE GENERACIÓN =====
         const generatedAt = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
         // ===== 6. DOCUMENTO =====
@@ -344,20 +415,20 @@ async function generateProfessionalPDF(row) {
 
             footer: () => ({
                 margin: [40, 8, 40, 0],
-                text: `Generado el ${generatedAt} · Documento institucional �?" no modifique sin autorización`,
+                text: `Generado el ${generatedAt} · Documento institucional – no modifique sin autorización`,
                 alignment: 'center', fontSize: 7, color: '#94a3b8'
             }),
 
             content: [
                 // ============================================================
-                // PÁGINA 1 �?" PORTADA EJECUTIVA
+                // PÁGINA 1 – PORTADA EJECUTIVA
                 // ============================================================
                 {
                     columns: [
                         logoBase64 ? { image: logoBase64, width: 52, margin: [0, 0, 12, 0] } : {},
                         {
                             stack: [
-                                { text: 'FICHA T�?CNICA DE SEGUIMIENTO', fontSize: 17, bold: true, color: '#0f172a' },
+                                { text: 'FICHA TÉCNICA DE SEGUIMIENTO', fontSize: 17, bold: true, color: '#0f172a' },
                                 { text: 'Gobernación de Antioquia · Secretaría de Infraestructura', fontSize: 9, color: '#1a7f5a', bold: true, margin: [0, 3, 0, 0] }
                             ]
                         },
@@ -372,8 +443,8 @@ async function generateProfessionalPDF(row) {
                 },
                 { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2.5, lineColor: '#1a7f5a' }], margin: [0, 0, 0, 16] },
 
-                // --- BLOQUE IDENTIFICACI�"N ---
-                { text: '1. IDENTIFICACI�"N DEL PROYECTO', style: 'secHeader' },
+                // --- 1. BLOQUE IDENTIFICACIÓN ---
+                { text: '1. IDENTIFICACIÓN DEL PROYECTO', style: 'secHeader' },
                 {
                     table: {
                         widths: ['*', 'auto', 'auto', '*'],
@@ -383,7 +454,7 @@ async function generateProfessionalPDF(row) {
                                 tdCell(row['MUNICIPIO']),
                                 tdCell(row['VIGENCIA']),
                                 { text: sysState.label, fontSize: 9, bold: true, color: sysState.hex, margin: [6, 4, 6, 4] },
-                                tdCell(row['CLASIFICACI�"N'])
+                                tdCell(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'])
                             ]
                         ]
                     },
@@ -397,23 +468,27 @@ async function generateProfessionalPDF(row) {
                         {
                             table: {
                                 widths: ['*'],
-                                body: [
-                                    [{ text: 'AVANCE FÍSICO', fontSize: 8, bold: true, color: '#1a7f5a', alignment: 'center', margin: [0, 6, 0, 2] }],
-                                    [{ text: `${(row['FISICO_NORM'] || 0).toFixed(1)}%`, fontSize: 26, bold: true, color: '#1a7f5a', alignment: 'center', margin: [0, 0, 0, 6] }]
-                                ]
+                                body: [[{
+                                    stack: [
+                                        { text: 'AVANCE FÍSICO', fontSize: 8, bold: true, color: '#14532d', alignment: 'center', margin: [0, 6, 0, 2] },
+                                        { text: `${(row['FISICO_NORM'] || 0).toFixed(1)}%`, fontSize: 26, bold: true, color: '#166534', alignment: 'center', margin: [0, 0, 0, 6] }
+                                    ]
+                                }]]
                             },
-                            layout: { hLineColor: '#a7d9c5', vLineColor: '#a7d9c5', hLineWidth: () => 0.5, vLineWidth: () => 0.5 },
+                            layout: { defaultBorder: false, fillColor: '#dcfce7' },
                             margin: [0, 0, 8, 0]
                         },
                         {
                             table: {
                                 widths: ['*'],
-                                body: [
-                                    [{ text: 'AVANCE FINANCIERO', fontSize: 8, bold: true, color: '#2d6a9f', alignment: 'center', margin: [0, 6, 0, 2] }],
-                                    [{ text: `${(row['FINANCIERO_NORM'] || 0).toFixed(1)}%`, fontSize: 26, bold: true, color: '#2d6a9f', alignment: 'center', margin: [0, 0, 0, 6] }]
-                                ]
+                                body: [[{
+                                    stack: [
+                                        { text: 'AVANCE FINANCIERO', fontSize: 8, bold: true, color: '#1e3a8a', alignment: 'center', margin: [0, 6, 0, 2] },
+                                        { text: `${(row['FINANCIERO_NORM'] || 0).toFixed(1)}%`, fontSize: 26, bold: true, color: '#1d4ed8', alignment: 'center', margin: [0, 0, 0, 6] }
+                                    ]
+                                }]]
                             },
-                            layout: { hLineColor: '#9dc0e2', vLineColor: '#9dc0e2', hLineWidth: () => 0.5, vLineWidth: () => 0.5 },
+                            layout: { defaultBorder: false, fillColor: '#dbeafe' },
                             margin: [8, 0, 0, 0]
                         }
                     ],
@@ -422,44 +497,39 @@ async function generateProfessionalPDF(row) {
 
                 // --- RESUMEN EJECUTIVO ---
                 { text: 'RESUMEN EJECUTIVO', style: 'secHeader' },
-                { text: 'Objeto del Convenio', style: 'fieldLabel' },
-                { text: row['OBJETO'] || 'Sin objeto definido.', fontSize: 10, alignment: 'justify', margin: [0, 2, 0, 10] },
-                { text: 'Vía Priorizada', style: 'fieldLabel' },
-                { text: row['VIA_PRIORIZADA'] || 'N/A', fontSize: 10, margin: [0, 2, 0, 10] },
-                { text: 'Observaciones Técnicas', style: 'fieldLabel' },
-                { text: row['OBSERVACIONES'] || 'Sin observaciones registradas.', fontSize: 9.5, color: '#475569', margin: [0, 2, 0, 0] },
-
-                // ============================================================
-                // PÁGINA 2 �?" LOCALIZACI�"N Y MAPA
-                // ============================================================
-                { text: '2. LOCALIZACI�"N Y GEORREFERENCIACI�"N', style: 'secHeader', pageBreak: 'before' },
-                mapBase64
-                    ? { image: mapBase64, width: 515, margin: [0, 4, 0, 14], alignment: 'center' }
-                    : { text: 'Mapa no disponible (sin trazado GeoJSON cargado).', italics: true, color: '#94a3b8', margin: [0, 4, 0, 14] },
+                {
+                    table: {
+                        widths: ['25%', '75%'],
+                        body: [
+                            [{ text: 'Objeto del Convenio', style: 'fieldLabel' }, { text: row['OBJETO'] || 'Sin objeto definido.', fontSize: 10, alignment: 'justify', margin: [0, 2, 0, 6] }],
+                            [{ text: 'Vía Priorizada', style: 'fieldLabel' }, { text: row['VIA_PRIORIZADA'] || 'N/A', fontSize: 10, margin: [0, 2, 0, 6] }],
+                            [{ text: 'Longitud Contratada', style: 'fieldLabel' }, { text: (row['ALCANCE (M)'] || getVal(['ALCANCE (M)'])) ? `${Number(row['ALCANCE (M)'] || getVal(['ALCANCE (M)'])).toLocaleString('es-CO')} m` : 'N/A', fontSize: 10, margin: [0, 2, 0, 6] }],
+                            [{ text: 'Longitud Ejecutada', style: 'fieldLabel' }, { text: (row['LONGITUD EJECUTADA'] || getVal(['LONGITUD EJECUTADA'])) ? `${Number(row['LONGITUD EJECUTADA'] || getVal(['LONGITUD EJECUTADA'])).toLocaleString('es-CO')} m` : 'N/A', fontSize: 10, margin: [0, 2, 0, 6] }],
+                            [{ text: 'Supervisor', style: 'fieldLabel' }, { text: row['SUPERVISOR'] || getVal(['SUPERVISOR']) || 'Sin Asignar', fontSize: 10, margin: [0, 2, 0, 6] }],
+                            [{ text: 'Observaciones', style: 'fieldLabel' }, { text: row['OBSERVACIONES'] || 'Sin observaciones registradas.', fontSize: 9.5, color: '#475569', margin: [0, 2, 0, 0] }]
+                        ]
+                    },
+                    layout: 'noBorders',
+                    margin: [0, 0, 0, 12]
+                },
+                { text: 'Tramos Extraídos (Coordenadas)', style: 'subHeader' },
                 {
                     table: {
                         headerRows: 1,
                         widths: ['*', 'auto', 'auto'],
                         body: [
-                            [thCell('Nombre del Tramo / Segmento'), thCell('Inicio (Lat, Lng)'), thCell('Fin (Lat, Lng)')],
+                            [thCell('Tramo / Segmento'), thCell('Inicio (Lat, Lng)'), thCell('Fin (Lat, Lng)')],
                             ...geoRows
                         ]
                     },
-                    layout: 'lightHorizontalLines'
+                    layout: zebraLayout,
+                    margin: [0, 0, 0, 16]
                 },
 
                 // ============================================================
-                // PÁGINA 3 �?" REGISTRO FOTOGRÁFICO
+                // PÁGINA 2 – DETALLE FINANCIERO Y CONTRACTUAL (NUEVO ITEM 2)
                 // ============================================================
-                { text: '3. REGISTRO FOTOGRÁFICO DE OBRA', style: 'secHeader', pageBreak: 'before' },
-                validPhotos.length > 0
-                    ? { table: { widths: ['*', '*'], body: photoRows }, layout: 'noBorders', margin: [0, 4, 0, 0] }
-                    : { text: 'No hay fotografías disponibles para este convenio.', italics: true, color: '#94a3b8', margin: [0, 8, 0, 0] },
-
-                // ============================================================
-                // PÁGINA 4 �?" DETALLE FINANCIERO Y TIEMPOS
-                // ============================================================
-                { text: '4. DETALLE FINANCIERO Y CONTRACTUAL', style: 'secHeader', pageBreak: 'before' },
+                { text: '2. DETALLE FINANCIERO Y CONTRACTUAL', style: 'secHeader', pageBreak: 'before' },
 
                 { text: 'Recursos del Proyecto', style: 'subHeader' },
                 {
@@ -486,16 +556,24 @@ async function generateProfessionalPDF(row) {
                         widths: ['*', 'auto'],
                         body: [
                             [thCell('Campo'), thCell('Valor')],
-                            [tdCell('Fecha de Suscripción'), tdRight(row['FECHA DE SUSCRIPCI�"N'])],
-                            [tdCell('Fecha Acta de Inicio'), tdRight(row['FECHA DE ACTA DE INICIO'])],
-                            [tdCell('Fecha de Terminación Original'), tdRight(row['FECHA DE TERMINACI�"N'])],
-                            [tdCell('Prórrogas'), tdRight((row['PR�"RROGA (MESES)'] || 0) + ' meses')],
-                            [tdCell('Suspensiones'), tdRight((row['SUSPENSI�"N(MESES)'] || 0) + ' meses')],
-                            [tdCell('Nueva Fecha de Terminación', { bold: true }), tdRight(row['NUEVA FECHA DE TERMINACI�"N'] || 'Sin cambios', { bold: true, color: '#b7791f' })]
+                            [tdCell('Fecha de Suscripción'), tdRight(getVal(['FECHA DE SUSCRIPC'], true) || '-')],
+                            [tdCell('Fecha Acta de Inicio'), tdRight(getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || '-')],
+                            [tdCell('Fecha de Terminación Original'), tdRight(getVal(['FECHA DE TERMINAC'], true) || '-')],
+                            [tdCell('Prórrogas'), tdRight((getVal(['PRÓRROGA', 'PR"RROGA']) || 0) + ' meses')],
+                            [tdCell('Suspensiones'), tdRight((getVal(['SUSPENSIÓN', 'SUSPENSI"N']) || 0) + ' meses')],
+                            [tdCell('Nueva Fecha de Terminación', { bold: true }), tdRight(getVal(['NUEVA FECHA DE TERMINAC'], true) || 'Sin cambios', { bold: true, color: '#b7791f' })]
                         ]
                     },
-                    layout: 'lightHorizontalLines'
-                }
+                    layout: zebraLayout
+                },
+
+                // ============================================================
+                // PÁGINA 3 – REGISTRO FOTOGRÁFICO DE OBRA
+                // ============================================================
+                { text: '3. REGISTRO FOTOGRÁFICO DE OBRA', style: 'secHeader', pageBreak: 'before' },
+                hasPhotos
+                    ? { table: { widths: ['*', '*'], body: photoRows }, layout: 'noBorders', margin: [0, 4, 0, 0] }
+                    : { text: 'No hay fotografías disponibles para este convenio.', italics: true, color: '#94a3b8', margin: [0, 8, 0, 0] }
             ],
 
             styles: {
@@ -503,13 +581,13 @@ async function generateProfessionalPDF(row) {
                     fontSize: 10,
                     bold: true,
                     color: '#ffffff',
-                    fillColor: '#1e293b',
+                    fillColor: '#1a7f5a',
                     margin: [0, 8, 0, 10]
                 },
                 subHeader: {
                     fontSize: 10,
                     bold: true,
-                    color: '#1e293b',
+                    color: '#1a7f5a',
                     margin: [0, 4, 0, 6]
                 },
                 fieldLabel: {
@@ -530,7 +608,7 @@ async function generateProfessionalPDF(row) {
                 delete item.pageBreak;
                 item.table = { widths: ['*'], body: [[{ text: txt, fontSize: 10, bold: true, color: '#ffffff', margin: [6, 5, 6, 5] }]] };
                 item.layout = 'noBorders';
-                item.fillColor = '#1e293b';
+                item.fillColor = '#1a7f5a';
                 if (pb) item.pageBreak = pb;
             }
         });
