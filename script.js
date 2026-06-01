@@ -210,6 +210,8 @@ function setNodeState(index, state, dateText) {
     badge.className = 'text-[8px] px-2 py-0.5 rounded-full mt-1 font-bold tl-badge';
     dateEl.textContent = dateText;
     
+    let tooltipTitle = 'Pendiente';
+    
     if (state === 'pending') {
         iconBox.classList.add('bg-slate-100', 'border-white', 'dark:bg-slate-800', 'dark:border-slate-700', 'text-slate-400');
         badge.classList.add('bg-slate-100', 'text-slate-500');
@@ -218,15 +220,20 @@ function setNodeState(index, state, dateText) {
         iconBox.classList.add('bg-emerald-500', 'border-emerald-100', 'text-white');
         badge.classList.add('bg-emerald-100', 'text-emerald-700');
         badge.innerHTML = 'Completado <i class="fa-solid fa-check ml-0.5"></i>';
+        tooltipTitle = `Completado: ${dateText}`;
     } else if (state === 'active') {
         iconBox.classList.add('bg-institutional-primary', 'border-institutional-pale', 'text-white', 'ring-4', 'ring-institutional-light/20', 'animate-pulse');
         badge.classList.add('bg-institutional-pale', 'text-institutional-primary');
         badge.textContent = 'En Proceso';
+        tooltipTitle = `En Proceso: ${dateText}`;
     } else if (state === 'failed') {
         iconBox.classList.add('bg-red-500', 'border-red-100', 'text-white');
         badge.classList.add('bg-red-100', 'text-red-700');
         badge.innerHTML = 'Incumplido <i class="fa-solid fa-xmark ml-0.5"></i>';
+        tooltipTitle = `Incumplido: ${dateText}`;
     }
+    
+    node.setAttribute('title', tooltipTitle);
 }
 
 function getCoords(layer) {
@@ -603,8 +610,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if(row) generateProfessionalPDF(row);
         });
         
+        document.getElementById('btn-first').addEventListener('click', () => { currentPage = 1; renderTable(); });
         document.getElementById('btn-prev').addEventListener('click', () => changePage(-1));
         document.getElementById('btn-next').addEventListener('click', () => changePage(1));
+        document.getElementById('btn-last').addEventListener('click', () => { currentPage = Math.ceil(filteredData.length / rowsPerPage) || 1; renderTable(); });
         document.getElementById('btn-export').addEventListener('click', exportToCSV);
         
         ['filter-search', 'filter-municipio', 'filter-supervisor', 'filter-vigencia', 'filter-convenio-num', 'filter-clasificacion'].forEach(id => {
@@ -794,6 +803,17 @@ function applyFilters() {
     const convenioNum = document.getElementById('filter-convenio-num').value.trim();
     const clasificacion = document.getElementById('filter-clasificacion').value.trim();
     const estado = document.getElementById('filter-estado') ? document.getElementById('filter-estado').value.trim() : '';
+
+    const activeFiltersCount = [search, vigencia, municipio, supervisor, convenioNum, clasificacion, estado].filter(val => val !== '').length;
+    const badge = document.getElementById('active-filters-badge');
+    if (badge) {
+        if (activeFiltersCount > 0) {
+            badge.textContent = activeFiltersCount;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
 
     filteredData = rawData.filter(row => {
         const rowValsStr = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
@@ -1008,8 +1028,12 @@ function renderTable() {
     });
 
     document.getElementById('table-info').textContent = `Mostrando convenios ${start + 1} - ${Math.min(start + rowsPerPage, filteredData.length)} de ${filteredData.length}`;
+    
+    const maxPage = Math.ceil(filteredData.length / rowsPerPage) || 1;
+    document.getElementById('btn-first').disabled = currentPage === 1;
     document.getElementById('btn-prev').disabled = currentPage === 1;
-    document.getElementById('btn-next').disabled = start + rowsPerPage >= filteredData.length;
+    document.getElementById('btn-next').disabled = currentPage >= maxPage;
+    document.getElementById('btn-last').disabled = currentPage >= maxPage;
 }
 
 function parseCOPDate(dateStr) {
