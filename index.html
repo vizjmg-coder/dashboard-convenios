@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Convenios - Margarita Rosa Lopera Duque</title>
+    <title>Dashboard Convenios - DIAT</title>
     <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -50,10 +50,10 @@
                 <div class="flex items-center gap-4">
                     <div class="navbar-logo-ring">
                         <!-- Logo de la gobernación o ícono representativo -->
-                        <img src="https://www.antioquia.gov.co/images/2024/escudo-de-armas%201.jpg" alt="Logo Antioquia" class="w-full h-full object-contain p-0.5" onerror="this.src='https://ui-avatars.com/api/?name=Gob+Ant&background=1a7f5a&color=fff'">
+                        <img src="https://yt3.googleusercontent.com/-hL8n3r9B7lKAgprKcWs7kIvwynbPUQYhJsDGE5gvnhwhajQl88Fz-kIn-64E2rnsFHjDqZmXU4=s900-c-k-c0x00ffffff-no-rj" alt="Logo Antioquia" class="w-full h-full object-contain p-0.5" onerror="this.src='https://ui-avatars.com/api/?name=Gob+Ant&background=1a7f5a&color=fff'">
                     </div>
                     <div>
-                        <h1 class="text-lg sm:text-xl font-black text-slate-900 dark:text-white leading-none tracking-tight">DASHBOARD CONVENIOS - SIF</h1>
+                        <h1 class="text-lg sm:text-xl font-black text-slate-900 dark:text-white leading-none tracking-tight">DASHBOARD CONVENIOS 2024-2027</h1>
                         <p class="text-[10px] font-bold text-institutional-light uppercase tracking-widest mt-0.5">Dirección de Infraestructura y Apoyo Territorial</p>
                     </div>
                 </div>
@@ -90,12 +90,12 @@
                     <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
                     <div class="navbar-user-pill flex items-center gap-3">
                         <div class="text-right hidden sm:block">
-                            <p class="text-[11px] font-black text-slate-800 dark:text-slate-100 leading-none">Margarita Lopera D.</p>
-                            <p class="text-[9px] font-bold text-institutional-light uppercase tracking-widest mt-1">Supervisora</p>
+                            <p class="text-[11px] font-black text-slate-800 dark:text-slate-100 leading-none">Supervisión DIAT</p>
+                            <p class="text-[9px] font-bold text-institutional-light uppercase tracking-widest mt-1">Equipo Técnico</p>
                         </div>
                         <div class="relative">
                             <div class="w-8 h-8 rounded-full overflow-hidden bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700">
-                                <img src="./assets/perfil_margarita.jpg" alt="Perfil" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Margarita+Lopera&background=1a7f5a&color=fff&bold=true';">
+                                <img src="./assets/perfil_equipo.jpg" alt="Perfil" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Equipo+DIAT&background=1a7f5a&color=fff&bold=true';">
                             </div>
                             <div class="navbar-online-dot"></div>
                         </div>
@@ -115,7 +115,7 @@
                 <p class="text-institutional-pale text-xs font-medium mt-2 opacity-90">Gestión y control de infraestructura departamental</p>
             </div>
             <div class="p-8">
-                <p class="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm mb-6">Selecciona el archivo maestro <strong>CONVENIOS MARGARITA.xlsx</strong> actualizado para cargar el dashboard.</p>
+                <p class="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm mb-6">Selecciona el archivo maestro de <strong>CONVENIOS</strong> actualizado para cargar el dashboard.</p>
                 <label class="file-upload-zone">
                     <i class="fa-solid fa-cloud-arrow-up text-3xl text-institutional-light mb-3"></i>
                     <span class="block text-sm font-bold text-institutional-primary">Explorar archivo Excel</span>
@@ -129,19 +129,33 @@
     <main class="container-main py-8 no-print" id="main-content" style="display: none;">
         
         <!-- SECCIÓN DE FILTROS -->
-        <section class="filter-section mb-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <section class="filter-section mb-8 bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-1.5 h-full bg-institutional-primary"></div>
+            <div class="mb-5 pb-4 border-b border-slate-100 dark:border-slate-700/50 flex flex-col sm:flex-row justify-between items-start sm:items-center pl-2 gap-3">
+                <div>
+                    <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2"><i class="fa-solid fa-filter text-institutional-primary"></i> Filtros de Búsqueda</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Refina los resultados del dashboard utilizando los siguientes criterios</p>
+                </div>
+                <button id="btn-reset-filters" class="btn-reset flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-lg transition-colors text-xs font-bold shadow-sm">
+                    <i class="fa-solid fa-eraser"></i> Limpiar Filtros
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-5">
                 <div>
                     <label class="filter-label">Vigencia</label>
                     <select id="filter-vigencia" class="filter-control"></select>
                 </div>
                 <div>
-                    <label class="filter-label">Municipio</label>
-                    <select id="filter-municipio" class="filter-control"></select>
+                    <label class="filter-label">Supervisor</label>
+                    <select id="filter-supervisor" class="filter-control"></select>
                 </div>
                 <div>
-                    <label class="filter-label">Estado</label>
-                    <select id="filter-estado" class="filter-control"></select>
+                    <label class="filter-label">Clasificación</label>
+                    <select id="filter-clasificacion" class="filter-control"></select>
+                </div>
+                <div>
+                    <label class="filter-label">Municipio</label>
+                    <select id="filter-municipio" class="filter-control"></select>
                 </div>
                 <div>
                     <label class="filter-label">N° Convenio</label>
@@ -152,13 +166,9 @@
                     <div class="relative">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 text-xs"></i>
                         <input type="text" id="filter-search" placeholder="Objeto, vía..." class="filter-control filter-control-text pl-8">
+                        <input type="hidden" id="filter-estado" value="">
                     </div>
                 </div>
-            </div>
-            <div class="mt-4 flex justify-end">
-                <button id="btn-reset-filters" class="btn-reset">
-                    <i class="fa-solid fa-eraser mr-1.5"></i>Limpiar Filtros
-                </button>
             </div>
         </section>
 
@@ -226,7 +236,12 @@
                 
                 <div class="p-8 lg:w-5/12 flex flex-col justify-center relative z-10">
                     <span class="text-slate-400 dark:text-slate-500 text-[9px] font-black uppercase tracking-[0.2em] mb-2 border-b border-slate-100 dark:border-slate-700/50 pb-1 inline-block w-max flex items-center gap-1.5"><i class="fa-solid fa-bolt text-amber-400"></i> Vista Detallada Rápida</span>
-                    <h2 class="text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tight" id="summary-num">--</h2>
+                    <div class="flex justify-between items-start w-full gap-3">
+                        <h2 class="text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tight" id="summary-num">--</h2>
+                        <button id="btn-abrir-ficha" class="btn-gestion mt-2">
+                            <i class="fa-solid fa-folder-open icon-accent"></i> Ficha Técnica
+                        </button>
+                    </div>
                     <p class="text-institutional-light text-sm font-semibold mt-2 mb-6 flex items-center"><i class="fa-solid fa-location-dot mr-1.5"></i><span id="summary-municipio">MUNICIPIO</span></p>
                     
                     <div class="grid grid-cols-2 gap-4 mt-auto">
@@ -241,25 +256,34 @@
                     </div>
                 </div>
                 
-                <div class="p-6 lg:w-3/12 flex items-center justify-center gap-6 relative z-10 border-y lg:border-y-0 lg:border-x border-slate-100 dark:border-slate-700/50 bg-white dark:bg-slate-800">
-                    <div class="relative w-28 h-28 flex items-center justify-center">
-                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                            <circle cx="50" cy="50" r="40" stroke="#f1f5f9" stroke-width="8" fill="none" />
-                            <circle id="gauge-fisico" cx="50" cy="50" r="40" stroke="#1a7f5a" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
-                        </svg>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="summary-fisico-txt" class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mb-1">0%</span>
-                            <span class="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold">Físico</span>
+                <div class="p-6 lg:w-3/12 flex flex-col items-center justify-center gap-5 relative z-10 border-y lg:border-y-0 lg:border-x border-slate-100 dark:border-slate-700/50 bg-white dark:bg-slate-800">
+                    <div class="flex items-center justify-center gap-4 flex-wrap w-full">
+                        <div class="relative w-32 h-32 flex items-center justify-center shrink-0">
+                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="40" stroke="#f1f5f9" stroke-width="8" fill="none" />
+                                <circle id="gauge-fisico" cx="50" cy="50" r="40" stroke="#1a7f5a" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span id="summary-fisico-txt" class="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none mb-1">0%</span>
+                                <span class="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold">Físico</span>
+                            </div>
+                        </div>
+                        <div class="relative w-32 h-32 flex items-center justify-center shrink-0">
+                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="40" stroke="#f1f5f9" stroke-width="8" fill="none" />
+                                <circle id="gauge-financiero" cx="50" cy="50" r="40" stroke="#2d6a9f" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span id="summary-financiero-txt" class="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none mb-1">0%</span>
+                                <span class="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold">Financiero</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="relative w-28 h-28 flex items-center justify-center">
-                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                            <circle cx="50" cy="50" r="40" stroke="#f1f5f9" stroke-width="8" fill="none" />
-                            <circle id="gauge-financiero" cx="50" cy="50" r="40" stroke="#2d6a9f" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
-                        </svg>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="summary-financiero-txt" class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mb-1">0%</span>
-                            <span class="text-[8px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold">Financiero</span>
+                    <div class="w-full pt-4 border-t border-slate-100 dark:border-slate-700/50 flex items-center gap-3">
+                        <img id="summary-supervisor-img" src="" class="w-14 h-14 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shadow-sm shrink-0" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=SUP&background=1a7f5a&color=fff&bold=true';">
+                        <div class="overflow-hidden">
+                            <p class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">Supervisor</p>
+                            <p id="summary-supervisor-name" class="text-[11px] font-black text-slate-700 dark:text-slate-200 leading-tight whitespace-normal break-words">--</p>
                         </div>
                     </div>
                 </div>
@@ -274,9 +298,10 @@
         </div>
 
         <!-- GRÁFICOS Y ALERTAS -->
+
         <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
             <!-- DONUT CHART + LEYENDA -->
-            <div class="chart-card lg:col-span-5 relative group flex flex-col">
+            <div class="chart-card lg:col-span-4 relative group flex flex-col">
                 <div class="flex justify-between items-start mb-4">
                     <div>
                         <h3 class="chart-title">Resumen Ejecutivo</h3>
@@ -284,14 +309,43 @@
                     </div>
                     <button class="btn-icon-soft" onclick="document.getElementById('btn-reset-filters').click()" title="Borrar filtros"><i class="fa-solid fa-arrows-rotate"></i></button>
                 </div>
-                <div class="flex flex-col xl:flex-row items-center justify-between flex-1 gap-6 w-full">
-                    <div class="relative w-48 h-48 xl:w-56 xl:h-56 shrink-0"><canvas id="chart-estado"></canvas></div>
-                    <div id="chart-estado-legend" class="w-full flex flex-col gap-2 overflow-y-auto table-container-scroll max-h-56 pr-1"></div>
+                <div class="flex flex-col items-center justify-center flex-1 gap-4 w-full">
+                    <div class="relative w-40 h-40 xl:w-48 xl:h-48 shrink-0"><canvas id="chart-estado"></canvas></div>
+                    <div id="chart-estado-legend" class="w-full flex flex-col gap-2 overflow-y-auto table-container-scroll max-h-40 pr-1"></div>
                 </div>
             </div>
             
+            <!-- RESUMEN EJECUCIÓN -->
+            <div class="chart-card lg:col-span-4 relative group flex flex-col">
+                <div class="flex justify-between items-start mb-4 border-b border-slate-100 dark:border-slate-700/50 pb-3">
+                    <div>
+                        <h3 class="chart-title flex items-center gap-2"><i class="fa-solid fa-ruler-combined text-institutional-accent"></i> Ejecución Física</h3>
+                        <p class="chart-subtitle">Volumen total de obra</p>
+                    </div>
+                </div>
+                
+                <div class="flex-1 flex flex-col w-full justify-between">
+                    <div class="relative w-full h-48 mb-4 flex-1">
+                        <canvas id="chart-ejecucion"></canvas>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3 mt-auto shrink-0">
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center shadow-sm">
+                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Long. Ejecutada</p>
+                            <p id="tot-lon-eje-text" class="text-lg font-black text-[#1a7f5a] dark:text-emerald-400 leading-none">0 m</p>
+                            <p class="text-[10px] text-slate-500 font-medium mt-1">de <span id="tot-lon-con-text">0</span></p>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center shadow-sm">
+                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Área Ejecutada</p>
+                            <p id="tot-are-eje-text" class="text-lg font-black text-slate-700 dark:text-slate-200 leading-none">0 m²</p>
+                            <p class="text-[10px] text-slate-500 font-medium mt-1">de <span id="tot-are-con-text">0</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- ALERTAS DE RIESGO -->
-            <div class="chart-card lg:col-span-7 relative group flex flex-col">
+            <div class="chart-card lg:col-span-4 relative group flex flex-col">
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-3 border-b border-slate-100 dark:border-slate-700/50 pb-3">
                     <div>
                         <h3 class="chart-title flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Convenios en Riesgo</h3>
@@ -317,6 +371,203 @@
             </div>
         </section>
 
+        <!-- LÍNEA DE TIEMPO DEL PROCESO LEGAL (OCULTA POR DEFECTO) -->
+        <div id="timeline-container" class="mb-8 hidden no-print">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 p-6 sm:p-8">
+                <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-8 flex items-center gap-2">
+                    <i class="fa-solid fa-scale-balanced text-institutional-primary"></i> Línea de Tiempo del Proceso Legal
+                </h3>
+
+                <!-- Contenedor scrolleable horizontalmente para móviles -->
+                <div class="overflow-x-auto pb-6 custom-scrollbar">
+                    <div class="min-w-[1200px] relative pt-12">
+                        
+                        <!-- Brackets Layer (Absolute) -->
+                        <div class="absolute top-0 left-0 w-full h-12 flex items-end">
+                            <!-- FASE CONTRACTUAL (20%) -->
+                            <div class="w-[20%] px-2 flex flex-col h-full justify-end">
+                                <span class="text-center text-[9px] font-black text-blue-600 mb-1 tracking-wider">FASE CONTRACTUAL</span>
+                                <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-blue-400 rounded-t-md"></div>
+                            </div>
+                            <!-- RUTA BILATERAL (20%) -->
+                            <div class="w-[20%] px-2 flex flex-col h-full justify-end">
+                                <span class="text-center text-[9px] font-black text-emerald-600 mb-1 tracking-wider leading-tight">RUTA BILATERAL<br>(NO EXITOSA)</span>
+                                <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-emerald-400 rounded-t-md"></div>
+                            </div>
+                            <!-- RUTA UNILATERAL (10%) -->
+                            <div class="w-[10%] px-2 flex flex-col h-full justify-end">
+                                <span class="text-center text-[9px] font-black text-red-500 mb-1 tracking-wider leading-tight">RUTA<br>UNILATERAL</span>
+                                <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-red-400 rounded-t-md"></div>
+                            </div>
+                            <!-- ACTUACIÓN JURÍDICA (20%) -->
+                            <div class="w-[20%] px-2 flex flex-col h-full justify-end">
+                                <span class="text-center text-[9px] font-black text-purple-600 mb-1 tracking-wider">ACTUACIÓN JURÍDICA</span>
+                                <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-purple-400 rounded-t-md"></div>
+                            </div>
+                            <!-- GESTIÓN POSTLIQUIDACIÓN (20%) -->
+                            <div class="w-[20%] px-2 flex flex-col h-full justify-end">
+                                <span class="text-center text-[9px] font-black text-orange-500 mb-1 tracking-wider">GESTIÓN POSTLIQUIDACIÓN</span>
+                                <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-orange-400 rounded-t-md"></div>
+                            </div>
+                            <!-- CIERRE FINAL (10%) -->
+                            <div class="w-[10%] px-2 flex flex-col h-full justify-end">
+                                <span class="text-center text-[9px] font-black text-slate-600 mb-1 tracking-wider">CIERRE FINAL</span>
+                                <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-slate-400 rounded-t-md"></div>
+                            </div>
+                        </div>
+
+                        <!-- Línea conectora base -->
+                        <div class="absolute top-[84px] left-[5%] right-[5%] h-0.5 bg-slate-200 dark:bg-slate-700 z-0 border-t border-dashed border-slate-300 dark:border-slate-600"></div>
+                        
+                        <!-- Línea conectora de progreso (se llenará por JS) -->
+                        <div id="tl-progress-line" class="absolute top-[84px] left-[5%] h-1 bg-institutional-primary z-0 transition-all duration-1000 shadow-[0_0_8px_rgba(26,127,90,0.5)]" style="width: 0%;"></div>
+
+                        <div class="grid grid-cols-10 w-full relative z-10 pt-6">
+                            <!-- NODO 1 -->
+                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-1">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
+                                    <i class="fa-solid fa-flag"></i>
+                                </div>
+                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Terminación del convenio</h4>
+                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-1">--</span>
+                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-1">Pendiente</span>
+                            </div>
+
+                            <!-- NODO 2 -->
+                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-2">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
+                                    <i class="fa-solid fa-file-contract"></i>
+                                </div>
+                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Preparación de liquidación</h4>
+                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-2">--</span>
+                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-2">Pendiente</span>
+                            </div>
+
+                            <!-- NODO 3 -->
+                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-3">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
+                                    <i class="fa-solid fa-handshake"></i>
+                                </div>
+                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Convocatoria a liquidación</h4>
+                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-3">--</span>
+                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-3">Pendiente</span>
+                            </div>
+
+                            <!-- NODO 3b -->
+                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-3b">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box border-dashed">
+                                    <i class="fa-solid fa-xmark text-xl"></i>
+                                </div>
+                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Sin respuesta del municipio</h4>
+                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-3b">--</span>
+                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-3b">Pendiente</span>
+                            </div>
+
+                            <!-- NODO 4 -->
+                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-4">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
+                                    <i class="fa-solid fa-gavel"></i>
+                                </div>
+                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Resolución unilateral</h4>
+                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-4">--</span>
+                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-4">Pendiente</span>
+                            </div>
+
+                            <!-- NODO 5 -->
+                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-5">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
+                                    <i class="fa-solid fa-scale-unbalanced"></i>
+                                </div>
+                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Recurso de reposición</h4>
+                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-5">--</span>
+                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-5">Pendiente</span>
+                            </div>
+
+                            <!-- NODO 6 -->
+                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-6">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
+                                    <i class="fa-solid fa-file-circle-check"></i>
+                                </div>
+                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Acto Admtvo. en firme</h4>
+                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-6">--</span>
+                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-6">Pendiente</span>
+                            </div>
+
+                            <!-- NODO 7 -->
+                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-7">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
+                                    <i class="fa-solid fa-bullhorn"></i>
+                                </div>
+                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Cobro Persuasivo</h4>
+                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-7">--</span>
+                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-7">Pendiente</span>
+                            </div>
+
+                            <!-- NODO 8 -->
+                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-8">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
+                                    <i class="fa-solid fa-building-columns"></i>
+                                </div>
+                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Cobro Coactivo</h4>
+                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-8">--</span>
+                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-8">Pendiente</span>
+                            </div>
+
+                            <!-- NODO 9 -->
+                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-9">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
+                                    <i class="fa-solid fa-folder-closed"></i>
+                                </div>
+                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Cierre de Expediente</h4>
+                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-9">--</span>
+                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-9">Pendiente</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RESULTADO FINANCIERO -->
+                <div class="mt-8 border border-slate-100 dark:border-slate-700/50 rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 shadow-sm">
+                    <h4 class="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4">Resultado Financiero - Obligaciones Identificadas</h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 flex gap-3 items-center">
+                            <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                            <div>
+                                <p class="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Rend. Financieros</p>
+                                <p class="text-sm font-black text-slate-800 dark:text-slate-100 mt-0.5" id="tl-fin-rendimientos">$0</p>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 flex gap-3 items-center">
+                            <div class="w-10 h-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-coins"></i></div>
+                            <div>
+                                <p class="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Rec. No Ejecutados</p>
+                                <p class="text-sm font-black text-slate-800 dark:text-slate-100 mt-0.5" id="tl-fin-recursos">$0</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800/50 flex gap-3 items-center shadow-sm">
+                            <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-sack-dollar"></i></div>
+                            <div>
+                                <p class="text-[9px] font-bold text-amber-700 dark:text-amber-500 uppercase tracking-widest">Total a Reintegrar</p>
+                                <p class="text-lg font-black text-amber-900 dark:text-amber-400 mt-0.5 leading-none" id="tl-fin-total">$0</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 flex gap-3 items-center">
+                            <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0"><i class="fa-regular fa-calendar-check"></i></div>
+                            <div>
+                                <p class="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Fecha Cierre</p>
+                                <p class="text-sm font-black text-slate-800 dark:text-slate-100 mt-0.5" id="tl-fin-fecha">--</p>
+                                <p class="text-[8px] font-bold text-emerald-600 uppercase mt-1 hidden" id="tl-fin-estado">Expediente Cerrado <i class="fa-solid fa-check ml-1"></i></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- TABLA PRINCIPAL -->
         <section class="table-section mb-8">
             <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-slate-800 gap-4 relative overflow-hidden">
@@ -336,7 +587,8 @@
                         <tr>
                             <th class="px-5 py-4 cursor-pointer hover:text-slate-800 dark:text-slate-100 transition bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700" onclick="sortTable('CONVENIO')">ID Convenio <i class="fa-solid fa-sort ml-1 opacity-40"></i></th>
                             <th class="px-5 py-4 cursor-pointer hover:text-slate-800 dark:text-slate-100 transition bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700" onclick="sortTable('MUNICIPIO')">Municipio <i class="fa-solid fa-sort ml-1 opacity-40"></i></th>
-                            <th class="px-5 py-4 w-[200px] bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Objeto / Clasificación</th>
+                            <th class="px-5 py-4 w-[200px] bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Indicador / Clasificación</th>
+                            <th class="px-5 py-4 w-32 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Supervisor</th>
                             <th class="px-5 py-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Estado</th>
                             <th class="px-5 py-4 w-48 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Avance Físico</th>
                             <th class="px-5 py-4 w-48 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Avance Financiero</th>
@@ -499,7 +751,16 @@
                             <h4 class="text-[10px] font-black text-white uppercase tracking-widest mb-4 border-b border-white/10 pb-2 relative z-10 flex justify-between items-center">
                                 <span><i class="fa-solid fa-camera mr-1.5 opacity-70"></i> Registro Fotográfico</span>
                             </h4>
-                            <div id="mod-galeria" class="grid grid-cols-3 gap-3 relative z-10 overflow-y-auto custom-scrollbar pr-1 flex-1 content-start"></div>
+                            <div id="mod-galeria" class="flex flex-col gap-4 relative z-10 overflow-y-auto custom-scrollbar pr-1 flex-1 content-start">
+                                <div>
+                                    <h5 class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">Antes</h5>
+                                    <div id="mod-galeria-antes" class="grid grid-cols-3 gap-3"></div>
+                                </div>
+                                <div>
+                                    <h5 class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">Después</h5>
+                                    <div id="mod-galeria-despues" class="grid grid-cols-3 gap-3"></div>
+                                </div>
+                            </div>
                             <div id="mod-galeria-empty" class="hidden flex-1 flex flex-col items-center justify-center py-8 text-white/40 text-xs relative z-10">
                                 <i class="fa-regular fa-images text-3xl mb-2 opacity-50"></i>
                                 No se encontraron fotografías anexas

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>25AS111B2809.kml</name>
+	<StyleMap id="__managed_style_0C88CB8C6A3B70E7B317">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#failed0</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#failed</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="failed">
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>3</width>
+		</LineStyle>
+	</Style>
+	<Style id="failed0">
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>3</width>
+		</LineStyle>
+	</Style>
+	<Placemark id="01A9EB8B963B70EA2BDF">
+		<name>VÍA CRISTALES - GUACAS ABAJO (05670VT29) (100M)</name>
+		<LookAt>
+			<longitude>-74.92988355297491</longitude>
+			<latitude>6.483238857537698</latitude>
+			<altitude>1248.962672051197</altitude>
+			<heading>6.298638003982645</heading>
+			<tilt>0</tilt>
+			<gx:fovy>34.99999999745161</gx:fovy>
+			<range>336.3784696042785</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0C88CB8C6A3B70E7B317</styleUrl>
+		<LineString>
+			<coordinates>
+				-74.93043250411318,6.483450868670469,0 -74.93024021649981,6.48346418292858,0 -74.92995490415892,6.483365892644586,0 -74.92980660209584,6.483379538396735,0 -74.92960473497412,6.483545736792597,0 
+			</coordinates>
+		</LineString>
+		<atom:link rel="app" href="https://www.google.com/earth/about/versions/#earth-pro" title="Google Earth Pro 7.3.7.1155"></atom:link>
+	</Placemark>
+</Document>
+</kml>

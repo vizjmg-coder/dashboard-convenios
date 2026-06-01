@@ -42,7 +42,7 @@ const parseExcelDate = (excelNum) => {
     return excelNum;
 };
 
-// --- SISTEMA DE DISE�'O: MAPEO INSTITUCIONAL DE ESTADOS ---
+// --- SISTEMA DE DISEÑO: MAPEO INSTITUCIONAL DE ESTADOS ---
 // Se sincroniza con las variables de CSS
 function getSystemState(estado) {
     const est = String(estado || 'N/A').toLowerCase();
@@ -91,6 +91,143 @@ window.copyCoord = function(inputId, btn) {
         }, 1500);
     });
 };
+
+// ------ LÍNEA DE TIEMPO LIQUIDACIÓN ------
+function renderTimeline(row) {
+    const tlContainer = document.getElementById('timeline-container');
+    if (!tlContainer) return;
+    
+    // Helper flexible para encontrar columnas
+    const getVal = (keywords) => {
+        const key = Object.keys(row).find(k => keywords.some(kw => String(k).toUpperCase().includes(kw)));
+        return key ? row[key] : '';
+    };
+
+    const estConv = String(row['ESTADO CONVENIO'] || getVal(['ESTADO CONV', 'ESTADO']) || '').toUpperCase();
+    const ruta = String(row['RUTA LIQUIDACIÓN'] || getVal(['RUTA LIQUID']) || '').toUpperCase();
+    const actJur = String(row['ACTUACIÓN JURÍDICA'] || getVal(['ACTUACI']) || '').toUpperCase();
+    const faseCobro = String(row['FASE DE COBRO (SI APLICA)'] || getVal(['FASE DE COBRO']) || '').toUpperCase();
+    const estExp = String(row['ESTADO EXPEDIENTE'] || getVal(['ESTADO EXPED']) || '').toUpperCase();
+    const fechaCierre = row['FECHA ACTA DE CIERRE DE EXPEDIENTE'] || getVal(['FECHA ACTA DE CIERRE', 'FECHA DE CIERRE']) || '--';
+
+    // Mostrar si tiene que ver con liquidación o tiene datos de la ruta
+    if (estConv.includes('LIQUIDA') || ruta || estExp || actJur) {
+        tlContainer.classList.remove('hidden');
+    } else {
+        tlContainer.classList.add('hidden');
+        return;
+    }
+
+    for(let i=1; i<=9; i++) setNodeState(i, 'pending', '--');
+    setNodeState('3b', 'pending', '--');
+    let maxActiveNode = 0;
+
+    const hasLiqData = ruta || actJur || faseCobro || estExp || (fechaCierre !== '--');
+
+    setNodeState(1, 'completed', row['FECHA DE TERMINACION'] || row['FECHA DE TERMINACIN'] || getVal(['FECHA DE TERMINAC']) || 'Completado');
+    maxActiveNode = 1;
+
+    if (hasLiqData) {
+        setNodeState(2, 'completed', 'Completado');
+        maxActiveNode = 2;
+    }
+
+    if (ruta.includes('UNILATERAL')) {
+        setNodeState(3, 'failed', 'Incumplimiento');
+        setNodeState('3b', 'failed', 'Incumplimiento');
+        setNodeState(4, 'completed', 'Resolución Emitida');
+        maxActiveNode = 4;
+        
+        if (actJur.includes('REPOSICIÓN') || actJur.includes('REPOSICION')) {
+            setNodeState(5, 'active', 'En proceso');
+            maxActiveNode = 5;
+        } else if (actJur.includes('FIRME')) {
+            setNodeState(5, 'completed', 'Resuelto');
+            setNodeState(6, 'completed', 'Ejecutoriado');
+            maxActiveNode = 6;
+        }
+        
+        if (faseCobro.includes('PERSUASIVO')) {
+            setNodeState(7, 'active', 'En curso');
+            maxActiveNode = 7;
+        } else if (faseCobro.includes('COACTIVO')) {
+            setNodeState(7, 'completed', 'Finalizado');
+            setNodeState(8, 'active', 'En curso');
+            maxActiveNode = 8;
+        }
+    } else if (ruta.includes('BILATERAL') || ruta.includes('EXITOSA')) {
+        setNodeState(3, 'active', 'En proceso');
+        maxActiveNode = 3;
+    }
+
+    if (estExp === 'CERRADO' || estExp.includes('CERRADO')) {
+        if (maxActiveNode > 2 && maxActiveNode < 9 && maxActiveNode !== 3) {
+            setNodeState(maxActiveNode, 'completed', 'Finalizado');
+        } else if (maxActiveNode === 3) {
+            setNodeState(3, 'completed', 'Acuerdo firmado');
+        }
+        setNodeState(9, 'completed', fechaCierre);
+        maxActiveNode = 9;
+    }
+
+    const progressLine = document.getElementById('tl-progress-line');
+    const pct = ((maxActiveNode - 1) / 8) * 100;
+    progressLine.style.width = pct + '%';
+
+    const tipoOblig = String(row['TIPO OBLIGACIÓN (SI APLICA)'] || getVal(['TIPO OBLIG']) || '').toUpperCase();
+    const valOblig = row['VALOR OBLIGACIÓN (SI APLICA)'] || getVal(['VALOR OBLIG']) || 0;
+    const valNum = parseNum(valOblig);
+    
+    let rendVal = 0, recVal = 0;
+    if (tipoOblig.includes('RENDIMIENTO')) {
+        rendVal = valNum;
+    } else if (tipoOblig.includes('REINTEGRO') || tipoOblig.includes('RECURSO') || tipoOblig.includes('SALDO') || tipoOblig.includes('ESPECIAL')) {
+        recVal = valNum;
+    } else {
+        recVal = valNum; 
+    }
+    
+    document.getElementById('tl-fin-rendimientos').textContent = formatCurrency(rendVal);
+    document.getElementById('tl-fin-recursos').textContent = formatCurrency(recVal);
+    document.getElementById('tl-fin-total').textContent = formatCurrency(rendVal + recVal);
+    
+    document.getElementById('tl-fin-fecha').textContent = fechaCierre;
+    if (estExp.includes('CERRADO')) {
+        document.getElementById('tl-fin-estado').classList.remove('hidden');
+    } else {
+        document.getElementById('tl-fin-estado').classList.add('hidden');
+    }
+}
+
+function setNodeState(index, state, dateText) {
+    const node = document.getElementById(`node-${index}`);
+    const badge = document.getElementById(`tl-badge-${index}`);
+    const dateEl = document.getElementById(`tl-date-${index}`);
+    if (!node || !badge || !dateEl) return;
+    
+    const iconBox = node.querySelector('.icon-box');
+    iconBox.className = 'w-12 h-12 rounded-full border-4 flex items-center justify-center shadow-sm transition-all icon-box';
+    badge.className = 'text-[8px] px-2 py-0.5 rounded-full mt-1 font-bold tl-badge';
+    dateEl.textContent = dateText;
+    
+    if (state === 'pending') {
+        iconBox.classList.add('bg-slate-100', 'border-white', 'dark:bg-slate-800', 'dark:border-slate-700', 'text-slate-400');
+        badge.classList.add('bg-slate-100', 'text-slate-500');
+        badge.textContent = 'Pendiente';
+    } else if (state === 'completed') {
+        iconBox.classList.add('bg-emerald-500', 'border-emerald-100', 'text-white');
+        badge.classList.add('bg-emerald-100', 'text-emerald-700');
+        badge.innerHTML = 'Completado <i class="fa-solid fa-check ml-0.5"></i>';
+    } else if (state === 'active') {
+        iconBox.classList.add('bg-institutional-primary', 'border-institutional-pale', 'text-white', 'ring-4', 'ring-institutional-light/20', 'animate-pulse');
+        badge.classList.add('bg-institutional-pale', 'text-institutional-primary');
+        badge.textContent = 'En Proceso';
+    } else if (state === 'failed') {
+        iconBox.classList.add('bg-red-500', 'border-red-100', 'text-white');
+        badge.classList.add('bg-red-100', 'text-red-700');
+        badge.innerHTML = 'Incumplido <i class="fa-solid fa-xmark ml-0.5"></i>';
+    }
+}
 
 function getCoords(layer) {
     let latlngs = [];
@@ -145,7 +282,7 @@ async function generateProfessionalPDF(row) {
 
     try {
         // ===== 1. CAPTURA ASÍNCRONA DE RECURSOS =====
-        const logoBase64 = await getBase64ImageFromURL('https://www.antioquia.gov.co/images/2024/escudo-de-armas%201.jpg').catch(() => null);
+        const logoBase64 = await getBase64ImageFromURL('https://yt3.googleusercontent.com/-hL8n3r9B7lKAgprKcWs7kIvwynbPUQYhJsDGE5gvnhwhajQl88Fz-kIn-64E2rnsFHjDqZmXU4=s900-c-k-c0x00ffffff-no-rj').catch(() => null);
         const mapBase64 = await getBase64FromHtmlElement('map-view');
 
         const imagesInModal = document.querySelectorAll('#mod-galeria img');
@@ -470,7 +607,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-next').addEventListener('click', () => changePage(1));
         document.getElementById('btn-export').addEventListener('click', exportToCSV);
         
-        ['filter-search', 'filter-municipio', 'filter-estado', 'filter-vigencia', 'filter-convenio-num'].forEach(id => {
+        ['filter-search', 'filter-municipio', 'filter-supervisor', 'filter-vigencia', 'filter-convenio-num', 'filter-clasificacion'].forEach(id => {
             document.getElementById(id).addEventListener('change', applyFilters);
             if (id === 'filter-search') document.getElementById(id).addEventListener('input', applyFilters);
         });
@@ -497,7 +634,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadExcelFile() {
-    const sheetId = '1e77sxPrebximM3AchhD8GBrcBIpxmJ6I';
+    const sheetId = '1m_PgVHdbWNjmIHoWaKpWso0oUXcBzE8Q';
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
     const localUrl = './data/convenios.xlsx';
     
@@ -600,6 +737,13 @@ function processExcelData(data) {
             'SUSPENSION(MESES)': parseNum(c('SUSPENSION(MESES)', 'SUSPENSION (MESES)'))
         });
     });
+
+    // Parche: Si es vigencia 2025 y el convenio dice 24AS, cambiar a 25AS
+    rawData.forEach(r => {
+        if (r['VIGENCIA'] === '2025' && String(r['CONVENIO']).startsWith('24AS')) {
+            r['CONVENIO'] = String(r['CONVENIO']).replace('24AS', '25AS');
+        }
+    });
     document.getElementById('welcome-screen').style.display = 'none';
     document.getElementById('main-content').style.display = 'block';
     applyFilters(); 
@@ -611,18 +755,23 @@ function processExcelData(data) {
     }
 }
 
-function updateFilterOptions(currentSearch, currentVigencia, currentMunicipio, currentEstado, currentConvenioNum) {
+function updateFilterOptions(currentSearch, currentVigencia, currentMunicipio, currentSupervisor, currentConvenioNum, currentClasificacion) {
     const getValidOptions = (field, excludeField) => {
         const validRows = rawData.filter(row => {
             const rowSearch = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
             const matchSearch = !currentSearch || rowSearch.includes(currentSearch);
             const matchVig = excludeField === 'VIGENCIA' ? true : (!currentVigencia || String(row['VIGENCIA']).trim() === currentVigencia);
             const matchMun = excludeField === 'MUNICIPIO' ? true : (!currentMunicipio || String(row['MUNICIPIO'] || '').trim() === currentMunicipio);
-            const matchEst = excludeField === 'ESTADO CONVENIO' ? true : (!currentEstado || String(row['ESTADO CONVENIO'] || '').trim() === currentEstado);
+            const matchSup = excludeField === 'SUPERVISOR' ? true : (!currentSupervisor || String(row['SUPERVISOR'] || '').trim() === currentSupervisor);
             const matchConv = excludeField === 'CONVENIO' ? true : (!currentConvenioNum || String(row['CONVENIO'] || '').trim() === currentConvenioNum);
-            return matchSearch && matchVig && matchMun && matchEst && matchConv;
+            const clasifValue = String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim();
+            const matchClasif = excludeField === 'CLASIFICACIÓN' ? true : (!currentClasificacion || clasifValue === currentClasificacion);
+            return matchSearch && matchVig && matchMun && matchSup && matchConv && matchClasif;
         });
-        return [...new Set(validRows.map(i => String(i[field] || '').trim()).filter(Boolean))].sort();
+        return [...new Set(validRows.map(i => {
+            if(field === 'CLASIFICACIÓN') return String(i['CLASIFICACIÓN'] || i['CLASIFICACI"N'] || '').trim();
+            return String(i[field] || '').trim();
+        }).filter(Boolean))].sort();
     };
     const updateSelect = (id, options, currentValue) => {
         const select = document.getElementById(id);
@@ -632,28 +781,34 @@ function updateFilterOptions(currentSearch, currentVigencia, currentMunicipio, c
     };
     updateSelect('filter-vigencia', getValidOptions('VIGENCIA', 'VIGENCIA').reverse(), currentVigencia);
     updateSelect('filter-municipio', getValidOptions('MUNICIPIO', 'MUNICIPIO'), currentMunicipio);
-    updateSelect('filter-estado', getValidOptions('ESTADO CONVENIO', 'ESTADO CONVENIO'), currentEstado);
+    updateSelect('filter-supervisor', getValidOptions('SUPERVISOR', 'SUPERVISOR'), currentSupervisor);
     updateSelect('filter-convenio-num', getValidOptions('CONVENIO', 'CONVENIO'), currentConvenioNum);
+    updateSelect('filter-clasificacion', getValidOptions('CLASIFICACIÓN', 'CLASIFICACIÓN'), currentClasificacion);
 }
 
 function applyFilters() {
     const search = document.getElementById('filter-search').value.toLowerCase().trim();
     const vigencia = document.getElementById('filter-vigencia').value.trim();
     const municipio = document.getElementById('filter-municipio').value.trim();
-    const estado = document.getElementById('filter-estado').value.trim();
+    const supervisor = document.getElementById('filter-supervisor').value.trim();
     const convenioNum = document.getElementById('filter-convenio-num').value.trim();
+    const clasificacion = document.getElementById('filter-clasificacion').value.trim();
+    const estado = document.getElementById('filter-estado') ? document.getElementById('filter-estado').value.trim() : '';
 
     filteredData = rawData.filter(row => {
         const rowValsStr = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
         const matchSearch = !search || rowValsStr.includes(search);
         const matchVig = !vigencia || String(row['VIGENCIA'] || '').trim() === vigencia;
         const matchMun = !municipio || String(row['MUNICIPIO'] || '').trim() === municipio;
-        const matchEst = !estado || String(row['ESTADO CONVENIO'] || '').trim() === estado;
+        const matchSup = !supervisor || String(row['SUPERVISOR'] || '').trim() === supervisor;
         const matchConv = !convenioNum || String(row['CONVENIO'] || '').trim() === convenioNum;
-        return matchSearch && matchVig && matchMun && matchEst && matchConv;
+        const clasifValue = String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim();
+        const matchClasif = !clasificacion || clasifValue === clasificacion;
+        const matchEstado = !estado || String(row['ESTADO CONVENIO'] || '').trim() === estado;
+        return matchSearch && matchVig && matchMun && matchSup && matchConv && matchClasif && matchEstado;
     });
 
-    updateFilterOptions(search, vigencia, municipio, estado, convenioNum);
+    updateFilterOptions(search, vigencia, municipio, supervisor, convenioNum, clasificacion);
 
     const summaryCard = document.getElementById('summary-card-container');
     const activeConv = document.getElementById('filter-convenio-num').value.trim();
@@ -661,6 +816,10 @@ function applyFilters() {
     if (activeConv && filteredData.length > 0) {
         const selected = filteredData[0]; 
         document.getElementById('summary-num').textContent = selected['CONVENIO'] || 'S/N';
+        const btnFicha = document.getElementById('btn-abrir-ficha');
+        if (btnFicha) {
+            btnFicha.setAttribute('onclick', `openModal(${JSON.stringify(selected).replace(/'/g, "&#39;")})`);
+        }
         document.getElementById('summary-municipio').textContent = selected['MUNICIPIO'] || 'N/A';
         const alcM = selected['ALCANCE (M)'] || 0, alcM2 = selected['ALCANCE (M2)'] || 0;
         const ejM = selected['LONGITUD EJECUTADA'] || 0, ejM2 = selected['AREA EJECUTADA (M2)'] || 0;
@@ -682,18 +841,36 @@ function applyFilters() {
         const pfis = selected['FISICO_NORM'] || 0, pfin = selected['FINANCIERO_NORM'] || 0;
         document.getElementById('summary-fisico-txt').textContent = pfis.toFixed(1) + '%';
         document.getElementById('summary-financiero-txt').textContent = pfin.toFixed(1) + '%';
+        
+        const supervisorName = selected['SUPERVISOR'] || 'Sin Asignar';
+        const supNameEl = document.getElementById('summary-supervisor-name');
+        const supImgEl = document.getElementById('summary-supervisor-img');
+        if (supNameEl) supNameEl.textContent = supervisorName;
+        if (supImgEl) {
+            supImgEl.src = `./assets/supervisor/${supervisorName}.jpg`;
+        }
+        
         summaryCard.classList.remove('hidden');
         setTimeout(() => {
             document.getElementById('gauge-fisico').style.strokeDashoffset = 251.2 - (251.2 * pfis / 100);
             document.getElementById('gauge-financiero').style.strokeDashoffset = 251.2 - (251.2 * pfin / 100);
         }, 50);
         setTimeout(() => { renderMap(selected, 'summary-map', 'summary-map-overlay', 'summary-map-msg', summaryMapInstance, (ni, ng) => { summaryMapInstance = ni; summaryLayerGroup = ng; }); }, 100);
-    } else { summaryCard.classList.add('hidden'); }
+        
+        renderTimeline(selected);
+    } else { 
+        summaryCard.classList.add('hidden'); 
+        const tlCont = document.getElementById('timeline-container');
+        if (tlCont) tlCont.classList.add('hidden');
+    }
     currentPage = 1; updateDashboard();
 }
 
 function resetFilters() {
-    ['filter-search', 'filter-vigencia', 'filter-municipio', 'filter-estado', 'filter-convenio-num'].forEach(id => document.getElementById(id).value = '');
+    ['filter-search', 'filter-vigencia', 'filter-supervisor', 'filter-municipio', 'filter-convenio-num', 'filter-clasificacion'].forEach(id => {
+        if(document.getElementById(id)) document.getElementById(id).value = '';
+    });
+    if(document.getElementById('filter-estado')) document.getElementById('filter-estado').value = '';
     applyFilters();
 }
 
@@ -701,13 +878,20 @@ function updateDashboard() { updateKPIs(); renderTable(); updateCharts(); render
 
 function updateKPIs() {
     let activos = 0, porLiquidar = 0, sumInv = 0, sumDes = 0, sumAut = 0;
+    let totLonCon = 0, totLonEje = 0, totAreCon = 0, totAreEje = 0;
+    
     filteredData.forEach(r => {
         const est = String(r['ESTADO CONVENIO']).toLowerCase();
-        if(est.includes('ejecuci')) activos++;  // tolera ejecuci�n / ejecucion
+        if(est.includes('ejecuci')) activos++;  // tolera ejecucin / ejecucion
         if(est.includes('por liquidar')) porLiquidar++; 
         sumInv += r['VALOR TOTAL'] || 0;
         sumDes += r['VALOR TOTAL DESEMBOLSADO'] || 0;
         sumAut += r['VALOR TOTAL AUTORIZADO'] || 0;
+        
+        totLonCon += r['ALCANCE (M)'] || 0;
+        totLonEje += r['LONGITUD EJECUTADA'] || 0;
+        totAreCon += r['ALCANCE (M2)'] || 0;
+        totAreEje += r['AREA EJECUTADA (M2)'] || 0;
     });
 
     document.getElementById('kpi-total').textContent = filteredData.length;
@@ -720,8 +904,23 @@ function updateKPIs() {
     document.getElementById('kpi-desembolsado').title = formatCurrency(sumDes);
     document.getElementById('kpi-autorizado').textContent = formatCurrency(sumAut);
     document.getElementById('kpi-autorizado').title = formatCurrency(sumAut);
+    
+    // Physical Execution Totals (New Graphic Scheme)
+    
+    // Update Longitud
+    const elLonEje = document.getElementById('tot-lon-eje-text');
+    if (elLonEje) elLonEje.textContent = formatNumber(totLonEje) + ' m';
+    
+    const elLonCon = document.getElementById('tot-lon-con-text');
+    if (elLonCon) elLonCon.textContent = formatNumber(totLonCon);
+    
+    // Update Área
+    const elAreEje = document.getElementById('tot-are-eje-text');
+    if (elAreEje) elAreEje.textContent = formatNumber(totAreEje) + ' m²';
+    
+    const elAreCon = document.getElementById('tot-are-con-text');
+    if (elAreCon) elAreCon.textContent = formatNumber(totAreCon);
 }
-
 function renderTable() {
     const tbody = document.getElementById('table-body');
     tbody.innerHTML = '';
@@ -736,7 +935,8 @@ function renderTable() {
 
     paginated.forEach(row => {
         const tr = document.createElement('tr');
-        tr.className = 'table-row-hover border-b border-slate-100 dark:border-slate-700/50 group';
+        tr.className = 'table-row-hover border-b border-slate-100 dark:border-slate-700/50 group cursor-pointer';
+        tr.setAttribute('onclick', `if(!event.target.closest('button')) showSummaryCard('${row['CONVENIO']}')`);
         
         const sysState = getSystemState(row['ESTADO CONVENIO']);
         const estStr = String(row['ESTADO CONVENIO'] || '').toLowerCase();
@@ -773,8 +973,11 @@ function renderTable() {
             <td class="px-5 py-3">
                 <div class="w-[200px]">
                     <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate" title="${row['INDICADOR'] || '-'}">${row['INDICADOR'] || '-'}</p>
-                    <p class="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 truncate">${row['CLASIFICACI�"N'] || '-'}</p>
+                    <p class="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 truncate">${row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '-'}</p>
                 </div>
+            </td>
+            <td class="px-5 py-3">
+                <div class="text-[10px] font-bold text-slate-600 dark:text-slate-300 min-w-[120px] max-w-[250px] whitespace-normal" title="${row['SUPERVISOR'] || row['NOMBRE SUPERVISOR'] || '-'}">${row['SUPERVISOR'] || row['NOMBRE SUPERVISOR'] || '-'}</div>
             </td>
             <td class="px-5 py-3">
                 <span class="badge-estado ${sysState.badgeClass}">${sysState.label}</span>
@@ -1003,7 +1206,7 @@ function updateCharts() {
             totalVal += (r['VALOR TOTAL'] || 0);
         });
         
-        const labelsEstado = Object.keys(estMap);
+        const labelsEstado = Object.keys(estMap).sort((a, b) => estMap[b].count - estMap[a].count);
         const dataCount = labelsEstado.map(l => estMap[l].count);
         const bgColors = labelsEstado.map(label => getSystemState(label).hex); 
 
@@ -1043,7 +1246,16 @@ function updateCharts() {
             options: { 
                 responsive: true, maintainAspectRatio: false, cutout: '75%', onHover: hoverCursor, 
                 animation: { animateScale: true, animateRotate: true, duration: 800, easing: 'easeOutQuart' },
-                onClick: (e, activeEls) => { if (activeEls.length > 0) { document.getElementById('filter-estado').value = labelsEstado[activeEls[0].index]; applyFilters(); } }, 
+                onClick: (e, activeEls) => { 
+                    if (activeEls.length > 0) { 
+                        const clickedEstado = labelsEstado[activeEls[0].index];
+                        const filterEl = document.getElementById('filter-estado');
+                        if (filterEl) {
+                            filterEl.value = filterEl.value === clickedEstado ? '' : clickedEstado; 
+                            applyFilters(); 
+                        }
+                    } 
+                }, 
                 plugins: { 
                     legend: { display: false }, 
                     tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.95)', padding: 12, cornerRadius: 8, titleFont: {size: 11}, bodyFont: {size: 13, weight: 'bold'}, callbacks: { label: (c) => ` ${c.label}: ${c.raw} convenios` } } 
@@ -1053,12 +1265,14 @@ function updateCharts() {
 
         const legendContainer = document.getElementById('chart-estado-legend');
         if (legendContainer) {
-            legendContainer.innerHTML = labelsEstado.sort((a,b) => estMap[b].count - estMap[a].count).map(label => {
+            legendContainer.innerHTML = labelsEstado.map(label => {
                 const sysState = getSystemState(label);
                 const stat = estMap[label];
                 const pct = totalCount > 0 ? Math.round((stat.count / totalCount) * 100) : 0;
+                const isSelected = document.getElementById('filter-estado') && document.getElementById('filter-estado').value === label;
+                const activeClass = isSelected ? 'ring-2 ring-institutional-primary bg-slate-50 dark:bg-slate-800/80' : 'border-transparent';
                 return `
-                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition cursor-pointer border border-transparent hover:border-slate-100 dark:hover:border-slate-700/50" onclick="document.getElementById('filter-estado').value='${label}'; applyFilters();">
+                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition cursor-pointer border ${activeClass} hover:border-slate-100 dark:hover:border-slate-700/50" onclick="const f = document.getElementById('filter-estado'); if(f) { f.value = f.value === '${label}' ? '' : '${label}'; applyFilters(); }">
                     <div class="flex items-center gap-3">
                         <div class="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm" style="background-color: ${sysState.hex}"></div>
                         <div>
@@ -1074,6 +1288,40 @@ function updateCharts() {
                 `;
             }).join('');
         }
+    }
+    
+    // Gráfico de Ejecución (Barras)
+    const canvasEjecucion = document.getElementById('chart-ejecucion');
+    if (canvasEjecucion) {
+        let tLonCon = 0, tLonEje = 0;
+        filteredData.forEach(r => {
+            tLonCon += r['ALCANCE (M)'] || 0;
+            tLonEje += r['LONGITUD EJECUTADA'] || 0;
+        });
+        
+        if (charts['ejecucion']) charts['ejecucion'].destroy();
+        charts['ejecucion'] = new Chart(canvasEjecucion, {
+            type: 'bar',
+            data: {
+                labels: ['Longitud (m)'],
+                datasets: [
+                    { label: 'Contratado', data: [tLonCon], backgroundColor: '#cbd5e1', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 },
+                    { label: 'Ejecutado', data: [tLonEje], backgroundColor: '#1a7f5a', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { 
+                    legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: {size: 10, family: 'Inter'} } }, 
+                    tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.95)', padding: 12, cornerRadius: 8, titleFont: {size: 11}, bodyFont: {size: 13, weight: 'bold'}, callbacks: { label: (c) => ` ${c.dataset.label}: ${formatNumber(c.raw)} m` } } 
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: {family: 'Inter', weight: 'bold'} } },
+                    y: { border: { display: false }, grid: { color: document.documentElement.classList.contains('dark') ? '#334155' : '#f1f5f9' }, beginAtZero: true, ticks: { font: {family: 'Inter'}, maxTicksLimit: 6, callback: (v) => formatNumber(v) } }
+                },
+                animation: { duration: 800, easing: 'easeOutQuart' }
+            }
+        });
     }
 }
 
@@ -1281,23 +1529,46 @@ function openModal(row) {
         }); 
     }, 250);
 
-    const gal = document.getElementById('mod-galeria'), emp = document.getElementById('mod-galeria-empty');
-    gal.innerHTML = ''; emp.classList.add('hidden'); currentGalleryImages = [];
+    const emp = document.getElementById('mod-galeria-empty');
+    const galAntes = document.getElementById('mod-galeria-antes');
+    const galDespues = document.getElementById('mod-galeria-despues');
+    if (galAntes) galAntes.innerHTML = '';
+    if (galDespues) galDespues.innerHTML = '';
+    emp.classList.add('hidden'); currentGalleryImages = [];
     const n = String(row['CONVENIO']).trim();
-    for(let i=1; i<=8; i++){
-        const img = document.createElement('img');
-        img.src = `./assets/fotos/${n}/${i}.jpg`;
-        img.className = 'w-full h-24 object-cover rounded-lg cursor-pointer hover:ring-2 hover:ring-institutional-light transition-all shadow-sm';
-        img.onerror = () => img.remove();
-        img.onload = () => { 
-            img.onclick = () => { 
-                currentGalleryImages = Array.from(gal.querySelectorAll('img')).map(e => e.src); 
-                openLightbox(currentGalleryImages.indexOf(img.src)); 
-            }; 
-            gal.appendChild(img); 
-        };
-    }
-    setTimeout(() => { if(gal.querySelectorAll('img').length === 0) emp.classList.remove('hidden'); }, 600);
+
+    const loadImages = (folder, container) => {
+        if (!container) return;
+        for(let i=1; i<=8; i++){
+            const img = document.createElement('img');
+            img.src = `./assets/fotos/${n}/${folder}/${i}.jpg`;
+            img.className = 'w-full h-24 object-cover rounded-lg cursor-pointer hover:ring-2 hover:ring-institutional-light transition-all shadow-sm';
+            img.onerror = () => img.remove();
+            img.onload = () => { 
+                img.onclick = () => { 
+                    currentGalleryImages = Array.from(document.querySelectorAll('#mod-galeria img')).map(e => e.src); 
+                    openLightbox(currentGalleryImages.indexOf(img.src)); 
+                }; 
+                container.appendChild(img); 
+            };
+        }
+    };
+
+    loadImages('antes', galAntes);
+    loadImages('despues', galDespues);
+
+    setTimeout(() => { 
+        const totalImgs = document.querySelectorAll('#mod-galeria img').length;
+        if(totalImgs === 0) {
+            emp.classList.remove('hidden'); 
+        }
+        
+        if (galAntes && galAntes.querySelectorAll('img').length === 0 && galAntes.parentElement) galAntes.parentElement.classList.add('hidden');
+        else if (galAntes && galAntes.parentElement) galAntes.parentElement.classList.remove('hidden');
+
+        if (galDespues && galDespues.querySelectorAll('img').length === 0 && galDespues.parentElement) galDespues.parentElement.classList.add('hidden');
+        else if (galDespues && galDespues.parentElement) galDespues.parentElement.classList.remove('hidden');
+    }, 600);
 }
 
 function closeModal() { document.getElementById('modal-detalle').classList.add('hidden'); document.body.style.overflow = 'auto'; }
