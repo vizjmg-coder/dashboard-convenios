@@ -126,7 +126,27 @@
         </div>
     </div>
 
+    <!-- NAVEGACIÓN POR PESTAÑAS -->
+    <div id="main-tabs-nav" class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 no-print" style="display: none;">
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex gap-8 overflow-x-auto custom-scrollbar">
+                <button class="tab-btn active px-1 py-4 text-sm font-bold text-institutional-primary border-b-2 border-institutional-primary flex items-center gap-2 whitespace-nowrap transition-colors" data-tab="resumen">
+                    <i class="fa-solid fa-house"></i> Resumen
+                </button>
+                <button class="tab-btn px-1 py-4 text-sm font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap transition-colors" data-tab="mapa">
+                    <i class="fa-solid fa-map-location-dot"></i> Mapa Territorial
+                </button>
+                <button class="tab-btn px-1 py-4 text-sm font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap transition-colors" data-tab="plan">
+                    <i class="fa-solid fa-chart-line"></i> Plan de Desarrollo 2024-2027
+                </button>
+            </div>
+        </div>
+    </div>
+
     <main class="container-main py-8 no-print" id="main-content" style="display: none;">
+        
+        <!-- PESTAÑA 1: RESUMEN -->
+        <div id="tab-resumen" class="tab-content block">
         
         <!-- SECCIÓN DE FILTROS -->
         <section class="filter-section mb-8 bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 relative overflow-hidden">
@@ -140,7 +160,7 @@
                     <i class="fa-solid fa-eraser"></i> Limpiar Filtros
                 </button>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-5">
                 <div>
                     <label class="filter-label">Vigencia</label>
                     <select id="filter-vigencia" class="filter-control"></select>
@@ -148,6 +168,10 @@
                 <div>
                     <label class="filter-label">Supervisor</label>
                     <select id="filter-supervisor" class="filter-control"></select>
+                </div>
+                <div>
+                    <label class="filter-label">Indicador</label>
+                    <select id="filter-indicador" class="filter-control"></select>
                 </div>
                 <div>
                     <label class="filter-label">Clasificación</label>
@@ -242,7 +266,12 @@
                             <i class="fa-solid fa-folder-open icon-accent"></i> Ficha Técnica
                         </button>
                     </div>
-                    <p class="text-institutional-light text-sm font-semibold mt-2 mb-6 flex items-center"><i class="fa-solid fa-location-dot mr-1.5"></i><span id="summary-municipio">MUNICIPIO</span></p>
+                    <p class="text-institutional-light text-sm font-semibold mt-2 mb-6 flex items-center flex-wrap gap-2">
+                        <span><i class="fa-solid fa-location-dot mr-1.5"></i><span id="summary-municipio">MUNICIPIO</span></span>
+                        <span id="summary-ejecutor-container" class="hidden text-xs bg-institutional-pale text-institutional-primary px-2 py-0.5 rounded-full border border-institutional-light/30">
+                            <i class="fa-solid fa-building-user mr-1"></i><span id="summary-ejecutor">EJECUTOR</span>
+                        </span>
+                    </p>
                     
                     <div class="grid grid-cols-2 gap-4 mt-auto">
                         <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 shadow-sm transition hover:shadow-md">
@@ -609,6 +638,187 @@
                 </div>
             </div>
         </section>
+        </div> <!-- Fin tab-resumen -->
+
+        <!-- PESTAÑA 2: MAPA -->
+        <div id="tab-mapa" class="tab-content hidden space-y-6">
+            <!-- FILTROS MAPA -->
+            <section class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-institutional-primary"></div>
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-9 gap-4">
+                    <div><label class="filter-label">Vigencia</label><select id="map-filter-vigencia" class="filter-control"></select></div>
+                    <div><label class="filter-label">Supervisor</label><select id="map-filter-supervisor" class="filter-control"></select></div>
+                    <div><label class="filter-label">Clasificación</label><select id="map-filter-clasificacion" class="filter-control"></select></div>
+                    <div><label class="filter-label">Municipio</label><select id="map-filter-municipio" class="filter-control"></select></div>
+                    <div><label class="filter-label">Subregión</label><select id="map-filter-subregion" class="filter-control"></select></div>
+                    <div><label class="filter-label">Estado</label><select id="map-filter-estado" class="filter-control"></select></div>
+                    <div><label class="filter-label">Convenio</label><select id="map-filter-convenio-num" class="filter-control"></select></div>
+                    <div><label class="filter-label">Búsqueda Libre</label><input type="text" id="map-filter-search" placeholder="Objeto, Convenio..." class="filter-control filter-control-text"></div>
+                    <div class="flex flex-col justify-end"><button id="btn-map-reset" class="flex items-center justify-center gap-1.5 h-10 w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 text-xs font-bold transition focus:outline-none"><i class="fa-solid fa-eraser"></i> Limpiar</button></div>
+                </div>
+            </section>
+
+            <!-- KPIs MAPA -->
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+                    <p class="text-[9px] font-bold text-slate-400 uppercase">Municipios</p>
+                    <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 mt-1" id="kpi-map-mun">0</h3>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+                    <p class="text-[9px] font-bold text-slate-400 uppercase">Subregiones</p>
+                    <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 mt-1" id="kpi-map-sub">0</h3>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+                    <p class="text-[9px] font-bold text-institutional-light uppercase">Km Ejecutados</p>
+                    <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 mt-1" id="kpi-map-km">0</h3>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+                    <p class="text-[9px] font-bold text-slate-400 uppercase">Área (m²)</p>
+                    <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 mt-1" id="kpi-map-area">0</h3>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 dark:bg-slate-800 dark:border-slate-700 col-span-2 md:col-span-1 lg:col-span-2">
+                    <p class="text-[9px] font-bold text-purple-600 uppercase">Inversión Acumulada</p>
+                    <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 mt-1 truncate" id="kpi-map-inv" title="$0">$0</h3>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+                    <p class="text-[9px] font-bold text-institutional-accent uppercase">Activos</p>
+                    <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 mt-1" id="kpi-map-activos">0</h3>
+                </div>
+            </div>
+
+            <!-- CONTENEDOR DEL MAPA PRINCIPAL -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 flex flex-col h-[700px] overflow-hidden relative">
+                <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 z-10 shrink-0">
+                    <h2 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest"><i class="fa-solid fa-map mr-2 text-institutional-primary"></i> Mapa Interactivo de Antioquia</h2>
+                    <span id="main-map-loading" class="text-xs font-bold text-slate-500 hidden"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Sincronizando KMLs...</span>
+                </div>
+                <div id="main-map" class="flex-1 bg-slate-100 dark:bg-slate-900 w-full z-0 relative">
+                    <!-- Control de Capas Personalizado -->
+                    <div class="map-layer-panel absolute top-4 right-4 z-[1000] bg-white dark:bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 w-64 select-none">
+                        <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
+                            <h3 class="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fa-solid fa-layer-group text-institutional-primary"></i> Capas del mapa
+                            </h3>
+                            <button id="btn-toggle-panel" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs focus:outline-none">
+                                <i class="fa-solid fa-chevron-up"></i>
+                            </button>
+                        </div>
+                        
+                        <div id="layer-panel-content" class="space-y-2.5">
+                            <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                <input type="checkbox" id="layer-chk-tramosKml" checked class="rounded border-slate-300 text-institutional-primary focus:ring-institutional-primary w-4 h-4">
+                                <i class="fa-solid fa-route text-slate-400"></i> Tramos KML
+                            </label>
+                            <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                <input type="checkbox" id="layer-chk-subregiones" checked class="rounded border-slate-300 text-institutional-primary focus:ring-institutional-primary w-4 h-4">
+                                <i class="fa-solid fa-draw-polygon text-slate-400"></i> Subregiones
+                            </label>
+                            <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                <input type="checkbox" id="layer-chk-municipios" checked class="rounded border-slate-300 text-institutional-primary focus:ring-institutional-primary w-4 h-4">
+                                <i class="fa-solid fa-border-all text-slate-400"></i> Municipios
+                            </label>
+                            
+                            <div class="grid grid-cols-2 gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-700 text-center">
+                                <button id="btn-layers-show-all" class="px-2 py-1.5 text-[10px] font-bold bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-slate-700 dark:text-slate-200 transition focus:outline-none">
+                                    Mostrar todas
+                                </button>
+                                <button id="btn-layers-hide-all" class="px-2 py-1.5 text-[10px] font-bold bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-slate-700 dark:text-slate-200 transition focus:outline-none">
+                                    Ocultar todas
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANELES TERRITORIALES -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Longitud y Subregiones -->
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700">
+                    <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4">Longitud Intervenida por Subregión</h3>
+                    <div class="h-64"><canvas id="chart-sub-long"></canvas></div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700">
+                    <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4">Inversión por Subregión</h3>
+                    <div class="h-64"><canvas id="chart-sub-inv"></canvas></div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700">
+                    <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4">Top Municipios (Longitud)</h3>
+                    <div class="h-64"><canvas id="chart-top-mun-long"></canvas></div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700">
+                    <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4">Top Municipios (Inversión)</h3>
+                    <div class="h-64"><canvas id="chart-top-mun-inv"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PESTAÑA 3: PLAN DE DESARROLLO -->
+        <div id="tab-plan" class="tab-content hidden space-y-6">
+            
+            <!-- Indicadores Ejecutivos -->
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <div class="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                    <p class="text-[9px] font-bold text-emerald-700 uppercase">Metas Cumplidas (>80%)</p>
+                    <h3 class="text-2xl font-black text-emerald-600 mt-1" id="kpi-plan-cumplidas">0</h3>
+                </div>
+                <div class="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-800">
+                    <p class="text-[9px] font-bold text-amber-700 uppercase">Metas en Proceso (50-80%)</p>
+                    <h3 class="text-2xl font-black text-amber-600 mt-1" id="kpi-plan-proceso">0</h3>
+                </div>
+                <div class="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800">
+                    <p class="text-[9px] font-bold text-red-700 uppercase">Metas en Riesgo (<50%)</p>
+                    <h3 class="text-2xl font-black text-red-600 mt-1" id="kpi-plan-riesgo">0</h3>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <p class="text-[9px] font-bold text-slate-500 uppercase">Avance Promedio</p>
+                    <h3 class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1" id="kpi-plan-promedio">0%</h3>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <p class="text-[9px] font-bold text-slate-500 uppercase">Inversión Asociada</p>
+                    <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 mt-1 truncate" id="kpi-plan-inv" title="$0">$0</h3>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <p class="text-[9px] font-bold text-slate-500 uppercase">Municipios Impactados</p>
+                    <h3 class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1" id="kpi-plan-mun">0</h3>
+                </div>
+            </div>
+
+            <!-- Gráficos Gerenciales -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700">
+                    <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4">Meta Global vs Ejecutado Total</h3>
+                    <div class="h-64"><canvas id="chart-plan-metas"></canvas></div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700">
+                    <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4">Avance Acumulado por Año</h3>
+                    <div class="h-64"><canvas id="chart-plan-anual"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Panel de Cumplimiento -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                    <h2 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest"><i class="fa-solid fa-list-check mr-2 text-institutional-primary"></i> Panel de Indicadores Estratégicos</h2>
+                </div>
+                <div class="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" id="plan-indicadores-container">
+                    <!-- Los indicadores se generarán aquí mediante JS -->
+                </div>
+            </div>
+
+            <!-- Panel de Diagnóstico - Valores de INDICADOR -->
+            <details id="plan-debug-panel" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl overflow-hidden">
+                <summary class="p-4 cursor-pointer text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest flex items-center gap-2 select-none">
+                    <i class="fa-solid fa-bug"></i> Diagnóstico: Valores de INDICADOR en los datos
+                    <span class="text-[9px] font-normal text-amber-600 ml-1">(haz clic para expandir)</span>
+                </summary>
+                <div class="p-4 pt-0">
+                    <p class="text-[10px] text-amber-700 dark:text-amber-400 mb-2 font-medium">Estos son los valores únicos del campo <strong>INDICADOR</strong> leídos desde el Google Sheet. Si un valor no coincide con los indicadores del panel superior, el matching falla.</p>
+                    <div id="plan-debug-indicadores" class="flex flex-wrap gap-2"></div>
+                </div>
+            </details>
+
+        </div>
     </main>
 
     <!-- MODAL DE DETALLE PREMIUM -->
