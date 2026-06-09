@@ -8,31 +8,14 @@ let currentSort = { column: 'CONVENIO', asc: true };
 let currentChartMode = 'top'; // 'top' o 'municipio'
 let currentAlertFilter = 'all';
 
-// Variables Mapas
+// Variables Mini-Mapa (Leaflet — ficha técnica modal y resumen)
 let mapInstance = null;
 let currentLayerGroup = null;
 let summaryMapInstance = null;
 let summaryLayerGroup = null;
 let currentExtractedFeatures = [];
+// (Las variables del mapa territorial principal se declaran en la sección MapLibre GL JS)
 
-// Nuevas variables para capas del mapa principal y cache
-let municipiosLayer = null;
-let subregionesLayer = null;
-let subregionLabelsLayer = null;
-let kmlLayerGroup = null;
-let markersLayerGroup = null;
-let photosLayerGroup = null;
-const mapGeomCache = {};
-let mapLayersState = {
-    convenios: true,
-    tramosKml: true,
-    subregiones: true,
-    municipios: true,
-    fotografias: true,
-    riesgo: true,
-    liquidados: true,
-    ejecucion: true
-};
 
 const antioquiaSubregiones = {
     "VALLE DE ABURRÁ": ["MEDELLIN", "MEDELLÍN", "BELLO", "ITAGÜÍ", "ITAGUI", "ENVIGADO", "SABANETA", "CALDAS", "COPACABANA", "GIRARDOTA", "LA ESTRELLA", "BARBOSA"],
@@ -1850,417 +1833,1277 @@ document.addEventListener('click', (e) => {
 });
 
 
-// ====== PESTAÑA 2: MAPA TERRITORIAL ======
-let mainMapInst = null;
-let mainMapLayerGroup = null;
 
+// ====== PESTAÑA 2: MAPA TERRITORIAL — MapLibre GL JS ======
+let mlMap = null;           // Instancia principal MapLibre GL
+let mlMapReady = false;     // Flag: mapa y estilo cargados
+let mlKmlGeojson = null;    // GeoJSON acumulado de convenios
+let mlVialData = { primaria: null, secundaria: null, terciaria: null }; // Caché de GeoJSON de vías
+let mlMpioData = null;      // Caché de GeoJSON de municipios de Antioquia
+let mlSearchMarker = null;  // Marcador temporal del buscador de mapa
+
+// Estado de visibilidad de capas
+let mlLayersState = {
+    municipios:   true,
+    subregiones:  true,
+    primaria:     true,
+    secundaria:   true,
+    terciaria:    true,
+    tramosKml:    true,
+    terrain:      true
+};
+
+// Colores simbología
+const ML_COLORS = {
+    kml:        '#0066FF',    // Azul eléctrico — convenios (prioridad 1)
+    primaria:   '#e53e3e',    // Rojo — vías primarias
+    secundaria: '#38a169',    // Verde — vías secundarias
+    terciaria_municipal: '#d69e2e', // Amarillo — terciaria municipal
+    terciaria_invias:    '#ed8936', // Naranja — terciaria INVIAS
+    municipios_fill:  'transparent',
+    municipios_line:  '#94a3b8',
+    sub_colors: {
+        'VALLE DE ABURRÁ': '#c68664', 'VALLE DE ABURRA': '#c68664',
+        'ORIENTE':         '#ffb74d',
+        'NORDESTE':        '#fefb9e',
+        'NORTE':           '#faa4b1',
+        'OCCIDENTE':       '#ffee55',
+        'SUROESTE':        '#df9ae1',
+        'URABÁ':           '#a2d984', 'URABA': '#a2d984',
+        'BAJO CAUCA':      '#dca2e8',
+        'MAGDALENA MEDIO': '#ffa1a1',
+        'OTRAS':           '#e2e8f0'
+    }
+};
+
+// ── Helper: construye HTML del popup ──────────────────────────────────────────
+function buildMLPopupHTML(props, headerColor, badgeText, titleText, showFichaBtn, rowData) {
+    const skip = new Set(['styleUrl','visibility','name','Name','NAME','description','Description','FolderName']);
+    const rows = Object.entries(props || {})
+        .filter(([k, v]) => !skip.has(k) && v !== null && v !== undefined && String(v).trim() !== '')
+        .map(([k, v]) => `<tr><td>${k}</td><td>${String(v)}</td></tr>`)
+        .join('');
+
+    const table = rows
+        ? `<table class="ml-popup-table">${rows}</table>`
+        : `<p style="font-size:10px;color:#94a3b8;font-style:italic;padding:4px 0">Sin atributos disponibles.</p>`;
+
+    const fichaBtn = showFichaBtn && rowData
+        ? `<button class="ml-popup-action-btn" onclick="(function(){document.querySelector('.maplibregl-popup-close-button')?.click();openModal(${JSON.stringify(rowData).replace(/"/g,"'")})})()">
+               <i class="fa-solid fa-folder-open mr-1"></i> Ver Ficha Técnica del Convenio
+           </button>`
+        : '';
+
+    return `
+        <div class="ml-popup-header" style="background:linear-gradient(135deg,${headerColor}dd,${headerColor})">
+            <div class="ml-popup-header-badge">${badgeText}</div>
+            <div class="ml-popup-header-title">${titleText}</div>
+        </div>
+        <div class="ml-popup-body">
+            ${table}
+            ${fichaBtn}
+        </div>`;
+}
+
+// ── Helper: muestra popup en mapa ─────────────────────────────────────────────
+function showMLPopup(lngLat, html) {
+    if (!mlMap) return;
+    new maplibregl.Popup({ closeButton: true, maxWidth: '340px', offset: 6 })
+        .setLngLat(lngLat)
+        .setHTML(html)
+        .addTo(mlMap);
+}
+
+// ── FUNCIONES AUXILIARES DE CLICK GLOBALES ─────────────────────────────────────
+function handleKmlClick(e, feature) {
+    const props = feature.properties || {};
+    const convNum = String(props.CONVENIO || props.convenio || props.Convenio || props.NUMERO || props.codigo || '').trim();
+    const rowData = rawData.find(r => String(r['CONVENIO']).trim() === convNum) || null;
+
+    const sysState = rowData ? getSystemState(rowData['ESTADO CONVENIO']) : null;
+    const headerColor = sysState ? sysState.hex : ML_COLORS.kml;
+    const badgeText = sysState ? `Convenio — ${sysState.label}` : 'Tramo KML';
+    const titleText = props.name || props.Name || props.NOMBRE_VIA || props.OBJETO || `Convenio ${convNum}` || 'Tramo de Convenio';
+
+    const cleanProps = {
+        'Convenio': convNum,
+        'Estado': rowData ? rowData['ESTADO CONVENIO'] : (props._estado || 'N/A'),
+        'Municipio': rowData ? rowData['MUNICIPIO'] : (props.MUNICIPIO || props.municipio || 'N/A')
+    };
+
+    const popupCoord = feature.geometry.type === 'Point'
+        ? feature.geometry.coordinates.slice()
+        : e.lngLat;
+
+    const html = buildMLPopupHTML(cleanProps, headerColor, badgeText, titleText, !!rowData, rowData);
+    showMLPopup(popupCoord, html);
+}
+
+function handleVialClick(e, feature, optLayerId) {
+    const props = feature.properties || {};
+    const lid = (feature.layer && feature.layer.id) || optLayerId || '';
+    const id = lid.replace('vial-', '');
+    const color = ML_COLORS[id] || '#94a3b8';
+
+    const layerNames = { primaria: 'Vía Primaria', secundaria: 'Vía Secundaria', terciaria: 'Vía Terciaria' };
+    const competente = props.COMPETENTE || props.ADMINISTR || '';
+    const actualColor = id === 'terciaria'
+        ? (competente.toUpperCase().includes('INVIAS') ? ML_COLORS.terciaria_invias : ML_COLORS.terciaria_municipal)
+        : color;
+    const titleText = props.NOMBRE_VIA || props.NOMBRE || props.name || layerNames[id];
+    const html = buildMLPopupHTML(props, actualColor, layerNames[id], titleText, false, null);
+    showMLPopup(e.lngLat, html);
+}
+
+function handleSubregionClick(e, feature) {
+    const props = feature.properties || {};
+    const muni = props.NOMBRE_MPI || props.MPIO_CNMBR || props.NOM_MPIO || 'Municipio';
+    const sub = props._subregion || 'N/A';
+    const subColor = ML_COLORS.sub_colors[sub] || '#94a3b8';
+    const popProps = { ...props };
+    delete popProps._subregion;
+    const html = buildMLPopupHTML(popProps, subColor, 'División Territorial', `${muni} — ${sub}`, false, null);
+    showMLPopup(e.lngLat, html);
+}
+
+// ── Inicializar el mapa MapLibre GL JS ────────────────────────────────────────
 async function renderMapTab() {
-    if (!mainMapInst) {
-        mainMapInst = L.map('main-map', { zoomControl: false, preferCanvas: true }).setView([6.55, -75.3], 7);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', { maxZoom: 22, subdomains: 'abcd' }).addTo(mainMapInst);
-        L.control.zoom({ position: 'bottomright' }).addTo(mainMapInst);
-        
-        // Crear panes personalizados para forzar la jerarquía visual
-        if (!mainMapInst.getPane('municipiosPane')) {
-            const pane = mainMapInst.createPane('municipiosPane');
-            pane.style.zIndex = 350;
-            pane.style.pointerEvents = 'none';
-        }
-        if (!mainMapInst.getPane('subregionesPane')) {
-            const pane = mainMapInst.createPane('subregionesPane');
-            pane.style.zIndex = 360;
-            pane.style.pointerEvents = 'auto';
-        }
-        if (!mainMapInst.getPane('labelsPane')) {
-            const pane = mainMapInst.createPane('labelsPane');
-            pane.style.zIndex = 370;
-            pane.style.pointerEvents = 'none';
-        }
-        if (!mainMapInst.getPane('kmlPane')) {
-            const pane = mainMapInst.createPane('kmlPane');
-            pane.style.zIndex = 450;
-            pane.style.pointerEvents = 'auto';
-        }
+    if (!mlMap) {
+        // Crear instancia del mapa
+        mlMap = new maplibregl.Map({
+            container: 'main-map',
+            style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+            center: [-75.5, 6.55],
+            zoom: 7.2,
+            pitch: 30,
+            bearing: 0,
+            maxZoom: 18,
+            minZoom: 5,
+            attributionControl: false
+        });
 
-        // Inicializar los LayerGroups y añadirlos al mapa
-        kmlLayerGroup = L.layerGroup().addTo(mainMapInst);
-        markersLayerGroup = L.layerGroup().addTo(mainMapInst);
-        photosLayerGroup = L.layerGroup().addTo(mainMapInst);
-        
-        window.mainMap = mainMapInst;
-        
-        // Cargar mapa base oficial de Antioquia
-        await loadAntioquiaBaseMap();
-        
-        ['vigencia', 'supervisor', 'clasificacion', 'municipio', 'subregion', 'estado', 'convenio-num'].forEach(f => {
+        // Controles de navegación
+        mlMap.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+        mlMap.addControl(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 100 }), 'bottom-left');
+        mlMap.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+        mlMap.addControl(new maplibregl.TerrainControl({
+            source: 'terrainSource',
+            exaggeration: 1.0
+        }), 'bottom-right');
+
+        // Evento: estilo cargado → añadir fuentes y capas
+        mlMap.on('load', async () => {
+            mlMapReady = true;
+
+            // ── TERRENO 3D y HILLSHADING ─────────────────────────────────────
+            mlMap.addSource('terrainSource', {
+                type: 'raster-dem',
+                url: 'https://tiles.mapterhorn.com/tilejson.json',
+                tileSize: 256
+            });
+            mlMap.addSource('hillshadeSource', {
+                type: 'raster-dem',
+                url: 'https://tiles.mapterhorn.com/tilejson.json',
+                tileSize: 256
+            });
+
+            // Añadir capa de hillshade para percibir el relieve 3D con sombras
+            const beforeLayer = mlMap.getLayer('landcover') ? 'landcover' : undefined;
+            mlMap.addLayer({
+                id: 'hills',
+                type: 'hillshade',
+                source: 'hillshadeSource',
+                layout: { visibility: 'visible' },
+                paint: { 'hillshade-shadow-color': '#473B24' }
+            }, beforeLayer);
+
+            mlMap.setTerrain({ source: 'terrainSource', exaggeration: 1.0 });
+            mlMap.setSky({
+                'sky-color': '#1a9ef0',
+                'sky-horizon-blend': 0.5,
+                'horizon-color': '#d8f0ff',
+                'horizon-fog-blend': 0.5,
+                'fog-color': '#d8e8f5',
+                'fog-ground-blend': 0.6
+            });
+
+            // ── FUENTE: MUNICIPIOS (mpio.json) ──────────────────────────────
+            try {
+                const mpioResp = await fetch('./mpio.json');
+                if (mpioResp.ok) {
+                    let mpioData = await mpioResp.json();
+
+                    // Filtrar para mostrar únicamente los municipios de Antioquia (código de departamento DPTO === '05')
+                    mpioData.features = mpioData.features.filter(f => {
+                        const dpto = String(f.properties.DPTO || '').trim();
+                        const nomDpt = String(f.properties.NOMBRE_DPT || f.properties.NOM_DEPART || '').trim().toUpperCase();
+                        return dpto === '05' || dpto === '5' || nomDpt.includes('ANTIOQUIA');
+                    });
+
+                    // Enriquecer con subregión
+                        // Normalizador robusto
+                        const normMuniName = (s) => String(s)
+                            .toUpperCase()
+                            .normalize('NFD')
+                            .replace(/[\u0300-\u036f]/g, '') // quita tildes/diacríticos: ñ→n, é→e, etc.
+                            .replace(/[^A-Z ]/g, '')         // quita cualquier otro char no alfabético
+                            .replace(/\s+/g, ' ')
+                            .trim();
+
+                        mpioData.features.forEach((f, idx) => {
+                            f.id = idx + 1;
+                            // Limpiar caracteres corruptos en las propiedades del municipio para mostrar la Ñ correcta
+                            ['NOMBRE_MPI', 'MPIO_CNMBR', 'NOM_MPIO'].forEach(key => {
+                                if (f.properties[key]) {
+                                    f.properties[key] = String(f.properties[key])
+                                        .replace(/\uFFFD/g, 'Ñ')
+                                        .replace(/\?/g, 'Ñ')
+                                        .replace(/¥/g, 'Ñ')
+                                        .replace(/\u00A5/g, 'Ñ');
+                                }
+                            });
+
+                            const rawName = f.properties.NOMBRE_MPI || f.properties.MPIO_CNMBR || f.properties.NOM_MPIO || '';
+                            const muniNorm = normMuniName(rawName);
+                            let subregion = 'OTRAS';
+                            outer:
+                            for (const [sub, munis] of Object.entries(antioquiaSubregiones)) {
+                                for (const m of munis) {
+                                    if (normMuniName(m) === muniNorm) {
+                                        subregion = sub;
+                                        break outer;
+                                    }
+                                }
+                            }
+                            f.properties._subregion = subregion;
+                        });
+
+
+                    mlMap.addSource('municipios-src', { type: 'geojson', data: mpioData });
+                    mlMpioData = mpioData;
+
+                    // Capa: relleno por subregión
+                    mlMap.addLayer({
+                        id: 'subregiones-fill',
+                        type: 'fill',
+                        source: 'municipios-src',
+                        layout: { visibility: 'visible' },
+                        paint: {
+                            'fill-color': [
+                                'match', ['get', '_subregion'],
+                                'VALLE DE ABURRÁ', '#c68664', 'VALLE DE ABURRA', '#c68664',
+                                'ORIENTE', '#ffb74d',
+                                'NORDESTE', '#fefb9e',
+                                'NORTE', '#faa4b1',
+                                'OCCIDENTE', '#ffee55',
+                                'SUROESTE', '#df9ae1',
+                                'URABÁ', '#a2d984', 'URABA', '#a2d984',
+                                'BAJO CAUCA', '#dca2e8',
+                                'MAGDALENA MEDIO', '#ffa1a1',
+                                '#e2e8f0'
+                            ],
+                            'fill-opacity': 0.5
+                        }
+                    });
+
+                    // Capa: contorno municipios
+                    mlMap.addLayer({
+                        id: 'municipios-line',
+                        type: 'line',
+                        source: 'municipios-src',
+                        layout: { visibility: 'visible' },
+                        paint: {
+                            'line-color': '#94a3b8',
+                            'line-width': 0.4,
+                            'line-opacity': 0.7
+                        }
+                    });
+
+                    // Capa: contorno subregiones (líneas negras gruesas)
+                    // Se implementa con una expresión de agrupación por subregión
+                    mlMap.addLayer({
+                        id: 'subregiones-line',
+                        type: 'line',
+                        source: 'municipios-src',
+                        layout: { visibility: 'visible' },
+                        paint: {
+                            'line-color': '#374151',
+                            'line-width': [
+                                'interpolate', ['linear'], ['zoom'],
+                                5, 0.8,
+                                8, 1.6,
+                                12, 2.5
+                            ],
+                            'line-opacity': 0.65
+                        }
+                    });
+
+                    // Capa: hover subregiones
+                    mlMap.addLayer({
+                        id: 'subregiones-fill-hover',
+                        type: 'fill',
+                        source: 'municipios-src',
+                        layout: { visibility: 'visible' },
+                        paint: {
+                            'fill-color': ['case', ['boolean', ['feature-state', 'blink'], false], '#ffee55', '#2d6a9f'],
+                            'fill-opacity': ['case',
+                                ['boolean', ['feature-state', 'blink'], false], 0.65,
+                                ['boolean', ['feature-state', 'hover'], false], 0.25,
+                                0
+                            ]
+                        }
+                    });
+
+                    // Etiquetas de municipios
+                    mlMap.addLayer({
+                        id: 'municipios-labels',
+                        type: 'symbol',
+                        source: 'municipios-src',
+                        minzoom: 9,
+                        layout: {
+                            visibility: 'visible',
+                            'text-field': ['get', 'NOMBRE_MPI'],
+                            'text-size': ['interpolate', ['linear'], ['zoom'], 9, 9, 13, 12],
+                            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                            'text-anchor': 'center',
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': '#1e293b',
+                            'text-halo-color': 'rgba(255,255,255,0.85)',
+                            'text-halo-width': 1.5
+                        }
+                    });
+
+                    // Hover interactivo sobre municipios manejado en el listener unificado del mapa
+
+
+                }
+            } catch (err) {
+                console.warn('Error cargando mpio.json:', err);
+            }
+
+            // ── FUENTE: RED VIAL (carga diferida) ───────────────────────────
+            const loadingEl = document.getElementById('map-layers-loading');
+
+            async function loadVialSource(id, url, color, width, minzoom) {
+                try {
+                    if (loadingEl) { loadingEl.textContent = `⏳ Cargando ${id}...`; loadingEl.classList.remove('hidden'); }
+                    const resp = await fetch(url);
+                    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                    const data = await resp.json();
+                    if (data.features) {
+                        data.features.forEach((f, idx) => {
+                            f.id = idx + 1;
+                        });
+                    }
+
+                    mlMap.addSource(`vial-${id}`, { type: 'geojson', data });
+                    mlVialData[id] = data;
+
+                    // Capa de sombra/glow (solo primaria)
+                    if (id === 'primaria') {
+                        mlMap.addLayer({
+                            id: `vial-${id}-glow`,
+                            type: 'line',
+                            source: `vial-${id}`,
+                            minzoom,
+                            layout: { visibility: 'visible', 'line-cap': 'round', 'line-join': 'round' },
+                            paint: {
+                                'line-color': color,
+                                'line-width': width + 4,
+                                'line-opacity': 0.15,
+                                'line-blur': 4
+                            }
+                        }, 'kml-convenios-glow'); // Insertar DEBAJO de KML
+                    }
+
+                    mlMap.addLayer({
+                        id: `vial-${id}`,
+                        type: 'line',
+                        source: `vial-${id}`,
+                        minzoom,
+                        layout: { visibility: 'visible', 'line-cap': 'round', 'line-join': 'round' },
+                        paint: {
+                            'line-color': id === 'terciaria'
+                                ? ['case',
+                                    ['==', ['upcase', ['coalesce', ['get', 'COMPETENTE'], ['get', 'ADMINISTR'], '']], 'INVIAS'],
+                                    ML_COLORS.terciaria_invias,
+                                    ML_COLORS.terciaria_municipal
+                                  ]
+                                : color,
+                            'line-width': ['interpolate', ['linear'], ['zoom'],
+                                7, width * 0.6,
+                                10, width,
+                                14, width * 1.5
+                            ],
+                            'line-opacity': 0.85
+                        }
+                    }, 'kml-convenios-glow'); // Insertar DEBAJO de KML
+
+                    // Capa de hover (resaltado blanco al pasar el mouse)
+                    mlMap.addLayer({
+                        id: `vial-${id}-hover`,
+                        type: 'line',
+                        source: `vial-${id}`,
+                        minzoom,
+                        layout: { visibility: 'visible', 'line-cap': 'round', 'line-join': 'round' },
+                        paint: {
+                            'line-color': ['case', ['boolean', ['feature-state', 'blink'], false], '#ffee55', '#ffffff'],
+                            'line-width': ['interpolate', ['linear'], ['zoom'],
+                                7, (width * 0.6) + 2,
+                                10, width + 3,
+                                14, (width * 1.5) + 4
+                            ],
+                            'line-opacity': ['case',
+                                ['boolean', ['feature-state', 'blink'], false], 0.9,
+                                ['boolean', ['feature-state', 'hover'], false], 0.8,
+                                0
+                            ]
+                        }
+                    }, 'kml-convenios-glow');
+
+
+
+                    return true;
+                } catch (err) {
+                    console.warn(`Error cargando vial-${id}:`, err);
+                    return false;
+                }
+            }
+
+            // ── CAPAS PLACEHOLDER para KML (deben existir antes de insertar viales) ──
+            mlMap.addSource('kml-convenios-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+
+            // KML — capa glow (debajo) — siempre encima por orden de addLayer
+            mlMap.addLayer({
+                id: 'kml-convenios-glow',
+                type: 'line',
+                source: 'kml-convenios-src',
+                layout: { visibility: 'visible', 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-color': ML_COLORS.kml,
+                    'line-width': 14,
+                    'line-opacity': 0.2,
+                    'line-blur': 6
+                }
+            });
+
+            // KML — capa principal
+            mlMap.addLayer({
+                id: 'kml-convenios',
+                type: 'line',
+                source: 'kml-convenios-src',
+                layout: { visibility: 'visible', 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-color': ML_COLORS.kml,
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 7, 3, 12, 6, 16, 9],
+                    'line-opacity': 0.95
+                }
+            });
+
+            // KML — hover highlight
+            mlMap.addLayer({
+                id: 'kml-convenios-hover',
+                type: 'line',
+                source: 'kml-convenios-src',
+                layout: { visibility: 'visible', 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-color': ['case', ['boolean', ['feature-state', 'blink'], false], '#ffee55', '#ffffff'],
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 7, 5, 12, 9, 16, 13],
+                    'line-opacity': ['case',
+                        ['boolean', ['feature-state', 'blink'], false], 0.9,
+                        ['boolean', ['feature-state', 'hover'], false], 0.9,
+                        0
+                    ]
+                }
+            });
+
+            // ── Cargar viales en paralelo (secundaria y terciaria son grandes) ──
+            await loadVialSource('primaria',   './data/Primaria.geojson',   ML_COLORS.primaria,   3, 6);
+            await loadVialSource('secundaria', './data/Secundaria.geojson', ML_COLORS.secundaria, 2.5, 7);
+            await loadVialSource('terciaria',  './data/Terciaria.geojson',  ML_COLORS.terciaria_municipal, 2, 8);
+
+            if (loadingEl) loadingEl.classList.add('hidden');
+
+            // ── Interacción de hover unificada (KML, Red Vial y Municipios) ─────────────
+            let hoveredKmlId = null;
+            let hoveredVialInfo = null; // { id: layerId, featureId: featId }
+            let hoveredMuniId = null;
+
+            mlMap.on('mousemove', (e) => {
+                if (!mlMapReady) return;
+
+                // 1. Prioridad 1: Tramo KML
+                if (mlLayersState.tramosKml && mlMap.getLayer('kml-convenios')) {
+                    const features = mlMap.queryRenderedFeatures(e.point, { layers: ['kml-convenios'] });
+                    if (features.length > 0) {
+                        // Limpiar hover de vías si estuviera activo
+                        if (hoveredVialInfo) {
+                            mlMap.setFeatureState(
+                                { source: `vial-${hoveredVialInfo.id}`, id: hoveredVialInfo.featureId },
+                                { hover: false }
+                            );
+                            hoveredVialInfo = null;
+                        }
+                        // Limpiar hover de municipios si estuviera activo
+                        if (hoveredMuniId !== null) {
+                            mlMap.setFeatureState(
+                                { source: 'municipios-src', id: hoveredMuniId },
+                                { hover: false }
+                            );
+                            hoveredMuniId = null;
+                        }
+
+                        const featId = features[0].id;
+                        if (hoveredKmlId !== featId) {
+                            if (hoveredKmlId !== null) {
+                                mlMap.setFeatureState({ source: 'kml-convenios-src', id: hoveredKmlId }, { hover: false });
+                            }
+                            hoveredKmlId = featId;
+                            mlMap.setFeatureState({ source: 'kml-convenios-src', id: hoveredKmlId }, { hover: true });
+                        }
+                        mlMap.getCanvas().style.cursor = 'pointer';
+                        return; // Retornar para dar prioridad total al KML
+                    }
+                }
+
+                // Si no hay hover sobre KML, apagar su resaltado
+                if (hoveredKmlId !== null) {
+                    mlMap.setFeatureState({ source: 'kml-convenios-src', id: hoveredKmlId }, { hover: false });
+                    hoveredKmlId = null;
+                }
+
+                // 2. Prioridad 2: Red Vial Oficial
+                const activeVialLayers = [];
+                ['primaria', 'secundaria', 'terciaria'].forEach(id => {
+                    if (mlLayersState[id] && mlMap.getLayer(`vial-${id}`)) {
+                        activeVialLayers.push(`vial-${id}`);
+                    }
+                });
+
+                if (activeVialLayers.length > 0) {
+                    const features = mlMap.queryRenderedFeatures(e.point, { layers: activeVialLayers });
+                    if (features.length > 0) {
+                        // Limpiar hover de municipios si estuviera activo
+                        if (hoveredMuniId !== null) {
+                            mlMap.setFeatureState(
+                                { source: 'municipios-src', id: hoveredMuniId },
+                                { hover: false }
+                            );
+                            hoveredMuniId = null;
+                        }
+
+                        const feat = features[0];
+                        const layerId = feat.layer.id.replace('vial-', '');
+                        const featId = feat.id;
+
+                        if (!hoveredVialInfo || hoveredVialInfo.id !== layerId || hoveredVialInfo.featureId !== featId) {
+                            if (hoveredVialInfo) {
+                                mlMap.setFeatureState(
+                                    { source: `vial-${hoveredVialInfo.id}`, id: hoveredVialInfo.featureId },
+                                    { hover: false }
+                                );
+                            }
+                            hoveredVialInfo = { id: layerId, featureId: featId };
+                            mlMap.setFeatureState(
+                                { source: `vial-${layerId}`, id: featId },
+                                { hover: true }
+                            );
+                        }
+                        mlMap.getCanvas().style.cursor = 'pointer';
+                        return;
+                    }
+                }
+
+                // Si no hay hover sobre vías, apagar su resaltado
+                if (hoveredVialInfo) {
+                    mlMap.setFeatureState(
+                        { source: `vial-${hoveredVialInfo.id}`, id: hoveredVialInfo.featureId },
+                        { hover: false }
+                    );
+                    hoveredVialInfo = null;
+                }
+
+                // 3. Prioridad 3: División Territorial (Municipio/Subregión)
+                if ((mlLayersState.subregiones || mlLayersState.municipios) && mlMap.getLayer('subregiones-fill')) {
+                    const features = mlMap.queryRenderedFeatures(e.point, { layers: ['subregiones-fill'] });
+                    if (features.length > 0) {
+                        const featId = features[0].id;
+                        if (hoveredMuniId !== featId) {
+                            if (hoveredMuniId !== null) {
+                                mlMap.setFeatureState({ source: 'municipios-src', id: hoveredMuniId }, { hover: false });
+                            }
+                            hoveredMuniId = featId;
+                            mlMap.setFeatureState({ source: 'municipios-src', id: hoveredMuniId }, { hover: true });
+                        }
+                        mlMap.getCanvas().style.cursor = 'pointer';
+                        return;
+                    }
+                }
+
+                // Si no hay hover sobre municipios, apagar su resaltado
+                if (hoveredMuniId !== null) {
+                    mlMap.setFeatureState({ source: 'municipios-src', id: hoveredMuniId }, { hover: false });
+                    hoveredMuniId = null;
+                }
+
+                mlMap.getCanvas().style.cursor = '';
+            });
+
+            // Limpiar hovers cuando el cursor sale completamente del mapa
+            mlMap.on('mouseleave', () => {
+                if (hoveredKmlId !== null) {
+                    mlMap.setFeatureState({ source: 'kml-convenios-src', id: hoveredKmlId }, { hover: false });
+                    hoveredKmlId = null;
+                }
+                if (hoveredVialInfo) {
+                    mlMap.setFeatureState(
+                        { source: `vial-${hoveredVialInfo.id}`, id: hoveredVialInfo.featureId },
+                        { hover: false }
+                    );
+                    hoveredVialInfo = null;
+                }
+                if (hoveredMuniId !== null) {
+                    mlMap.setFeatureState({ source: 'municipios-src', id: hoveredMuniId }, { hover: false });
+                    hoveredMuniId = null;
+                }
+                mlMap.getCanvas().style.cursor = '';
+            });
+
+            // ── FUNCIONES AUXILIARES DE CLICK (Cambiadas a globales) ──────────
+
+            // ── MANEJADOR DE CLIC UNIFICADO (Jerarquía de Prioridades) ──────
+            mlMap.on('click', (e) => {
+                // 1. Prioridad Máxima: Convenio KML
+                if (mlLayersState.tramosKml && mlMap.getLayer('kml-convenios')) {
+                    const features = mlMap.queryRenderedFeatures(e.point, { layers: ['kml-convenios'] });
+                    if (features.length > 0) {
+                        handleKmlClick(e, features[0]);
+                        return;
+                    }
+                }
+
+                // 2. Prioridad Media: Red Vial Oficial
+                const activeVialLayers = [];
+                ['primaria', 'secundaria', 'terciaria'].forEach(id => {
+                    if (mlLayersState[id] && mlMap.getLayer(`vial-${id}`)) {
+                        activeVialLayers.push(`vial-${id}`);
+                    }
+                });
+                if (activeVialLayers.length > 0) {
+                    const features = mlMap.queryRenderedFeatures(e.point, { layers: activeVialLayers });
+                    if (features.length > 0) {
+                        handleVialClick(e, features[0]);
+                        return;
+                    }
+                }
+
+                // 3. Prioridad Mínima: Municipios / Subregiones
+                if ((mlLayersState.subregiones || mlLayersState.municipios) && mlMap.getLayer('subregiones-fill')) {
+                    const features = mlMap.queryRenderedFeatures(e.point, { layers: ['subregiones-fill'] });
+                    if (features.length > 0) {
+                        handleSubregionClick(e, features[0]);
+                        return;
+                    }
+                }
+            });
+
+            // Inicializar control de capas y buscador del mapa
+            initMLLayerControl();
+            initMLMapSearch();
+
+            // Cargar KML de convenios activos
+            await renderMLMapFeatures();
+        });
+
+        // Listeners de filtros del mapa
+        ['vigencia','supervisor','clasificacion','municipio','subregion','estado','convenio-num'].forEach(f => {
             const el = document.getElementById(`map-filter-${f}`);
-            if(el) el.addEventListener('change', applyMapFilters);
+            if (el) el.addEventListener('change', applyMapFilters);
         });
         const elS = document.getElementById('map-filter-search');
-        if(elS) elS.addEventListener('input', applyMapFilters);
-        
+        if (elS) elS.addEventListener('input', applyMapFilters);
         const btnReset = document.getElementById('btn-map-reset');
-        if(btnReset) btnReset.addEventListener('click', resetMapFilters);
-        
-        // Inicializar control de capas
-        initCustomLayerControl();
+        if (btnReset) btnReset.addEventListener('click', resetMapFilters);
+
+    } else {
+        // Mapa ya inicializado — solo actualizar datos
+        mlMap.resize();
+        await renderMLMapFeatures();
     }
+
     applyMapFilters();
 }
 
+// ── Resetear filtros del mapa ─────────────────────────────────────────────────
 function resetMapFilters() {
-    ['map-filter-search', 'map-filter-vigencia', 'map-filter-supervisor', 'map-filter-clasificacion', 'map-filter-municipio', 'map-filter-subregion', 'map-filter-estado', 'map-filter-convenio-num'].forEach(id => {
+    ['map-filter-search','map-filter-vigencia','map-filter-supervisor','map-filter-clasificacion',
+     'map-filter-municipio','map-filter-subregion','map-filter-estado','map-filter-convenio-num'].forEach(id => {
         const el = document.getElementById(id);
-        if(el) el.value = '';
+        if (el) el.value = '';
     });
     applyMapFilters();
 }
 
-async function loadAntioquiaBaseMap() {
-    try {
-        const response = await fetch('./assets/mapas/antioquia_municipios.geojson');
-        if (!response.ok) throw new Error('No se pudo cargar el mapa base de Antioquia');
-        const geojsonData = await response.json();
-        
-        geojsonData.features.forEach(feature => {
-            const muniName = String(feature.properties.NOMBRE_MPI || '').toUpperCase().trim();
-            let subregion = 'OTRAS';
-            for (const [sub, munis] of Object.entries(antioquiaSubregiones)) {
-                const normalizedMunis = munis.map(m => m.toUpperCase().trim());
-                if (normalizedMunis.includes(muniName)) {
-                    subregion = sub;
-                    break;
-                }
+// ── Control de capas — toggle individual ──────────────────────────────────────
+function toggleMLLayer(layerKey, isVisible) {
+    mlLayersState[layerKey] = isVisible;
+    if (!mlMap || !mlMapReady) return;
+
+    const vis = isVisible ? 'visible' : 'none';
+
+    const layerMap = {
+        municipios:  ['municipios-line', 'municipios-labels'],
+        subregiones: ['subregiones-fill', 'subregiones-line', 'subregiones-fill-hover'],
+        primaria:    ['vial-primaria-glow', 'vial-primaria', 'vial-primaria-hover'],
+        secundaria:  ['vial-secundaria', 'vial-secundaria-hover'],
+        terciaria:   ['vial-terciaria', 'vial-terciaria-hover'],
+        tramosKml:   ['kml-convenios-glow', 'kml-convenios', 'kml-convenios-hover']
+    };
+
+    const layers = layerMap[layerKey] || [];
+    layers.forEach(lid => {
+        if (mlMap.getLayer(lid)) {
+            mlMap.setLayoutProperty(lid, 'visibility', vis);
+        }
+    });
+
+    if (layerKey === 'terrain') {
+        if (isVisible) {
+            mlMap.setTerrain({ source: 'terrainSource', exaggeration: 1.0 });
+            if (mlMap.getLayer('hills')) {
+                mlMap.setLayoutProperty('hills', 'visibility', 'visible');
             }
-            feature.properties.subregion = subregion;
-        });
-
-        // 1. Capa Municipios (Pane: municipiosPane) - Gris claro (#BDBDBD) y línea fina
-        municipiosLayer = L.geoJSON(geojsonData, {
-            pane: 'municipiosPane',
-            style: {
-                color: '#BDBDBD', 
-                weight: 0.4,
-                fillColor: 'transparent',
-                fillOpacity: 0
-            },
-            interactive: false
-        });
-
-        // 2. Capa Subregiones (Pane: subregionesPane) - Relleno semitransparente, contorno negro de 9 subregiones y hover colectivo
-        const subregionsFeatures = {};
-        
-        // Primero, creamos los polígonos de relleno a partir de los municipios originales (sin borde interno)
-        subregionesLayer = L.geoJSON(geojsonData, {
-            pane: 'subregionesPane',
-            style: function(feature) {
-                const sub = feature.properties.subregion;
-                const colors = subregionColors[sub] || { fill: '#f1f5f9', border: '#cbd5e1' };
-                return {
-                    fillColor: colors.fill,
-                    fillOpacity: 0.6,
-                    color: colors.fill, // Mismo color que el relleno para ocultar los bordes internos
-                    weight: 0.8,
-                    lineJoin: 'round'
-                };
-            },
-            onEachFeature: function(feature, layer) {
-                const sub = feature.properties.subregion;
-                if (!subregionsFeatures[sub]) {
-                    subregionsFeatures[sub] = [];
-                }
-                subregionsFeatures[sub].push(layer);
-                
-                layer.on({
-                    mouseover: function(e) {
-                        if (subregionsFeatures[sub]) {
-                            subregionsFeatures[sub].forEach(l => {
-                                if (l.setStyle) {
-                                    if (l instanceof L.Polyline && !(l instanceof L.Polygon)) {
-                                        // Es la línea de borde exterior
-                                        l.setStyle({
-                                            color: '#2d6a9f',
-                                            weight: 2.5
-                                        });
-                                    } else {
-                                        // Es el polígono del municipio
-                                        l.setStyle({
-                                            fillOpacity: 0.8,
-                                            color: '#2d6a9f',
-                                            weight: 0.8
-                                        });
-                                    }
-                                }
-                            });
-                        }
-                    },
-                    mouseout: function(e) {
-                        if (subregionsFeatures[sub]) {
-                            subregionsFeatures[sub].forEach(l => {
-                                if (l.setStyle) {
-                                    if (l instanceof L.Polyline && !(l instanceof L.Polygon)) {
-                                        // Es la línea de borde exterior, vuelve a negro
-                                        l.setStyle({
-                                            color: '#000000',
-                                            weight: 2.0
-                                        });
-                                    } else {
-                                        // Es el polígono del municipio
-                                        const colors = subregionColors[sub] || { fill: '#f1f5f9', border: '#cbd5e1' };
-                                        l.setStyle({
-                                            fillColor: colors.fill,
-                                            fillOpacity: 0.6,
-                                            color: colors.fill,
-                                            weight: 0.8
-                                        });
-                                    }
-                                }
-                            });
-                        }
-                    },
-                    click: function(e) {
-                        const polys = subregionsFeatures[sub].filter(l => l instanceof L.Polygon);
-                        const group = L.featureGroup(polys);
-                        mainMapInst.fitBounds(group.getBounds(), { padding: [30, 30] });
-                        
-                        const subSelect = document.getElementById('map-filter-subregion');
-                        if (subSelect) {
-                            subSelect.value = sub;
-                            applyMapFilters();
-                        }
-                    }
-                });
-            }
-        });
-
-        // Ahora, calculamos y dibujamos las líneas de borde negro exterior de cada subregión
-        const subregionsFeaturesList = {};
-        geojsonData.features.forEach(feature => {
-            const sub = feature.properties.subregion || 'OTRAS';
-            if (!subregionsFeaturesList[sub]) {
-                subregionsFeaturesList[sub] = [];
-            }
-            subregionsFeaturesList[sub].push(feature);
-        });
-
-        for (const [subregionName, features] of Object.entries(subregionsFeaturesList)) {
-            const rings = [];
-            features.forEach(f => {
-                const geom = f.geometry;
-                if (!geom) return;
-                if (geom.type === 'Polygon') {
-                    geom.coordinates.forEach(ring => rings.push(ring));
-                } else if (geom.type === 'MultiPolygon') {
-                    geom.coordinates.forEach(poly => {
-                        poly.forEach(ring => rings.push(ring));
-                    });
-                }
-            });
-
-            const coordKey = (p) => `${p[0].toFixed(7)},${p[1].toFixed(7)}`;
-            const edgeCounts = {};
-            const allSegments = [];
-
-            rings.forEach(ring => {
-                for (let i = 0; i < ring.length - 1; i++) {
-                    const p1 = ring[i];
-                    const p2 = ring[i+1];
-                    const k1 = coordKey(p1);
-                    const k2 = coordKey(p2);
-                    if (k1 === k2) continue;
-
-                    const edgeKey = [k1, k2].sort().join('|');
-                    edgeCounts[edgeKey] = (edgeCounts[edgeKey] || 0) + 1;
-                    allSegments.push({ p1, p2, k1, k2, edgeKey });
-                }
-            });
-
-            // Los segmentos del contorno exterior son los que ocurren exactamente una vez
-            const boundarySegments = allSegments.filter(seg => edgeCounts[seg.edgeKey] === 1);
-
-            // Crear polilíneas para estos segmentos
-            const lines = boundarySegments.map(seg => [
-                [seg.p1[1], seg.p1[0]], // Leaflet [lat, lng]
-                [seg.p2[1], seg.p2[0]]
-            ]);
-
-            if (lines.length > 0) {
-                const borderLayer = L.polyline(lines, {
-                    pane: 'subregionesPane',
-                    color: '#000000',
-                    weight: 2.0,
-                    opacity: 1.0,
-                    lineJoin: 'round',
-                    lineCap: 'round',
-                    interactive: false // Clics y hovers pasan al polígono de abajo
-                });
-                
-                // Añadir al layer group general de subregiones
-                borderLayer.addTo(subregionesLayer);
-                
-                // Asociar al grupo de destaque de esta subregión
-                if (!subregionsFeatures[subregionName]) {
-                    subregionsFeatures[subregionName] = [];
-                }
-                subregionsFeatures[subregionName].push(borderLayer);
+        } else {
+            mlMap.setTerrain(null);
+            if (mlMap.getLayer('hills')) {
+                mlMap.setLayoutProperty('hills', 'visibility', 'none');
             }
         }
-
-        // 3. Capa Etiquetas de Subregión (Pane: labelsPane)
-        subregionLabelsLayer = L.layerGroup();
-        
-        for (const [subregionName, features] of Object.entries(subregionsFeaturesList)) {
-            let latSum = 0, lngSum = 0, count = 0;
-            features.forEach(f => {
-                const tempLayer = L.geoJSON(f);
-                const center = tempLayer.getBounds().getCenter();
-                latSum += center.lat;
-                lngSum += center.lng;
-                count++;
-            });
-            const avgLat = latSum / count;
-            const avgLng = lngSum / count;
-            
-            const labelMarker = L.marker([avgLat, avgLng], {
-                icon: L.divIcon({
-                    className: 'subregion-label-container',
-                    html: `<div class="subregion-map-label text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest px-2 py-0.5 bg-white/70 dark:bg-slate-900/70 rounded shadow-sm border border-slate-300/50">${subregionName}</div>`,
-                    iconSize: [120, 20],
-                    iconAnchor: [60, 10]
-                }),
-                pane: 'labelsPane',
-                interactive: false
-            });
-            subregionLabelsLayer.addLayer(labelMarker);
-        }
-
-        // Añadir al mapa según estado inicial
-        if (mapLayersState.municipios) municipiosLayer.addTo(mainMapInst);
-        if (mapLayersState.subregiones) {
-            subregionesLayer.addTo(mainMapInst);
-            subregionLabelsLayer.addTo(mainMapInst);
-        }
-    } catch (err) {
-        console.error('Error al cargar base map:', err);
     }
 }
 
-function initCustomLayerControl() {
-    const ids = {
-        tramosKml: 'layer-chk-tramosKml',
-        subregiones: 'layer-chk-subregiones',
-        municipios: 'layer-chk-municipios'
+// ── Inicializar control de capas ──────────────────────────────────────────────
+function initMLLayerControl() {
+    const checkboxMap = {
+        'layer-chk-municipios':  'municipios',
+        'layer-chk-subregiones': 'subregiones',
+        'layer-chk-primaria':    'primaria',
+        'layer-chk-secundaria':  'secundaria',
+        'layer-chk-terciaria':   'terciaria',
+        'layer-chk-tramosKml':   'tramosKml',
+        'layer-chk-terrain':     'terrain'
     };
-    
-    for (const [key, id] of Object.entries(ids)) {
-        const el = document.getElementById(id);
+
+    for (const [chkId, layerKey] of Object.entries(checkboxMap)) {
+        const el = document.getElementById(chkId);
         if (el) {
-            el.checked = mapLayersState[key];
+            el.checked = mlLayersState[layerKey];
             el.addEventListener('change', (e) => {
-                toggleMapLayer(key, e.target.checked);
+                toggleMLLayer(layerKey, e.target.checked);
             });
         }
     }
-    
+
+    // Botón "Mostrar todas"
     const btnShowAll = document.getElementById('btn-layers-show-all');
     if (btnShowAll) {
         btnShowAll.addEventListener('click', () => {
-            for (const [key, id] of Object.entries(ids)) {
-                const el = document.getElementById(id);
-                if (el && !el.checked) {
-                    el.checked = true;
-                    toggleMapLayer(key, true);
-                }
+            for (const [chkId, layerKey] of Object.entries(checkboxMap)) {
+                const el = document.getElementById(chkId);
+                if (el && !el.checked) { el.checked = true; toggleMLLayer(layerKey, true); }
             }
         });
     }
-    
+
+    // Botón "Ocultar todas"
     const btnHideAll = document.getElementById('btn-layers-hide-all');
     if (btnHideAll) {
         btnHideAll.addEventListener('click', () => {
-            for (const [key, id] of Object.entries(ids)) {
-                const el = document.getElementById(id);
-                if (el && el.checked) {
-                    el.checked = false;
-                    toggleMapLayer(key, false);
-                }
+            for (const [chkId, layerKey] of Object.entries(checkboxMap)) {
+                const el = document.getElementById(chkId);
+                if (el && el.checked) { el.checked = false; toggleMLLayer(layerKey, false); }
             }
         });
     }
-    
+
+    // Toggle colapsar panel
     const btnToggle = document.getElementById('btn-toggle-panel');
-    const panel = document.querySelector('.map-layer-panel');
+    const panel = document.getElementById('map-layer-panel');
     if (btnToggle && panel) {
         btnToggle.addEventListener('click', () => {
             panel.classList.toggle('collapsed');
             const icon = btnToggle.querySelector('i');
             if (icon) {
-                if (panel.classList.contains('collapsed')) {
-                    icon.className = 'fa-solid fa-chevron-down';
-                } else {
-                    icon.className = 'fa-solid fa-chevron-up';
-                }
+                icon.className = panel.classList.contains('collapsed')
+                    ? 'fa-solid fa-chevron-down'
+                    : 'fa-solid fa-chevron-up';
             }
         });
     }
 }
 
-function toggleMapLayer(layerKey, isVisible) {
-    mapLayersState[layerKey] = isVisible;
-    
-    if (layerKey === 'subregiones') {
-        if (isVisible) {
-            if (subregionesLayer) subregionesLayer.addTo(mainMapInst);
-            if (subregionLabelsLayer) subregionLabelsLayer.addTo(mainMapInst);
-        } else {
-            if (subregionesLayer) mainMapInst.removeLayer(subregionesLayer);
-            if (subregionLabelsLayer) mainMapInst.removeLayer(subregionLabelsLayer);
+// ── Cargar/actualizar KML de los convenios filtrados ──────────────────────────
+let isRenderingMLMap = false;
+
+async function renderMLMapFeatures() {
+    if (!mlMap || !mlMapReady) return;
+    if (isRenderingMLMap) return;
+    isRenderingMLMap = true;
+
+    const loadingEl = document.getElementById('main-map-loading');
+    if (loadingEl) { loadingEl.textContent = 'Sincronizando convenios...'; loadingEl.classList.remove('hidden'); }
+
+    // Acumular features de todos los convenios filtrados
+    const allFeatures = [];
+    const promises = currentMapData.map(async (row) => {
+        const num = String(row['CONVENIO']).trim();
+        const sysState = getSystemState(row['ESTADO CONVENIO']);
+
+        // Intentar GeoJSON primero
+        try {
+            const r = await fetch(`./assets/mapas/${num}.geojson`);
+            if (r.ok) {
+                const d = await r.json();
+                const feats = d.features || [d];
+                feats.forEach(f => {
+                    if (f && f.geometry) {
+                        f.properties = f.properties || {};
+                        f.properties.CONVENIO = num;
+                        f.properties._estado = sysState.label;
+                        f.properties._color  = sysState.hex;
+                        allFeatures.push(f);
+                    }
+                });
+                return;
+            }
+        } catch (e) {}
+
+        // Intentar KML via omnivore (Leaflet helper) — parsear a GeoJSON
+        if (typeof omnivore !== 'undefined') {
+            try {
+                await new Promise((res) => {
+                    const cl = L.geoJSON(null);
+                    omnivore.kml(`./assets/mapas/${num}.kml`, null, cl)
+                        .on('ready', () => {
+                            const gj = cl.toGeoJSON();
+                            const feats = gj.features || [];
+                            feats.forEach(f => {
+                                if (f && f.geometry) {
+                                    f.properties = f.properties || {};
+                                    f.properties.CONVENIO = num;
+                                    f.properties._estado = sysState.label;
+                                    f.properties._color  = sysState.hex;
+                                    allFeatures.push(f);
+                                }
+                            });
+                            res();
+                        })
+                        .on('error', () => res());
+                });
+                return;
+            } catch (e) {}
         }
-    } else if (layerKey === 'municipios') {
-        if (isVisible) {
-            if (municipiosLayer) municipiosLayer.addTo(mainMapInst);
-        } else {
-            if (municipiosLayer) mainMapInst.removeLayer(municipiosLayer);
+
+        // Fallback: punto en LATITUD/LONGITUD
+        const la = parseFloat(row['LATITUD']), lo = parseFloat(row['LONGITUD']);
+        if (!isNaN(la) && !isNaN(lo) && la !== 0) {
+            allFeatures.push({
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: [lo, la] },
+                properties: {
+                    CONVENIO: num,
+                    MUNICIPIO: row['MUNICIPIO'],
+                    OBJETO: row['OBJETO'],
+                    _estado: sysState.label,
+                    _color: sysState.hex
+                }
+            });
         }
-    } else if (layerKey === 'tramosKml') {
-        if (isVisible) {
-            if (kmlLayerGroup) kmlLayerGroup.addTo(mainMapInst);
-            if (markersLayerGroup) markersLayerGroup.addTo(mainMapInst);
-        } else {
-            if (kmlLayerGroup) mainMapInst.removeLayer(kmlLayerGroup);
-            if (markersLayerGroup) mainMapInst.removeLayer(markersLayerGroup);
-        }
+    });
+
+    await Promise.all(promises);
+
+    // Asignar IDs secuenciales numéricos para feature-state
+    allFeatures.forEach((f, idx) => {
+        f.id = idx + 1;
+    });
+
+    // Actualizar fuente del mapa
+    const geojson = { type: 'FeatureCollection', features: allFeatures };
+    mlKmlGeojson = geojson;
+    if (mlMap.getSource('kml-convenios-src')) {
+        mlMap.getSource('kml-convenios-src').setData(geojson);
     }
+
+    // Ajustar vista si hay features
+    if (allFeatures.length > 0) {
+        try {
+            const coords = [];
+            allFeatures.forEach(f => {
+                if (f.geometry.type === 'LineString') {
+                    coords.push(...f.geometry.coordinates);
+                } else if (f.geometry.type === 'MultiLineString') {
+                    f.geometry.coordinates.forEach(line => coords.push(...line));
+                } else if (f.geometry.type === 'Point') {
+                    coords.push(f.geometry.coordinates);
+                }
+            });
+            if (coords.length > 0) {
+                const lngs = coords.map(c => c[0]);
+                const lats = coords.map(c => c[1]);
+                const bounds = [
+                    [Math.min(...lngs) - 0.05, Math.min(...lats) - 0.05],
+                    [Math.max(...lngs) + 0.05, Math.max(...lats) + 0.05]
+                ];
+                mlMap.fitBounds(bounds, { padding: 60, maxZoom: 13, duration: 800 });
+            }
+        } catch (e) { mlMap.setCenter([-75.5, 6.55]); mlMap.setZoom(7.2); }
+    } else {
+        mlMap.flyTo({ center: [-75.5, 6.55], zoom: 7.2, duration: 800 });
+    }
+
+    if (loadingEl) loadingEl.classList.add('hidden');
+    isRenderingMLMap = false;
 }
 
+// ── Lógica del Buscador Interactivo del Mapa ──────────────────────────────────
+function initMLMapSearch() {
+    const searchInput = document.getElementById('map-search-input');
+    const searchResults = document.getElementById('map-search-results');
+    const searchClear = document.getElementById('map-search-clear');
+    if (!searchInput || !searchResults || !searchClear) return;
+
+    const normText = (s) => String(s)
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Z0-9 ]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    function getGeometryBounds(geometry) {
+        let coords = [];
+        if (geometry.type === 'Point') {
+            coords = [geometry.coordinates];
+        } else if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
+            coords = geometry.coordinates;
+        } else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
+            geometry.coordinates.forEach(c => coords.push(...c));
+        } else if (geometry.type === 'MultiPolygon') {
+            geometry.coordinates.forEach(poly => poly.forEach(c => coords.push(...c)));
+        }
+        if (coords.length === 0) return null;
+        let lngs = coords.map(c => c[0]);
+        let lats = coords.map(c => c[1]);
+        return [
+            [Math.min(...lngs), Math.min(...lats)],
+            [Math.max(...lngs), Math.max(...lats)]
+        ];
+    }
+
+    function getGeometryCentroid(geometry) {
+        if (geometry.type === 'Point') {
+            return geometry.coordinates;
+        }
+        let coords = [];
+        if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
+            coords = geometry.coordinates;
+        } else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
+            coords = geometry.coordinates[0];
+        } else if (geometry.type === 'MultiPolygon') {
+            coords = geometry.coordinates[0][0];
+        }
+        if (coords.length === 0) return null;
+        let lng = coords.reduce((acc, val) => acc + val[0], 0) / coords.length;
+        let lat = coords.reduce((acc, val) => acc + val[1], 0) / coords.length;
+        return [lng, lat];
+    }
+
+    function clearSearch() {
+        searchInput.value = '';
+        searchResults.innerHTML = '';
+        searchResults.classList.add('hidden');
+        searchClear.classList.add('hidden');
+        if (mlSearchMarker) {
+            mlSearchMarker.remove();
+            mlSearchMarker = null;
+        }
+    }
+
+    searchClear.addEventListener('click', clearSearch);
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#map-search-container')) {
+            searchResults.classList.add('hidden');
+        }
+    });
+
+    searchInput.addEventListener('focus', () => {
+        if (searchInput.value.trim() !== '') {
+            searchResults.classList.remove('hidden');
+        }
+    });
+
+    searchInput.addEventListener('input', () => {
+        const query = searchInput.value.trim();
+        if (query === '') {
+            clearSearch();
+            return;
+        }
+        searchClear.classList.remove('hidden');
+        searchResults.classList.remove('hidden');
+
+        const normalizedQuery = normText(query);
+        const suggestions = [];
+
+        // 1. Coordenadas
+        const coordRegex = /^\s*(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)\s*$/;
+        const coordMatch = query.match(coordRegex);
+        if (coordMatch) {
+            const val1 = parseFloat(coordMatch[1]);
+            const val2 = parseFloat(coordMatch[2]);
+            let lat = null, lon = null;
+            if (val1 >= -90 && val1 <= 90 && val2 >= -180 && val2 <= 180) {
+                lat = val1;
+                lon = val2;
+            } else if (val2 >= -90 && val2 <= 90 && val1 >= -180 && val1 <= 180) {
+                lat = val2;
+                lon = val1;
+            }
+            if (lat !== null && lon !== null) {
+                suggestions.push({
+                    type: 'coords',
+                    name: `Ir a coordenadas: ${lat.toFixed(5)}, ${lon.toFixed(5)}`,
+                    lat: lat,
+                    lon: lon,
+                    category: 'Coordenadas'
+                });
+            }
+        }
+
+        // 2. Municipios de Antioquia
+        if (mlMpioData && mlMpioData.features) {
+            mlMpioData.features.forEach(f => {
+                const name = f.properties.NOMBRE_MPI || f.properties.MPIO_CNMBR || f.properties.NOM_MPIO || '';
+                const normMuni = normText(name);
+                if (normMuni.includes(normalizedQuery)) {
+                    suggestions.push({
+                        type: 'municipio',
+                        name: name,
+                        feature: f,
+                        category: 'Municipios'
+                    });
+                }
+            });
+        }
+
+        // 3. Convenios KML
+        if (mlKmlGeojson && mlKmlGeojson.features) {
+            mlKmlGeojson.features.forEach(f => {
+                const convNum = String(f.properties.CONVENIO || '').trim();
+                const name = String(f.properties.name || f.properties.Name || f.properties.NOMBRE_VIA || f.properties.OBJETO || '').trim();
+                const normConvNum = normText(convNum);
+                const normName = normText(name);
+
+                if (normConvNum.includes(normalizedQuery) || normName.includes(normalizedQuery)) {
+                    suggestions.push({
+                        type: 'kml',
+                        name: name ? `Convenio ${convNum} - ${name}` : `Convenio ${convNum}`,
+                        feature: f,
+                        category: 'Convenios'
+                    });
+                }
+            });
+        }
+
+        // 4. Red Vial Oficial
+        Object.entries(mlVialData).forEach(([layerId, geojson]) => {
+            if (geojson && geojson.features) {
+                geojson.features.forEach(f => {
+                    const name = String(f.properties.NOMBRE_VIA || f.properties.NOMBRE || f.properties.name || '').trim();
+                    const code = String(f.properties.CODIGO_VIA || f.properties.CODIGO || f.properties.código || '').trim();
+                    const normName = normText(name);
+                    const normCode = normText(code);
+
+                    if ((name && normName.includes(normalizedQuery)) || (code && normCode.includes(normalizedQuery))) {
+                        const layerNames = { primaria: 'Vía Primaria', secundaria: 'Vía Secundaria', terciaria: 'Vía Terciaria' };
+                        suggestions.push({
+                            type: 'vial',
+                            name: name ? `${name} (${code})` : `Código Vía: ${code}`,
+                            subText: layerNames[layerId],
+                            feature: f,
+                            layerId: layerId,
+                            category: 'Red Vial'
+                        });
+                    }
+                });
+            }
+        });
+
+        if (suggestions.length === 0) {
+            searchResults.innerHTML = '<div class="search-no-results"><i class="fa-solid fa-circle-info mr-1"></i> Sin resultados</div>';
+            return;
+        }
+
+        const limitedSuggestions = suggestions.slice(0, 15);
+        const categories = {};
+        limitedSuggestions.forEach(s => {
+            if (!categories[s.category]) categories[s.category] = [];
+            categories[s.category].push(s);
+        });
+
+        let html = '';
+        Object.entries(categories).forEach(([catName, items]) => {
+            html += `<div class="search-category-header">${catName}</div>`;
+            items.forEach((item, idx) => {
+                const iconMap = {
+                    coords: 'fa-location-dot',
+                    municipio: 'fa-map-pin',
+                    kml: 'fa-route',
+                    vial: 'fa-road'
+                };
+                const icon = iconMap[item.type] || 'fa-location-arrow';
+                const subText = item.subText ? `<span class="search-item-sub">${item.subText}</span>` : '';
+                html += `
+                    <div class="search-item" data-category="${catName}" data-index="${idx}">
+                        <div class="search-item-main">
+                            <i class="fa-solid ${icon} search-item-icon"></i>
+                            <span class="search-item-text" title="${item.name}">${item.name}</span>
+                        </div>
+                        ${subText}
+                    </div>
+                `;
+            });
+        });
+
+        searchResults.innerHTML = html;
+
+        searchResults.querySelectorAll('.search-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const cat = el.dataset.category;
+                const idx = parseInt(el.dataset.index);
+                const item = categories[cat][idx];
+
+                searchResults.classList.add('hidden');
+                searchInput.value = item.name;
+
+                if (mlSearchMarker) {
+                    mlSearchMarker.remove();
+                    mlSearchMarker = null;
+                }
+
+                if (item.type === 'coords') {
+                    mlSearchMarker = new maplibregl.Marker({ color: '#ef4444' })
+                        .setLngLat([item.lon, item.lat])
+                        .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(`
+                            <div class="p-3 font-sans text-xs">
+                                <div class="font-black text-slate-800 uppercase tracking-widest text-[9px] mb-1">
+                                    <i class="fa-solid fa-location-dot text-red-500 mr-1"></i> Búsqueda por Coordenadas
+                                </div>
+                                <div class="font-bold text-slate-600">${item.lat.toFixed(6)}, ${item.lon.toFixed(6)}</div>
+                            </div>
+                        `))
+                        .addTo(mlMap);
+
+                    mlMap.flyTo({
+                        center: [item.lon, item.lat],
+                        zoom: 14,
+                        pitch: 45,
+                        duration: 1500
+                    });
+
+                    setTimeout(() => {
+                        if (mlSearchMarker) mlSearchMarker.togglePopup();
+                    }, 1500);
+
+                } else {
+                    const feature = item.feature;
+                    const bounds = getGeometryBounds(feature.geometry);
+                    const centroid = getGeometryCentroid(feature.geometry);
+
+                    if (bounds && centroid) {
+                        mlMap.fitBounds(bounds, {
+                            padding: item.type === 'municipio' ? 80 : 100,
+                            maxZoom: item.type === 'municipio' ? 12 : 14,
+                            duration: 1500
+                        });
+
+                        // Lanzar el parpadeo de resaltado durante 2 segundos al llegar
+                        setTimeout(() => {
+                            const targetSource = item.type === 'municipio'
+                                ? 'municipios-src'
+                                : (item.type === 'kml' ? 'kml-convenios-src' : `vial-${item.layerId}`);
+                            
+                            console.log("Iniciando parpadeo para:", targetSource, "feature ID:", feature.id);
+
+                            if (feature.id !== undefined && feature.id !== null) {
+                                let isBlink = false;
+                                let blinkCount = 0;
+                                const intervalId = setInterval(() => {
+                                    isBlink = !isBlink;
+                                    console.log("Estableciendo estado blink:", isBlink, "para la feature ID:", feature.id);
+                                    mlMap.setFeatureState({ source: targetSource, id: feature.id }, { blink: isBlink });
+                                    blinkCount++;
+                                    if (blinkCount >= 8) {
+                                        clearInterval(intervalId);
+                                        mlMap.setFeatureState({ source: targetSource, id: feature.id }, { blink: false });
+                                        console.log("Parpadeo finalizado");
+                                    }
+                                }, 250);
+                            } else {
+                                console.warn("No se pudo iniciar parpadeo: la feature no tiene un ID válido.", feature);
+                            }
+                        }, 1000);
+
+                        setTimeout(() => {
+                            const fakeEvent = { lngLat: { lng: centroid[0], lat: centroid[1] } };
+                            console.log("Abriendo popup para:", item.type, "con coordenadas:", fakeEvent.lngLat);
+                            if (item.type === 'municipio') {
+                                handleSubregionClick(fakeEvent, feature);
+                            } else if (item.type === 'kml') {
+                                handleKmlClick(fakeEvent, feature);
+                            } else if (item.type === 'vial') {
+                                handleVialClick(fakeEvent, feature, `vial-${item.layerId}`);
+                            }
+                        }, 1550);
+                    }
+                }
+            });
+        });
+    });
+}
+
+// ── Variables KPI de mapa ─────────────────────────────────────────────────────
 let currentMapData = [];
 
 function applyMapFilters() {
-    const search = document.getElementById('map-filter-search').value.toLowerCase().trim();
-    const vigencia = document.getElementById('map-filter-vigencia').value.trim();
-    const municipio = document.getElementById('map-filter-municipio').value.trim();
-    const supervisor = document.getElementById('map-filter-supervisor').value.trim();
-    const clasificacion = document.getElementById('map-filter-clasificacion').value.trim();
-    const subregion = document.getElementById('map-filter-subregion').value.trim();
-    const estado = document.getElementById('map-filter-estado').value.trim();
-    const convenioNum = document.getElementById('map-filter-convenio-num') ? document.getElementById('map-filter-convenio-num').value.trim() : '';
+    const search      = document.getElementById('map-filter-search')?.value.toLowerCase().trim() || '';
+    const vigencia    = document.getElementById('map-filter-vigencia')?.value.trim() || '';
+    const municipio   = document.getElementById('map-filter-municipio')?.value.trim() || '';
+    const supervisor  = document.getElementById('map-filter-supervisor')?.value.trim() || '';
+    const clasificacion = document.getElementById('map-filter-clasificacion')?.value.trim() || '';
+    const subregion   = document.getElementById('map-filter-subregion')?.value.trim() || '';
+    const estado      = document.getElementById('map-filter-estado')?.value.trim() || '';
+    const convenioNum = document.getElementById('map-filter-convenio-num')?.value.trim() || '';
 
     currentMapData = rawData.filter(row => {
         const rowValsStr = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
-        const matchSearch = !search || rowValsStr.includes(search);
-        const matchVig = !vigencia || String(row['VIGENCIA'] || '').trim() === vigencia;
-        const matchMun = !municipio || String(row['MUNICIPIO'] || '').trim() === municipio;
-        const matchSup = !supervisor || String(row['SUPERVISOR'] || '').trim() === supervisor;
-        const matchClasif = !clasificacion || String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim() === clasificacion;
-        const matchSub = !subregion || String(row['SUBREGION'] || '').trim() === subregion;
-        const matchEstado = !estado || String(row['ESTADO CONVENIO'] || '').trim() === estado;
-        const matchConv = !convenioNum || String(row['CONVENIO'] || '').trim() === convenioNum;
+        const matchSearch    = !search      || rowValsStr.includes(search);
+        const matchVig       = !vigencia    || String(row['VIGENCIA'] || '').trim() === vigencia;
+        const matchMun       = !municipio   || String(row['MUNICIPIO'] || '').trim() === municipio;
+        const matchSup       = !supervisor  || String(row['SUPERVISOR'] || '').trim() === supervisor;
+        const matchClasif    = !clasificacion || String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim() === clasificacion;
+        const matchSub       = !subregion   || String(row['SUBREGION'] || '').trim() === subregion;
+        const matchEstado    = !estado      || String(row['ESTADO CONVENIO'] || '').trim() === estado;
+        const matchConv      = !convenioNum || String(row['CONVENIO'] || '').trim() === convenioNum;
         return matchSearch && matchVig && matchMun && matchSup && matchClasif && matchSub && matchEstado && matchConv;
     });
 
     updateMapFilterSelects(search, vigencia, municipio, supervisor, clasificacion, subregion, estado, convenioNum);
     updateMapKPIs();
-    renderMapFeatures();
+    if (mlMap && mlMapReady) renderMLMapFeatures();
 }
 
 function updateMapFilterSelects(cSearch, cVig, cMun, cSup, cClas, cSub, cEst, cConv) {
@@ -2268,35 +3111,35 @@ function updateMapFilterSelects(cSearch, cVig, cMun, cSup, cClas, cSub, cEst, cC
         const valid = rawData.filter(row => {
             const rowValsStr = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
             const matchSearch = !cSearch || rowValsStr.includes(cSearch);
-            const matchVig = exclude === 'VIGENCIA' ? true : (!cVig || String(row['VIGENCIA']).trim() === cVig);
-            const matchMun = exclude === 'MUNICIPIO' ? true : (!cMun || String(row['MUNICIPIO'] || '').trim() === cMun);
-            const matchSup = exclude === 'SUPERVISOR' ? true : (!cSup || String(row['SUPERVISOR'] || '').trim() === cSup);
-            const matchClas = exclude === 'CLASIFICACIÓN' ? true : (!cClas || String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim() === cClas);
-            const matchSub = exclude === 'SUBREGION' ? true : (!cSub || String(row['SUBREGION'] || '').trim() === cSub);
-            const matchEst = exclude === 'ESTADO CONVENIO' ? true : (!cEst || String(row['ESTADO CONVENIO'] || '').trim() === cEst);
-            const matchConv = exclude === 'CONVENIO' ? true : (!cConv || String(row['CONVENIO'] || '').trim() === cConv);
+            const matchVig    = exclude === 'VIGENCIA'         ? true : (!cVig  || String(row['VIGENCIA']).trim() === cVig);
+            const matchMun    = exclude === 'MUNICIPIO'        ? true : (!cMun  || String(row['MUNICIPIO'] || '').trim() === cMun);
+            const matchSup    = exclude === 'SUPERVISOR'       ? true : (!cSup  || String(row['SUPERVISOR'] || '').trim() === cSup);
+            const matchClas   = exclude === 'CLASIFICACIÓN'    ? true : (!cClas || String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim() === cClas);
+            const matchSub    = exclude === 'SUBREGION'        ? true : (!cSub  || String(row['SUBREGION'] || '').trim() === cSub);
+            const matchEst    = exclude === 'ESTADO CONVENIO'  ? true : (!cEst  || String(row['ESTADO CONVENIO'] || '').trim() === cEst);
+            const matchConv   = exclude === 'CONVENIO'         ? true : (!cConv || String(row['CONVENIO'] || '').trim() === cConv);
             return matchSearch && matchVig && matchMun && matchSup && matchClas && matchSub && matchEst && matchConv;
         });
         return [...new Set(valid.map(i => {
-            if(field === 'CLASIFICACIÓN') return String(i['CLASIFICACIÓN'] || i['CLASIFICACI"N'] || '').trim();
+            if (field === 'CLASIFICACIÓN') return String(i['CLASIFICACIÓN'] || i['CLASIFICACI"N'] || '').trim();
             return String(i[field] || '').trim();
         }).filter(Boolean))].sort();
     };
-    
+
     const upd = (id, options, current) => {
         const el = document.getElementById(id);
-        if(!el) return;
-        const finalVal = options.includes(current) ? current : "";
+        if (!el) return;
+        const finalVal = options.includes(current) ? current : '';
         el.innerHTML = '<option value="">Todos</option>' + options.map(v => `<option value="${v}">${v}</option>`).join('');
         el.value = finalVal;
     };
-    
-    upd('map-filter-vigencia', getValid('VIGENCIA', 'VIGENCIA').reverse(), cVig);
-    upd('map-filter-supervisor', getValid('SUPERVISOR', 'SUPERVISOR'), cSup);
-    upd('map-filter-clasificacion', getValid('CLASIFICACIÓN', 'CLASIFICACIÓN'), cClas);
-    upd('map-filter-municipio', getValid('MUNICIPIO', 'MUNICIPIO'), cMun);
-    upd('map-filter-subregion', getValid('SUBREGION', 'SUBREGION'), cSub);
-    upd('map-filter-estado', getValid('ESTADO CONVENIO', 'ESTADO CONVENIO'), cEst);
+
+    upd('map-filter-vigencia',     getValid('VIGENCIA', 'VIGENCIA').reverse(), cVig);
+    upd('map-filter-supervisor',   getValid('SUPERVISOR', 'SUPERVISOR'), cSup);
+    upd('map-filter-clasificacion',getValid('CLASIFICACIÓN', 'CLASIFICACIÓN'), cClas);
+    upd('map-filter-municipio',    getValid('MUNICIPIO', 'MUNICIPIO'), cMun);
+    upd('map-filter-subregion',    getValid('SUBREGION', 'SUBREGION'), cSub);
+    upd('map-filter-estado',       getValid('ESTADO CONVENIO', 'ESTADO CONVENIO'), cEst);
     upd('map-filter-convenio-num', getValid('CONVENIO', 'CONVENIO'), cConv);
 }
 
@@ -2306,19 +3149,20 @@ function updateMapKPIs() {
     let act = 0, km = 0, inv = 0, area = 0;
     currentMapData.forEach(r => {
         const est = String(r['ESTADO CONVENIO'] || '').toUpperCase();
-        if(est.includes('EJECUCI')) act++;
-        km += (r['LONGITUD EJECUTADA'] || 0) / 1000;
+        if (est.includes('EJECUCI')) act++;
+        km   += (r['LONGITUD EJECUTADA'] || 0) / 1000;
         area += (r['AREA EJECUTADA (M2)'] || 0);
-        inv += (r['VALOR TOTAL'] || 0);
+        inv  += (r['VALOR TOTAL'] || 0);
     });
-    
-    document.getElementById('kpi-map-mun').innerHTML = `${numMun} <span class="text-xs font-semibold text-slate-400 dark:text-slate-500">de 125</span>`;
-    document.getElementById('kpi-map-sub').textContent = numSub;
-    document.getElementById('kpi-map-km').textContent = km.toFixed(2);
-    document.getElementById('kpi-map-area').textContent = formatNumber(area);
-    document.getElementById('kpi-map-inv').textContent = formatCurrency(inv);
-    document.getElementById('kpi-map-activos').textContent = act;
-    
+
+    const mKpi = document.getElementById('kpi-map-mun');
+    if (mKpi) mKpi.innerHTML = `${numMun} <span class="text-xs font-semibold text-slate-400 dark:text-slate-500">de 125</span>`;
+    const sKpi = document.getElementById('kpi-map-sub');    if (sKpi) sKpi.textContent = numSub;
+    const kKpi = document.getElementById('kpi-map-km');     if (kKpi) kKpi.textContent = km.toFixed(2);
+    const aKpi = document.getElementById('kpi-map-area');   if (aKpi) aKpi.textContent = formatNumber(area);
+    const iKpi = document.getElementById('kpi-map-inv');    if (iKpi) iKpi.textContent = formatCurrency(inv);
+    const acKpi= document.getElementById('kpi-map-activos'); if (acKpi) acKpi.textContent = act;
+
     updateMapCharts();
 }
 
@@ -2329,189 +3173,43 @@ function updateMapCharts() {
         const m = r['MUNICIPIO'] || 'N/A';
         const l = r['LONGITUD EJECUTADA'] || 0;
         const i = r['VALOR TOTAL'] || 0;
-        
         subL[s] = (subL[s] || 0) + l;
         subI[s] = (subI[s] || 0) + i;
         munL[m] = (munL[m] || 0) + l;
         munI[m] = (munI[m] || 0) + i;
     });
-    
-    const sL = Object.entries(subL).sort((a,b) => b[1]-a[1]);
-    const sI = Object.entries(subI).sort((a,b) => b[1]-a[1]);
-    const mL = Object.entries(munL).sort((a,b) => b[1]-a[1]).slice(0, 15);
-    const mI = Object.entries(munI).sort((a,b) => b[1]-a[1]).slice(0, 15);
-    
+
+    const sL = Object.entries(subL).sort((a, b) => b[1] - a[1]);
+    const sI = Object.entries(subI).sort((a, b) => b[1] - a[1]);
+    const mL = Object.entries(munL).sort((a, b) => b[1] - a[1]).slice(0, 15);
+    const mI = Object.entries(munI).sort((a, b) => b[1] - a[1]).slice(0, 15);
+
     const drawChart = (id, type, dataArr, formatCb, color) => {
         const el = document.getElementById(id);
-        if(!el) return;
-        if(charts[id]) charts[id].destroy();
+        if (!el) return;
+        if (charts[id]) charts[id].destroy();
         charts[id] = new Chart(el, {
-            type: type,
+            type,
             data: {
                 labels: dataArr.map(d => d[0]),
                 datasets: [{ data: dataArr.map(d => d[1]), backgroundColor: color, borderRadius: 4 }]
             },
             options: {
-                indexAxis: type === 'bar' && id.includes('top-mun') ? 'y' : (id.includes('sub-inv') ? 'y' : 'x'),
+                indexAxis: (type === 'bar' && (id.includes('top-mun') || id.includes('sub-inv'))) ? 'y' : 'x',
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${formatCb(c.raw)}` } } },
-                scales: {
-                    x: { ticks: { font: {size: 9} } },
-                    y: { ticks: { font: {size: 9} } }
-                }
+                scales: { x: { ticks: { font: { size: 9 } } }, y: { ticks: { font: { size: 9 } } } }
             }
         });
     };
-    
-    drawChart('chart-sub-long', 'bar', sL, v => formatNumber(v) + ' m', '#10b981');
-    drawChart('chart-sub-inv', 'bar', sI, v => formatCurrency(v), '#3b82f6');
+
+    drawChart('chart-sub-long',     'bar', sL, v => formatNumber(v) + ' m', '#10b981');
+    drawChart('chart-sub-inv',      'bar', sI, v => formatCurrency(v),       '#3b82f6');
     drawChart('chart-top-mun-long', 'bar', mL, v => formatNumber(v) + ' m', '#10b981');
-    drawChart('chart-top-mun-inv', 'bar', mI, v => formatCurrency(v), '#3b82f6');
+    drawChart('chart-top-mun-inv',  'bar', mI, v => formatCurrency(v),       '#3b82f6');
 }
-
-let isRenderingMap = false;
-async function renderMapFeatures() {
-    if(isRenderingMap) return;
-    isRenderingMap = true;
-    
-    const loadingEl = document.getElementById('main-map-loading');
-    if(loadingEl) loadingEl.classList.remove('hidden');
-    
-    // Limpiar los LayerGroups correspondientes
-    if(kmlLayerGroup) kmlLayerGroup.clearLayers();
-    if(markersLayerGroup) markersLayerGroup.clearLayers();
-    if(photosLayerGroup) photosLayerGroup.clearLayers();
-    
-    const promises = currentMapData.map(async (row) => {
-        const num = String(row['CONVENIO']).trim();
-        const sysState = getSystemState(row['ESTADO CONVENIO']);
-        const color = sysState.hex;
-        
-        const style = { color: color, weight: 5, opacity: 0.9, pane: 'kmlPane', lineCap: 'round', lineJoin: 'round' };
-        const highlightStyle = { color: '#ffffff', weight: 8, opacity: 1, pane: 'kmlPane', lineCap: 'round', lineJoin: 'round' };
-        
-        const tooltipContent = `
-            <div class="font-sans text-[11px] leading-tight text-center">
-                <div class="font-black text-white uppercase tracking-wider">
-                    Convenio ${num}
-                </div>
-                <div class="text-[9px] text-amber-300 font-bold mt-1">
-                    <i class="fa-solid fa-hand-pointer mr-1 text-[8px]"></i> Clic para ver más información
-                </div>
-            </div>
-        `;
-        
-        const onEachFeat = (feature, layer) => {
-            layer.bindTooltip(tooltipContent, { sticky: true, className: 'custom-leaflet-tooltip' });
-            layer.on('mouseover', () => { if(layer.setStyle) layer.setStyle(highlightStyle); });
-            layer.on('mouseout', () => { if(layer.setStyle) layer.setStyle(style); });
-            layer.on('click', () => { openModal(row); });
-        };
-
-        const la = parseFloat(row['LATITUD']), lo = parseFloat(row['LONGITUD']);
-
-        // Consultar el caché en memoria para agilizar la visualización
-        if (mapGeomCache[num]) {
-            const cached = mapGeomCache[num];
-            if (cached.type === 'geojson') {
-                const l = L.geoJSON(cached.data, { 
-                    style: style, 
-                    pane: 'kmlPane',
-                    pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 6, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8, pane: 'kmlPane' }),
-                    onEachFeature: onEachFeat
-                });
-                kmlLayerGroup.addLayer(l);
-            } else if (cached.type === 'circleMarker') {
-                const marker = L.circleMarker(cached.coords, { radius: 8, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.9, pane: 'kmlPane' });
-                marker.bindTooltip(tooltipContent, { sticky: true });
-                marker.on('click', () => { openModal(row); });
-                markersLayerGroup.addLayer(marker);
-            }
-            return;
-        }
-
-        // Intentar GeoJSON
-        try {
-            const r = await fetch(`./assets/mapas/${num}.geojson`);
-            if(r.ok) {
-                const d = await r.json();
-                mapGeomCache[num] = { type: 'geojson', data: d };
-                const l = L.geoJSON(d, { 
-                    style: style, 
-                    pane: 'kmlPane',
-                    pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 6, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8, pane: 'kmlPane' }),
-                    onEachFeature: onEachFeat
-                });
-                kmlLayerGroup.addLayer(l);
-                return;
-            }
-        } catch(e) {}
-        
-        // Intentar KML
-        if(typeof omnivore !== 'undefined') {
-            try {
-                await new Promise((res) => {
-                    const cl = L.geoJSON(null, {
-                        style: style,
-                        pane: 'kmlPane',
-                        pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 6, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8, pane: 'kmlPane' }),
-                        onEachFeature: onEachFeat
-                    });
-                    const k = omnivore.kml(`./assets/mapas/${num}.kml`, null, cl).on('ready', () => {
-                        const geojson = cl.toGeoJSON();
-                        mapGeomCache[num] = { type: 'geojson', data: geojson };
-                        kmlLayerGroup.addLayer(k); 
-                        res(true);
-                    }).on('error', () => res(false));
-                });
-                return;
-            } catch(e) {}
-        }
-        
-        // Fallback: Marcador de Círculo
-        if(!isNaN(la) && !isNaN(lo) && la!==0) {
-            mapGeomCache[num] = { type: 'circleMarker', coords: [la, lo] };
-            const marker = L.circleMarker([la, lo], { radius: 8, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.9, pane: 'kmlPane' });
-            marker.bindTooltip(tooltipContent, { sticky: true });
-            marker.on('click', () => { openModal(row); });
-            markersLayerGroup.addLayer(marker);
-        }
-    });
-
-    await Promise.all(promises);
-    
-    // Adaptar vista según capas visibles y cargadas
-    const activeLayers = [];
-    if (mapLayersState.tramosKml) {
-        if (kmlLayerGroup) activeLayers.push(...kmlLayerGroup.getLayers());
-        if (markersLayerGroup) activeLayers.push(...markersLayerGroup.getLayers());
-    }
-    
-    if (activeLayers.length > 0) {
-        try {
-            const bounds = L.featureGroup(activeLayers).getBounds();
-            mainMapInst.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
-        } catch(e) {}
-    } else {
-        mainMapInst.setView([6.55, -75.3], 7);
-    }
-    
-    // Sincronizar estado visual de los LayerGroups de Leaflet (añadir/quitar del mapa)
-    if (mainMapInst) {
-        if (mapLayersState.tramosKml) {
-            kmlLayerGroup.addTo(mainMapInst);
-            markersLayerGroup.addTo(mainMapInst);
-        } else {
-            mainMapInst.removeLayer(kmlLayerGroup);
-            mainMapInst.removeLayer(markersLayerGroup);
-        }
-    }
-    
-    if(loadingEl) loadingEl.classList.add('hidden');
-    isRenderingMap = false;
-}
-
 // ====== PESTAÑA 3: PLAN DE DESARROLLO ======
+
 
 // Indicadores estratégicos del Plan de Desarrollo 2024-2027 con metas oficiales
 const indicadoresEstrategicos = {

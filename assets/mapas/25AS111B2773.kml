@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>25AS111B2773</name>
+	<open>1</open>
+	<atom:link rel="app" href="https://www.google.com/earth/about/versions/#earth-pro" title="Google Earth Pro 7.3.7.1155"></atom:link>
+	<StyleMap id="__managed_style_0FEA92DEB13B390E4BD7">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#failed0</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#failed</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="failed">
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>3</width>
+		</LineStyle>
+	</Style>
+	<Style id="failed0">
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>3</width>
+		</LineStyle>
+	</Style>
+	<Placemark id="0FB94412963B3910BC19">
+		<name>Placa Huella 100 metros</name>
+		<LookAt>
+			<longitude>-75.96135621710492</longitude>
+			<latitude>6.205900018912554</latitude>
+			<altitude>1672.337808275225</altitude>
+			<heading>6.953704185400259</heading>
+			<tilt>0</tilt>
+			<gx:fovy>30</gx:fovy>
+			<range>111.4455579183596</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0FEA92DEB13B390E4BD7</styleUrl>
+		<LineString>
+			<coordinates>
+				-75.9617699647477,6.205338327316771,0 -75.96174442122809,6.205438612810498,0 -75.9617244943049,6.205511666302615,0 -75.96170247207542,6.205577943287107,0 -75.96168092730927,6.205618136569388,0 -75.96164306037984,6.205655320731526,0 -75.96140272370391,6.205850148200824,0 -75.96131483803832,6.205916937879508,0 -75.96126633507602,6.205954370763811,0 -75.96122234791133,6.205986782460066,0 -75.96120652510345,6.205999856059406,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+</Document>
+</kml>

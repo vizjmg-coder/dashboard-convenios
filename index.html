@@ -35,9 +35,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Leaflet (mini-mapa en ficha técnica y resumen) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-omnivore/0.3.4/leaflet-omnivore.min.js"></script>
+    <!-- MapLibre GL JS (visor principal Mapa Territorial) -->
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+    <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -693,40 +697,87 @@
                     <span id="main-map-loading" class="text-xs font-bold text-slate-500 hidden"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Sincronizando KMLs...</span>
                 </div>
                 <div id="main-map" class="flex-1 bg-slate-100 dark:bg-slate-900 w-full z-0 relative">
-                    <!-- Control de Capas Personalizado -->
-                    <div class="map-layer-panel absolute top-4 right-4 z-[1000] bg-white dark:bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 w-64 select-none">
-                        <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
-                            <h3 class="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
-                                <i class="fa-solid fa-layer-group text-institutional-primary"></i> Capas del mapa
+                    <!-- Buscador Interactivo MapLibre GL -->
+                    <div class="map-search-container" id="map-search-container">
+                        <div class="map-search-bar">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="map-search-input" placeholder="Buscar coord., municipio o vía..." autocomplete="off">
+                            <button id="map-search-clear" class="search-clear-btn hidden" title="Limpiar búsqueda">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <div class="map-search-results hidden" id="map-search-results"></div>
+                    </div>
+
+                    <!-- Control de Capas MapLibre GL -->
+                    <div class="map-layer-panel" id="map-layer-panel">
+                        <div class="layer-panel-header">
+                            <h3 class="layer-panel-title">
+                                <i class="fa-solid fa-layer-group"></i> Capas del Mapa
                             </h3>
-                            <button id="btn-toggle-panel" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs focus:outline-none">
+                            <button id="btn-toggle-panel" class="layer-panel-toggle" title="Colapsar panel">
                                 <i class="fa-solid fa-chevron-up"></i>
                             </button>
                         </div>
-                        
-                        <div id="layer-panel-content" class="space-y-2.5">
-                            <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
-                                <input type="checkbox" id="layer-chk-tramosKml" checked class="rounded border-slate-300 text-institutional-primary focus:ring-institutional-primary w-4 h-4">
-                                <i class="fa-solid fa-route text-slate-400"></i> Tramos KML
+
+                        <div id="layer-panel-content">
+                            <!-- Sección: Convenios -->
+                            <div class="layer-group-label">Convenios</div>
+                            <label class="layer-item">
+                                <input type="checkbox" id="layer-chk-tramosKml" checked>
+                                <span class="layer-dot" style="background:#0066FF"></span>
+                                <span class="layer-name"><i class="fa-solid fa-route"></i> Tramos KML Convenios</span>
                             </label>
-                            <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
-                                <input type="checkbox" id="layer-chk-subregiones" checked class="rounded border-slate-300 text-institutional-primary focus:ring-institutional-primary w-4 h-4">
-                                <i class="fa-solid fa-draw-polygon text-slate-400"></i> Subregiones
+
+                            <!-- Sección: Red Vial -->
+                            <div class="layer-group-label">Red Vial Oficial</div>
+                            <label class="layer-item">
+                                <input type="checkbox" id="layer-chk-primaria" checked>
+                                <span class="layer-dot" style="background:#e53e3e"></span>
+                                <span class="layer-name"><i class="fa-solid fa-road"></i> Vías Primarias</span>
                             </label>
-                            <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
-                                <input type="checkbox" id="layer-chk-municipios" checked class="rounded border-slate-300 text-institutional-primary focus:ring-institutional-primary w-4 h-4">
-                                <i class="fa-solid fa-border-all text-slate-400"></i> Municipios
+                            <label class="layer-item">
+                                <input type="checkbox" id="layer-chk-secundaria" checked>
+                                <span class="layer-dot" style="background:#38a169"></span>
+                                <span class="layer-name"><i class="fa-solid fa-road"></i> Vías Secundarias</span>
                             </label>
-                            
-                            <div class="grid grid-cols-2 gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-700 text-center">
-                                <button id="btn-layers-show-all" class="px-2 py-1.5 text-[10px] font-bold bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-slate-700 dark:text-slate-200 transition focus:outline-none">
-                                    Mostrar todas
-                                </button>
-                                <button id="btn-layers-hide-all" class="px-2 py-1.5 text-[10px] font-bold bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-slate-700 dark:text-slate-200 transition focus:outline-none">
-                                    Ocultar todas
-                                </button>
+                            <label class="layer-item">
+                                <input type="checkbox" id="layer-chk-terciaria" checked>
+                                <span class="layer-dot" style="background:#d69e2e"></span>
+                                <span class="layer-name"><i class="fa-solid fa-road"></i> Vías Terciarias</span>
+                            </label>
+
+                            <!-- Sección: División Territorial -->
+                            <div class="layer-group-label">División Territorial</div>
+                            <label class="layer-item">
+                                <input type="checkbox" id="layer-chk-subregiones" checked>
+                                <span class="layer-dot" style="background:#a78bfa"></span>
+                                <span class="layer-name"><i class="fa-solid fa-draw-polygon"></i> Subregiones</span>
+                            </label>
+                            <label class="layer-item">
+                                <input type="checkbox" id="layer-chk-municipios" checked>
+                                <span class="layer-dot" style="background:#94a3b8"></span>
+                                <span class="layer-name"><i class="fa-solid fa-border-all"></i> Municipios</span>
+                            </label>
+
+                            <!-- Sección: Terreno -->
+                            <div class="layer-group-label">Vista 3D</div>
+                            <label class="layer-item">
+                                <input type="checkbox" id="layer-chk-terrain" checked>
+                                <span class="layer-dot" style="background:#78716c"></span>
+                                <span class="layer-name"><i class="fa-solid fa-mountain"></i> Terreno 3D</span>
+                            </label>
+
+                            <div class="layer-panel-actions">
+                                <button id="btn-layers-show-all"><i class="fa-solid fa-eye"></i> Mostrar todas</button>
+                                <button id="btn-layers-hide-all"><i class="fa-solid fa-eye-slash"></i> Ocultar todas</button>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Indicador de carga de capas -->
+                    <div id="map-layers-loading" class="map-layers-loading hidden">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Cargando red vial...
                     </div>
                 </div>
             </div>

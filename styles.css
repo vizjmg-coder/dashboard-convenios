@@ -665,17 +665,7 @@ body {
     filter: drop-shadow(0 1px 2px rgba(192,57,43,0.25));
 }
 
-/* --- 20. VISOR DE MAPA Y CAPAS --- */
-.map-layer-panel {
-    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease, opacity 0.3s ease;
-    max-height: 500px;
-    opacity: 0.98;
-}
-.map-layer-panel.collapsed {
-    max-height: 48px;
-    padding-bottom: 0;
-    overflow: hidden;
-}
+/* --- 20. VISOR DE MAPA Y CAPAS (Leaflet mini-map) --- */
 .subregion-map-label {
     text-shadow: 0 1px 2px rgba(255,255,255,0.8);
     pointer-events: none !important;
@@ -706,7 +696,6 @@ body {
     transform: scale(1.1);
     box-shadow: 0 6px 14px rgba(0,0,0,0.2);
 }
-
 .subregion-label-container {
     display: flex;
     justify-content: center;
@@ -714,3 +703,626 @@ body {
     border: none !important;
     background: none !important;
 }
+
+/* ============================================================
+   21. MAPLIBRE GL JS — PANEL DE CAPAS INSTITUCIONAL
+   ============================================================ */
+
+/* Panel flotante */
+.map-layer-panel {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+    width: 240px;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.1);
+    overflow: hidden;
+    transition: box-shadow 0.25s ease, opacity 0.25s ease;
+    select-none: none;
+    user-select: none;
+}
+.dark .map-layer-panel {
+    background: rgba(30, 41, 59, 0.97);
+    border-color: rgba(51, 65, 85, 0.8);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+.map-layer-panel:hover {
+    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.22), 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+/* Encabezado del panel */
+.layer-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+    background: linear-gradient(135deg, #0e5e40 0%, #1a7f5a 100%);
+}
+.dark .layer-panel-header {
+    border-bottom-color: rgba(51, 65, 85, 0.7);
+}
+.layer-panel-title {
+    font-size: 10px;
+    font-weight: 800;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+.layer-panel-toggle {
+    background: rgba(255, 255, 255, 0.18);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+    padding: 0;
+}
+.layer-panel-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Contenido del panel */
+#layer-panel-content {
+    padding: 10px 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-height: 420px;
+    overflow-y: auto;
+}
+#layer-panel-content::-webkit-scrollbar { width: 4px; }
+#layer-panel-content::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+
+/* Panel colapsado */
+.map-layer-panel.collapsed #layer-panel-content {
+    display: none;
+}
+.map-layer-panel.collapsed .layer-panel-toggle i::before {
+    content: "\f078"; /* fa-chevron-down */
+}
+
+/* Etiqueta de grupo */
+.layer-group-label {
+    font-size: 8.5px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--color-text-muted);
+    padding: 8px 2px 4px;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 4px;
+}
+.layer-group-label:first-child {
+    padding-top: 2px;
+}
+
+/* Ítem de capa */
+.layer-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 4px 5px 2px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.15s ease;
+    margin-bottom: 1px;
+}
+.layer-item:hover {
+    background: var(--color-bg);
+}
+.layer-item input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    border-radius: 3px;
+    border: 1.5px solid #cbd5e1;
+    background: white;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.15s, border-color 0.15s;
+}
+.layer-item input[type="checkbox"]:checked {
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
+}
+.layer-item input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 1px;
+    width: 5px;
+    height: 8px;
+    border: 2px solid white;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+}
+.layer-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.layer-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.layer-name i {
+    font-size: 9px;
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+.dark .layer-name { color: #cbd5e1; }
+
+/* Botones de acción del panel */
+.layer-panel-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--color-border);
+}
+.layer-panel-actions button {
+    padding: 5px 6px;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--color-bg);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+.layer-panel-actions button:hover {
+    background: var(--color-primary-pale);
+    border-color: var(--color-primary-light);
+    color: var(--color-primary);
+}
+.dark .layer-panel-actions button {
+    background: #334155;
+    color: #cbd5e1;
+    border-color: #475569;
+}
+.dark .layer-panel-actions button:hover {
+    background: rgba(26, 127, 90, 0.2);
+    border-color: var(--color-primary-light);
+    color: #6ee7b7;
+}
+
+/* ============================================================
+   22. MAPLIBRE GL JS — POPUPS INSTITUCIONALES
+   ============================================================ */
+
+/* Contenedor del popup MapLibre */
+.maplibregl-popup {
+    max-width: 340px !important;
+    animation: mlPopupIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    z-index: 20;
+}
+@keyframes mlPopupIn {
+    from { opacity: 0; transform: scale(0.85) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.maplibregl-popup-content {
+    background: #fff !important;
+    border: none !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.2), 0 4px 16px rgba(15, 23, 42, 0.1) !important;
+    padding: 0 !important;
+    overflow: hidden;
+    font-family: var(--font-base);
+}
+.dark .maplibregl-popup-content {
+    background: #1e293b !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+}
+.maplibregl-popup-close-button {
+    right: 10px !important;
+    top: 10px !important;
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 16px !important;
+    color: rgba(255,255,255,0.8) !important;
+    background: rgba(255,255,255,0.15) !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    transition: background 0.15s !important;
+    z-index: 5;
+}
+.maplibregl-popup-close-button:hover {
+    background: rgba(255,255,255,0.3) !important;
+    color: #fff !important;
+}
+.maplibregl-popup-tip {
+    border-top-color: #fff !important;
+}
+.dark .maplibregl-popup-tip {
+    border-top-color: #1e293b !important;
+}
+
+/* Cuerpo personalizado del popup */
+.ml-popup-header {
+    padding: 12px 14px 10px;
+    color: white;
+    position: relative;
+}
+.ml-popup-header-badge {
+    font-size: 8px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    opacity: 0.85;
+    margin-bottom: 3px;
+}
+.ml-popup-header-title {
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.2;
+    word-break: break-word;
+}
+.ml-popup-body {
+    padding: 10px 14px 12px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+.ml-popup-body::-webkit-scrollbar { width: 4px; }
+.ml-popup-body::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+
+/* Tabla de propiedades */
+.ml-popup-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.5px;
+}
+.ml-popup-table tr {
+    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+    transition: background 0.12s;
+}
+.ml-popup-table tr:last-child { border-bottom: none; }
+.ml-popup-table tr:hover { background: rgba(14, 94, 64, 0.04); }
+.ml-popup-table td:first-child {
+    font-weight: 700;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    padding: 4px 10px 4px 0;
+    white-space: nowrap;
+    width: 40%;
+    vertical-align: top;
+}
+.ml-popup-table td:last-child {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    padding: 4px 0 4px 4px;
+    word-break: break-word;
+}
+.dark .ml-popup-table td:first-child { color: #64748b; }
+.dark .ml-popup-table td:last-child  { color: #e2e8f0; }
+
+/* Botón de acción en popup KML */
+.ml-popup-action-btn {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding: 7px 10px;
+    background: linear-gradient(135deg, #0e5e40 0%, #1a7f5a 100%);
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    text-align: center;
+    border-radius: 7px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 3px 8px rgba(14, 94, 64, 0.35);
+}
+.ml-popup-action-btn:hover {
+    background: linear-gradient(135deg, #155e4a 0%, #0e5e40 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(14, 94, 64, 0.45);
+}
+
+/* Indicador de carga de capas */
+.map-layers-loading {
+    position: absolute;
+    bottom: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: rgba(15, 23, 42, 0.88);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    letter-spacing: 0.04em;
+}
+
+/* ============================================================
+   23. MAPLIBRE GL JS — CONTROLES NATIVOS (Override)
+   ============================================================ */
+.maplibregl-ctrl-group {
+    border-radius: 10px !important;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.15) !important;
+    border: 1px solid rgba(226, 232, 240, 0.6) !important;
+}
+.maplibregl-ctrl-group button {
+    width: 34px !important;
+    height: 34px !important;
+    background: rgba(255, 255, 255, 0.97) !important;
+    transition: background 0.15s !important;
+}
+.maplibregl-ctrl-group button:hover {
+    background: var(--color-primary-pale) !important;
+}
+.maplibregl-ctrl-group button + button {
+    border-top: 1px solid var(--color-border) !important;
+}
+
+/* Escala */
+.maplibregl-ctrl-scale {
+    border-color: rgba(255,255,255,0.6) !important;
+    background: rgba(255,255,255,0.85) !important;
+    backdrop-filter: blur(4px);
+    border-radius: 4px !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    color: #334155 !important;
+    padding: 2px 6px !important;
+}
+
+/* Cursor pointer sobre features */
+.maplibregl-canvas-container.maplibregl-interactive,
+.maplibregl-canvas-container.maplibregl-interactive .maplibregl-canvas {
+    cursor: grab;
+}
+.maplibregl-canvas-container.maplibregl-interactive:active,
+.maplibregl-canvas-container.maplibregl-interactive:active .maplibregl-canvas {
+    cursor: grabbing;
+}
+
+/* ============================================================
+   24. MAPLIBRE GL JS — BUSCADOR INTERACTIVO
+   ============================================================ */
+.map-search-container {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 10;
+    width: 320px;
+    font-family: var(--font-base);
+}
+
+.map-search-bar {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 12px;
+    padding: 8px 12px;
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.06);
+    transition: all 0.2s ease;
+}
+
+.dark .map-search-bar {
+    background: rgba(30, 41, 59, 0.95);
+    border-color: rgba(51, 65, 85, 0.8);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.map-search-bar:focus-within {
+    border-color: var(--color-primary-light);
+    box-shadow: 0 0 0 3px rgba(26, 127, 90, 0.15), 0 8px 32px rgba(15, 23, 42, 0.12);
+}
+
+.map-search-bar .search-icon {
+    color: var(--color-text-muted);
+    font-size: 13px;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+.map-search-bar input {
+    border: none;
+    background: transparent;
+    width: 100%;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    outline: none;
+    padding: 0;
+}
+
+.map-search-bar input::placeholder {
+    color: var(--color-text-muted);
+    font-weight: 500;
+}
+
+.search-clear-btn {
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: 0 4px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s;
+}
+
+.search-clear-btn:hover {
+    color: var(--color-primary-light);
+}
+
+/* Panel de Resultados */
+.map-search-results {
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 12px;
+    box-shadow: 0 12px 36px rgba(15, 23, 42, 0.15);
+    margin-top: 6px;
+    max-height: 280px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.dark .map-search-results {
+    background: rgba(30, 41, 59, 0.97);
+    border-color: rgba(51, 65, 85, 0.8);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+}
+
+.map-search-results::-webkit-scrollbar {
+    width: 4px;
+}
+
+.map-search-results::-webkit-scrollbar-thumb {
+    background: rgba(203, 213, 225, 0.6);
+    border-radius: 4px;
+}
+
+/* Grupo de categorías */
+.search-category-header {
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-text-muted);
+    padding: 8px 12px 4px;
+    background: rgba(248, 250, 252, 0.6);
+    border-top: 1px solid rgba(226, 232, 240, 0.5);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.3);
+}
+
+.search-category-header:first-child {
+    border-top: none;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.dark .search-category-header {
+    background: rgba(15, 23, 42, 0.4);
+    border-top-color: rgba(51, 65, 85, 0.5);
+    border-bottom-color: rgba(51, 65, 85, 0.3);
+}
+
+/* Elemento de sugerencia */
+.search-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.search-item:hover {
+    background: rgba(14, 94, 64, 0.05);
+}
+
+.dark .search-item:hover {
+    background: rgba(26, 127, 90, 0.15);
+}
+
+.search-item-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.search-item-icon {
+    font-size: 11px;
+    color: var(--color-primary-light);
+    flex-shrink: 0;
+}
+
+.search-item-text {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dark .search-item-text {
+    color: #e2e8f0;
+}
+
+.search-item-sub {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
+/* Sin resultados */
+.search-no-results {
+    padding: 16px;
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+
+
