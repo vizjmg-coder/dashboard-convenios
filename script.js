@@ -7,6 +7,9 @@ const rowsPerPage = 12;
 let currentSort = { column: 'CONVENIO', asc: true };
 let currentChartMode = 'top'; // 'top' o 'municipio'
 let currentAlertFilter = 'all';
+let planMetric = 'contratado';
+let planAnualMetric = 'longitud';
+let mapMetric = 'contratado';
 
 // Variables Mini-Mapa (Leaflet — ficha técnica modal y resumen)
 let mapInstance = null;
@@ -1318,9 +1321,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-last').addEventListener('click', () => { currentPage = Math.ceil(filteredData.length / rowsPerPage) || 1; renderTable(); });
         document.getElementById('btn-export').addEventListener('click', exportToCSV);
         
-        ['filter-search', 'filter-municipio', 'filter-supervisor', 'filter-indicador', 'filter-vigencia', 'filter-convenio-num', 'filter-clasificacion'].forEach(id => {
-            document.getElementById(id).addEventListener('change', applyFilters);
-            if (id === 'filter-search') document.getElementById(id).addEventListener('input', applyFilters);
+        ['filter-search', 'filter-municipio', 'filter-supervisor', 'filter-indicador', 'filter-vigencia', 'filter-convenio-num', 'filter-clasificacion', 'filter-subregion', 'filter-estado'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', applyFilters);
+                if (id === 'filter-search') el.addEventListener('input', applyFilters);
+            }
         });
         
         document.getElementById('btn-close-lightbox').addEventListener('click', closeLightbox);
@@ -1520,7 +1526,7 @@ function processExcelData(data) {
     }
 }
 
-function updateFilterOptions(currentSearch, currentVigencia, currentMunicipio, currentSupervisor, currentConvenioNum, currentClasificacion, currentIndicador) {
+function updateFilterOptions(currentSearch, currentVigencia, currentMunicipio, currentSupervisor, currentConvenioNum, currentClasificacion, currentIndicador, currentSubregion, currentEstado) {
     const getValidOptions = (field, excludeField) => {
         const validRows = rawData.filter(row => {
             const rowSearch = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
@@ -1532,7 +1538,9 @@ function updateFilterOptions(currentSearch, currentVigencia, currentMunicipio, c
             const clasifValue = String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim();
             const matchClasif = excludeField === 'CLASIFICACIÓN' ? true : (!currentClasificacion || clasifValue === currentClasificacion);
             const matchInd = excludeField === 'INDICADOR' ? true : (!currentIndicador || String(row['INDICADOR'] || '').trim() === currentIndicador);
-            return matchSearch && matchVig && matchMun && matchSup && matchConv && matchClasif && matchInd;
+            const matchSub = excludeField === 'SUBREGION' ? true : (!currentSubregion || String(row['SUBREGION'] || '').trim() === currentSubregion);
+            const matchEst = excludeField === 'ESTADO CONVENIO' ? true : (!currentEstado || String(row['ESTADO CONVENIO'] || '').trim() === currentEstado);
+            return matchSearch && matchVig && matchMun && matchSup && matchConv && matchClasif && matchInd && matchSub && matchEst;
         });
         return [...new Set(validRows.map(i => {
             if(field === 'CLASIFICACIÓN') return String(i['CLASIFICACIÓN'] || i['CLASIFICACI"N'] || '').trim();
@@ -1552,6 +1560,8 @@ function updateFilterOptions(currentSearch, currentVigencia, currentMunicipio, c
     updateSelect('filter-indicador', getValidOptions('INDICADOR', 'INDICADOR'), currentIndicador);
     updateSelect('filter-convenio-num', getValidOptions('CONVENIO', 'CONVENIO'), currentConvenioNum);
     updateSelect('filter-clasificacion', getValidOptions('CLASIFICACIÓN', 'CLASIFICACIÓN'), currentClasificacion);
+    updateSelect('filter-subregion', getValidOptions('SUBREGION', 'SUBREGION'), currentSubregion);
+    updateSelect('filter-estado', getValidOptions('ESTADO CONVENIO', 'ESTADO CONVENIO'), currentEstado);
 }
 
 function applyFilters() {
@@ -1563,8 +1573,9 @@ function applyFilters() {
     const convenioNum = document.getElementById('filter-convenio-num').value.trim();
     const clasificacion = document.getElementById('filter-clasificacion').value.trim();
     const estado = document.getElementById('filter-estado') ? document.getElementById('filter-estado').value.trim() : '';
+    const subregion = document.getElementById('filter-subregion') ? document.getElementById('filter-subregion').value.trim() : '';
 
-    const activeFiltersCount = [search, vigencia, municipio, supervisor, indicador, convenioNum, clasificacion, estado].filter(val => val !== '').length;
+    const activeFiltersCount = [search, vigencia, municipio, supervisor, indicador, convenioNum, clasificacion, estado, subregion].filter(val => val !== '').length;
     const badge = document.getElementById('active-filters-badge');
     if (badge) {
         if (activeFiltersCount > 0) {
@@ -1586,10 +1597,11 @@ function applyFilters() {
         const clasifValue = String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim();
         const matchClasif = !clasificacion || clasifValue === clasificacion;
         const matchEstado = !estado || String(row['ESTADO CONVENIO'] || '').trim() === estado;
-        return matchSearch && matchVig && matchMun && matchSup && matchInd && matchConv && matchClasif && matchEstado;
+        const matchSub = !subregion || String(row['SUBREGION'] || '').trim() === subregion;
+        return matchSearch && matchVig && matchMun && matchSup && matchInd && matchConv && matchClasif && matchEstado && matchSub;
     });
 
-    updateFilterOptions(search, vigencia, municipio, supervisor, convenioNum, clasificacion, indicador);
+    updateFilterOptions(search, vigencia, municipio, supervisor, convenioNum, clasificacion, indicador, subregion, estado);
 
     const summaryCard = document.getElementById('summary-card-container');
     const activeConv = document.getElementById('filter-convenio-num').value.trim();
@@ -1625,11 +1637,11 @@ function applyFilters() {
             document.getElementById('unit-ejecutado').textContent = "m²";
         } else {
             document.getElementById('lbl-alcance').textContent = "Longitud Contratada";
-            document.getElementById('summary-alcance').textContent = formatNumber(alcM);
-            document.getElementById('unit-alcance').textContent = "m";
+            document.getElementById('summary-alcance').textContent = (alcM / 1000).toFixed(2);
+            document.getElementById('unit-alcance').textContent = "km";
             document.getElementById('lbl-ejecutado').textContent = "Longitud Ejecutada";
-            document.getElementById('summary-ejecutado').textContent = formatNumber(ejM);
-            document.getElementById('unit-ejecutado').textContent = "m";
+            document.getElementById('summary-ejecutado').textContent = (ejM / 1000).toFixed(2);
+            document.getElementById('unit-ejecutado').textContent = "km";
         }
         const pfis = selected['FISICO_NORM'] || 0, pfin = selected['FINANCIERO_NORM'] || 0;
         document.getElementById('summary-fisico-txt').textContent = pfis.toFixed(1) + '%';
@@ -1660,10 +1672,9 @@ function applyFilters() {
 }
 
 function resetFilters() {
-    ['filter-search', 'filter-vigencia', 'filter-supervisor', 'filter-indicador', 'filter-municipio', 'filter-convenio-num', 'filter-clasificacion'].forEach(id => {
+    ['filter-search', 'filter-vigencia', 'filter-supervisor', 'filter-indicador', 'filter-municipio', 'filter-convenio-num', 'filter-clasificacion', 'filter-subregion', 'filter-estado'].forEach(id => {
         if(document.getElementById(id)) document.getElementById(id).value = '';
     });
-    if(document.getElementById('filter-estado')) document.getElementById('filter-estado').value = '';
     applyFilters();
 }
 
@@ -1702,10 +1713,10 @@ function updateKPIs() {
     
     // Update Longitud
     const elLonEje = document.getElementById('tot-lon-eje-text');
-    if (elLonEje) elLonEje.textContent = formatNumber(totLonEje) + ' m';
+    if (elLonEje) elLonEje.textContent = (totLonEje / 1000).toFixed(2) + ' km';
     
     const elLonCon = document.getElementById('tot-lon-con-text');
-    if (elLonCon) elLonCon.textContent = formatNumber(totLonCon);
+    if (elLonCon) elLonCon.textContent = (totLonCon / 1000).toFixed(2) + ' km';
     
     // Update Área
     const elAreEje = document.getElementById('tot-are-eje-text');
@@ -2556,30 +2567,6 @@ async function renderMapTab() {
         // Crear instancia del mapa
         mlMap = new maplibregl.Map({
             container: 'main-map',
-            style: {
-                version: 8,
-                sources: {
-                    'osm-tiles': {
-                        type: 'raster',
-                        tiles: [
-                            'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                            'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                            'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                        ],
-                        tileSize: 256,
-                        attribution: '© OpenStreetMap contributors'
-                    }
-                },
-                layers: [
-                    {
-                        id: 'osm-tiles-layer',
-                        type: 'raster',
-                        source: 'osm-tiles',
-                        minzoom: 0,
-                        maxzoom: 19
-                    }
-                ]
-            },
             center: [-75.5, 6.55],
             zoom: 7.2,
             pitch: 30,
@@ -2589,50 +2576,95 @@ async function renderMapTab() {
             attributionControl: false
         });
 
+        mlMap.setStyle('https://tiles.openfreemap.org/styles/bright', {
+            transformStyle: (previousStyle, nextStyle) => {
+                nextStyle.projection = {type: 'globe'};
+                nextStyle.sources = {
+                    ...nextStyle.sources,
+                    satelliteSource: {
+                        type: 'raster',
+                        tiles: [
+                            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                        ],
+                        tileSize: 256,
+                        maxzoom: 17
+                    },
+                    terrainSource: {
+                        type: 'raster-dem',
+                        tiles: [
+                            'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
+                        ],
+                        encoding: 'terrarium',
+                        tileSize: 256
+                    },
+                    hillshadeSource: {
+                        type: 'raster-dem',
+                        tiles: [
+                            'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
+                        ],
+                        encoding: 'terrarium',
+                        tileSize: 256
+                    }
+                };
+                nextStyle.terrain = {
+                    source: 'terrainSource',
+                    exaggeration: 1
+                };
+
+                nextStyle.sky = {
+                    'atmosphere-blend': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        0, 1,
+                        2, 0
+                    ],
+                };
+
+                nextStyle.layers.push({
+                    id: 'hills',
+                    type: 'hillshade',
+                    source: 'hillshadeSource',
+                    layout: { visibility: 'visible' },
+                    paint: { 'hillshade-shadow-color': '#473B24' }
+                });
+
+                const firstNonFillLayer = nextStyle.layers.find(layer => layer.type !== 'fill' && layer.type !== 'background');
+                nextStyle.layers.splice(nextStyle.layers.indexOf(firstNonFillLayer), 0, {
+                    id: 'satellite',
+                    type: 'raster',
+                    source: 'satelliteSource',
+                    layout: { visibility: 'visible' },
+                    paint: { 'raster-opacity': 1 }
+                });
+
+                return nextStyle;
+            }
+        });
+
         // Controles de navegación
-        mlMap.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+        mlMap.addControl(
+            new maplibregl.NavigationControl({
+                visualizePitch: true,
+                showZoom: true,
+                showCompass: true
+            }),
+            'bottom-right'
+        );
         mlMap.addControl(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 100 }), 'bottom-left');
         mlMap.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
-        mlMap.addControl(new maplibregl.TerrainControl({
-            source: 'terrainSource',
-            exaggeration: 1.0
-        }), 'bottom-right');
+        mlMap.addControl(new maplibregl.GlobeControl(), 'bottom-right');
+        mlMap.addControl(
+            new maplibregl.TerrainControl({
+                source: 'terrainSource',
+                exaggeration: 1
+            }),
+            'bottom-right'
+        );
 
         // Evento: estilo cargado → añadir fuentes y capas
         mlMap.on('load', async () => {
             mlMapReady = true;
-
-            // ── TERRENO 3D y HILLSHADING ─────────────────────────────────────
-            mlMap.addSource('terrainSource', {
-                type: 'raster-dem',
-                url: 'https://tiles.mapterhorn.com/tilejson.json',
-                tileSize: 256
-            });
-            mlMap.addSource('hillshadeSource', {
-                type: 'raster-dem',
-                url: 'https://tiles.mapterhorn.com/tilejson.json',
-                tileSize: 256
-            });
-
-            // Añadir capa de hillshade para percibir el relieve 3D con sombras
-            const beforeLayer = mlMap.getLayer('landcover') ? 'landcover' : undefined;
-            mlMap.addLayer({
-                id: 'hills',
-                type: 'hillshade',
-                source: 'hillshadeSource',
-                layout: { visibility: 'visible' },
-                paint: { 'hillshade-shadow-color': '#473B24' }
-            }, beforeLayer);
-
-            mlMap.setTerrain({ source: 'terrainSource', exaggeration: 1.0 });
-            mlMap.setSky({
-                'sky-color': '#1a9ef0',
-                'sky-horizon-blend': 0.5,
-                'horizon-color': '#d8f0ff',
-                'horizon-fog-blend': 0.5,
-                'fog-color': '#d8e8f5',
-                'fog-ground-blend': 0.6
-            });
 
             // ── FUENTE: MUNICIPIOS (mpio.json) ──────────────────────────────
             try {
@@ -3125,7 +3157,7 @@ async function renderMapTab() {
         });
 
         // Listeners de filtros del mapa
-        ['vigencia','supervisor','clasificacion','municipio','subregion','estado','convenio-num'].forEach(f => {
+        ['vigencia','supervisor','indicador','clasificacion','municipio','subregion','estado','convenio-num'].forEach(f => {
             const el = document.getElementById(`map-filter-${f}`);
             if (el) el.addEventListener('change', applyMapFilters);
         });
@@ -3143,9 +3175,8 @@ async function renderMapTab() {
     applyMapFilters();
 }
 
-// ── Resetear filtros del mapa ─────────────────────────────────────────────────
 function resetMapFilters() {
-    ['map-filter-search','map-filter-vigencia','map-filter-supervisor','map-filter-clasificacion',
+    ['map-filter-search','map-filter-vigencia','map-filter-supervisor','map-filter-indicador','map-filter-clasificacion',
      'map-filter-municipio','map-filter-subregion','map-filter-estado','map-filter-convenio-num'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
@@ -3694,6 +3725,7 @@ function applyMapFilters() {
     const subregion   = document.getElementById('map-filter-subregion')?.value.trim() || '';
     const estado      = document.getElementById('map-filter-estado')?.value.trim() || '';
     const convenioNum = document.getElementById('map-filter-convenio-num')?.value.trim() || '';
+    const indicador   = document.getElementById('map-filter-indicador')?.value.trim() || '';
 
     currentMapData = rawData.filter(row => {
         const rowValsStr = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
@@ -3705,15 +3737,16 @@ function applyMapFilters() {
         const matchSub       = !subregion   || String(row['SUBREGION'] || '').trim() === subregion;
         const matchEstado    = !estado      || String(row['ESTADO CONVENIO'] || '').trim() === estado;
         const matchConv      = !convenioNum || String(row['CONVENIO'] || '').trim() === convenioNum;
-        return matchSearch && matchVig && matchMun && matchSup && matchClasif && matchSub && matchEstado && matchConv;
+        const matchInd       = !indicador   || String(row['INDICADOR'] || '').trim() === indicador;
+        return matchSearch && matchVig && matchMun && matchSup && matchClasif && matchSub && matchEstado && matchConv && matchInd;
     });
 
-    updateMapFilterSelects(search, vigencia, municipio, supervisor, clasificacion, subregion, estado, convenioNum);
+    updateMapFilterSelects(search, vigencia, municipio, supervisor, clasificacion, subregion, estado, convenioNum, indicador);
     updateMapKPIs();
     if (mlMap && mlMapReady) renderMLMapFeatures();
 }
 
-function updateMapFilterSelects(cSearch, cVig, cMun, cSup, cClas, cSub, cEst, cConv) {
+function updateMapFilterSelects(cSearch, cVig, cMun, cSup, cClas, cSub, cEst, cConv, cInd) {
     const getValid = (field, exclude) => {
         const valid = rawData.filter(row => {
             const rowValsStr = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
@@ -3725,7 +3758,8 @@ function updateMapFilterSelects(cSearch, cVig, cMun, cSup, cClas, cSub, cEst, cC
             const matchSub    = exclude === 'SUBREGION'        ? true : (!cSub  || String(row['SUBREGION'] || '').trim() === cSub);
             const matchEst    = exclude === 'ESTADO CONVENIO'  ? true : (!cEst  || String(row['ESTADO CONVENIO'] || '').trim() === cEst);
             const matchConv   = exclude === 'CONVENIO'         ? true : (!cConv || String(row['CONVENIO'] || '').trim() === cConv);
-            return matchSearch && matchVig && matchMun && matchSup && matchClas && matchSub && matchEst && matchConv;
+            const matchInd    = exclude === 'INDICADOR'        ? true : (!cInd  || String(row['INDICADOR'] || '').trim() === cInd);
+            return matchSearch && matchVig && matchMun && matchSup && matchClas && matchSub && matchEst && matchConv && matchInd;
         });
         return [...new Set(valid.map(i => {
             if (field === 'CLASIFICACIÓN') return String(i['CLASIFICACIÓN'] || i['CLASIFICACI"N'] || '').trim();
@@ -3743,6 +3777,7 @@ function updateMapFilterSelects(cSearch, cVig, cMun, cSup, cClas, cSub, cEst, cC
 
     upd('map-filter-vigencia',     getValid('VIGENCIA', 'VIGENCIA').reverse(), cVig);
     upd('map-filter-supervisor',   getValid('SUPERVISOR', 'SUPERVISOR'), cSup);
+    upd('map-filter-indicador',    getValid('INDICADOR', 'INDICADOR'), cInd);
     upd('map-filter-clasificacion',getValid('CLASIFICACIÓN', 'CLASIFICACIÓN'), cClas);
     upd('map-filter-municipio',    getValid('MUNICIPIO', 'MUNICIPIO'), cMun);
     upd('map-filter-subregion',    getValid('SUBREGION', 'SUBREGION'), cSub);
@@ -3753,22 +3788,29 @@ function updateMapFilterSelects(cSearch, cVig, cMun, cSup, cClas, cSub, cEst, cC
 function updateMapKPIs() {
     const numMun = new Set(currentMapData.map(r => String(r['MUNICIPIO']).trim())).size;
     const numSub = new Set(currentMapData.map(r => String(r['SUBREGION']).trim())).size;
-    let act = 0, km = 0, inv = 0, area = 0;
+    let act = 0, kmEjecutados = 0, kmContratados = 0, areaEjecutada = 0, areaContratada = 0, inv = 0;
     currentMapData.forEach(r => {
         const est = String(r['ESTADO CONVENIO'] || '').toUpperCase();
         if (est.includes('EJECUCI')) act++;
-        km   += (r['LONGITUD EJECUTADA'] || 0) / 1000;
-        area += (r['AREA EJECUTADA (M2)'] || 0);
+        kmEjecutados  += (r['LONGITUD EJECUTADA'] || 0) / 1000;
+        kmContratados += (r['ALCANCE (M)'] || 0) / 1000;
+        areaEjecutada  += (r['AREA EJECUTADA (M2)'] || 0);
+        areaContratada += (r['ALCANCE (M2)'] || 0);
         inv  += (r['VALOR TOTAL'] || 0);
     });
 
     const mKpi = document.getElementById('kpi-map-mun');
     if (mKpi) mKpi.innerHTML = `${numMun} <span class="text-xs font-semibold text-slate-400 dark:text-slate-500">de 125</span>`;
-    const sKpi = document.getElementById('kpi-map-sub');    if (sKpi) sKpi.textContent = numSub;
-    const kKpi = document.getElementById('kpi-map-km');     if (kKpi) kKpi.textContent = km.toFixed(2);
-    const aKpi = document.getElementById('kpi-map-area');   if (aKpi) aKpi.textContent = formatNumber(area);
-    const iKpi = document.getElementById('kpi-map-inv');    if (iKpi) iKpi.textContent = formatCurrency(inv);
-    const acKpi= document.getElementById('kpi-map-activos'); if (acKpi) acKpi.textContent = act;
+    const sKpi = document.getElementById('kpi-map-sub');
+    if (sKpi) sKpi.innerHTML = `${numSub} <span class="text-xs font-semibold text-slate-400 dark:text-slate-500">/ 9</span>`;
+    const kKpi = document.getElementById('kpi-map-km');
+    if (kKpi) kKpi.innerHTML = `${kmEjecutados.toFixed(2)} km <span class="text-xs font-semibold text-slate-400 dark:text-slate-500">de ${kmContratados.toFixed(2)} km</span>`;
+    const aKpi = document.getElementById('kpi-map-area');
+    if (aKpi) aKpi.innerHTML = `${formatNumber(areaEjecutada)} m² <span class="text-xs font-semibold text-slate-400 dark:text-slate-500">de ${formatNumber(areaContratada)} m² contratados</span>`;
+    const iKpi = document.getElementById('kpi-map-inv');
+    if (iKpi) iKpi.textContent = formatCurrency(inv);
+    const acKpi= document.getElementById('kpi-map-activos');
+    if (acKpi) acKpi.textContent = act;
 
     updateMapCharts();
 }
@@ -3778,7 +3820,7 @@ function updateMapCharts() {
     currentMapData.forEach(r => {
         const s = r['SUBREGION'] || 'OTRAS';
         const m = r['MUNICIPIO'] || 'N/A';
-        const l = r['LONGITUD EJECUTADA'] || 0;
+        const l = mapMetric === 'contratado' ? (r['ALCANCE (M)'] || 0) : (r['LONGITUD EJECUTADA'] || 0);
         const i = r['VALOR TOTAL'] || 0;
         subL[s] = (subL[s] || 0) + l;
         subI[s] = (subI[s] || 0) + i;
@@ -3790,6 +3832,11 @@ function updateMapCharts() {
     const sI = Object.entries(subI).sort((a, b) => b[1] - a[1]);
     const mL = Object.entries(munL).sort((a, b) => b[1] - a[1]).slice(0, 15);
     const mI = Object.entries(munI).sort((a, b) => b[1] - a[1]).slice(0, 15);
+
+    const lblSub = document.getElementById('lbl-map-sub-long');
+    const lblMun = document.getElementById('lbl-map-mun-long');
+    if (lblSub) lblSub.textContent = mapMetric === 'contratado' ? 'Longitud Contratada por Subregión' : 'Longitud Ejecutada por Subregión';
+    if (lblMun) lblMun.textContent = mapMetric === 'contratado' ? 'Top Municipios (Longitud Contratada)' : 'Top Municipios (Longitud Ejecutada)';
 
     const drawChart = (id, type, dataArr, formatCb, color) => {
         const el = document.getElementById(id);
@@ -3815,6 +3862,26 @@ function updateMapCharts() {
     drawChart('chart-top-mun-long', 'bar', mL, v => formatNumber(v) + ' m', '#10b981');
     drawChart('chart-top-mun-inv',  'bar', mI, v => formatCurrency(v),       '#3b82f6');
 }
+
+window.setMapMetric = function(val) {
+    mapMetric = val;
+    const btnContratado = document.getElementById('btn-map-metric-contratado');
+    const btnEjecutado = document.getElementById('btn-map-metric-ejecutado');
+    if (btnContratado && btnEjecutado) {
+        if (val === 'contratado') {
+            btnContratado.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnContratado.classList.remove('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
+            btnEjecutado.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnEjecutado.classList.add('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
+        } else {
+            btnEjecutado.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnEjecutado.classList.remove('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
+            btnContratado.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnContratado.classList.add('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
+        }
+    }
+    updateMapCharts();
+};
 // ====== PESTAÑA 3: PLAN DE DESARROLLO ======
 
 
@@ -3856,6 +3923,46 @@ function normalizarIndicador(ind) {
     if (i.includes("URBANA") || i.includes("RVU")) return "V\u00cdA URBANA MEJORADA. (RVU)";
     return ""; // No mapeado
 }
+
+window.setPlanMetric = function(val) {
+    planMetric = val;
+    const btnContratado = document.getElementById('btn-plan-metric-contratado');
+    const btnEjecutado = document.getElementById('btn-plan-metric-ejecutado');
+    if (btnContratado && btnEjecutado) {
+        if (val === 'contratado') {
+            btnContratado.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnContratado.classList.remove('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
+            btnEjecutado.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnEjecutado.classList.add('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
+        } else {
+            btnEjecutado.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnEjecutado.classList.remove('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
+            btnContratado.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnContratado.classList.add('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
+        }
+    }
+    renderPlanTab();
+};
+
+window.setPlanAnualMetric = function(val) {
+    planAnualMetric = val;
+    const btnLongitud = document.getElementById('btn-anual-longitud');
+    const btnArea = document.getElementById('btn-anual-area');
+    if (btnLongitud && btnArea) {
+        if (val === 'longitud') {
+            btnLongitud.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnLongitud.classList.remove('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
+            btnArea.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnArea.classList.add('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
+        } else {
+            btnArea.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnArea.classList.remove('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
+            btnLongitud.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+            btnLongitud.classList.add('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
+        }
+    }
+    renderPlanTab();
+};
 
 function renderPlanTab() {
     let cumplidas = 0, proceso = 0, riesgo = 0;
@@ -3899,20 +4006,21 @@ function renderPlanTab() {
         let cant = 0;
 
         if (cfg.tipo === 'km') {
-            // LONGITUD EJECUTADA viene en metros → convertir a km
-            const metros = parseNum(row['LONGITUD EJECUTADA']);
+            const metros = planMetric === 'contratado' ? parseNum(row['ALCANCE (M)']) : parseNum(row['LONGITUD EJECUTADA']);
             cant = metros / 1000;
         } else if (cfg.tipo === 'm2') {
-            // Área ejecutada en m²
-            cant = parseNum(row['AREA EJECUTADA (M2)']);
+            cant = planMetric === 'contratado' ? parseNum(row['ALCANCE (M2)']) : parseNum(row['AREA EJECUTADA (M2)']);
         } else {
-            // Unidades (und): contar 1 por convenio que tenga ejecución
-            const estado = String(row['ESTADO CONVENIO'] || '').toUpperCase();
-            const tieneEjecucion = estado.includes('EJECUCI') || estado.includes('EJECUT') ||
-                                   estado.includes('OPERA') || estado.includes('MEJORAD') ||
-                                   parseNum(row['LONGITUD EJECUTADA']) > 0 ||
-                                   parseNum(row['FISICO_NORM']) > 0;
-            cant = tieneEjecucion ? 1 : 0;
+            if (planMetric === 'contratado') {
+                cant = 1;
+            } else {
+                const estado = String(row['ESTADO CONVENIO'] || '').toUpperCase();
+                const tieneEjecucion = estado.includes('EJECUCI') || estado.includes('EJECUT') ||
+                                       estado.includes('OPERA') || estado.includes('MEJORAD') ||
+                                       parseNum(row['LONGITUD EJECUTADA']) > 0 ||
+                                       parseNum(row['FISICO_NORM']) > 0;
+                cant = tieneEjecucion ? 1 : 0;
+            }
         }
 
         dataInd[ind].ejecutado += cant;
@@ -3923,7 +4031,11 @@ function renderPlanTab() {
 
         const vig = String(row['VIGENCIA'] || '').trim();
         if (avancePorAnio[vig] !== undefined) {
-            avancePorAnio[vig] += cfg.tipo === 'und' ? 1 : cant;
+            if (planAnualMetric === 'longitud' && cfg.tipo === 'km') {
+                avancePorAnio[vig] += cant;
+            } else if (planAnualMetric === 'area' && cfg.tipo === 'm2') {
+                avancePorAnio[vig] += cant;
+            }
         }
     });
 
@@ -3931,8 +4043,11 @@ function renderPlanTab() {
     container.innerHTML = '';
 
     const chartMetasLabels = [];
-    const chartMetasTargets = [];
-    const chartMetasAchieved = [];
+    const chartMetasPcts = [];
+    const chartMetasColors = [];
+    const chartMetasRawInfo = [];
+
+    const labelMetasMetric = planMetric === 'contratado' ? 'Contratado' : 'Ejecutado';
 
     Object.keys(indicadoresEstrategicos).forEach(ind => {
         const d = dataInd[ind];
@@ -3949,17 +4064,40 @@ function renderPlanTab() {
         sumCumplimiento += pct;
         countCumplimiento++;
 
-        chartMetasLabels.push(ind.length > 20 ? ind.substring(0, 20) + '…' : ind);
-        chartMetasTargets.push(meta);
-        chartMetasAchieved.push(parseFloat(e.toFixed(2)));
+        let displayName = ind;
+        if (ind.includes("AEROPUERTOS")) displayName = "Aeropuertos/Aeródromos";
+        else if (ind.includes("MUELLES")) displayName = "Muelles/Embarcaderos";
+        else if (ind.includes("TERCIARIAS")) displayName = "Vías Terciarias (RVT)";
+        else if (ind.includes("ESPACIO")) displayName = "Espacio Público";
+        else if (ind.includes("CABLES")) displayName = "Cables Aéreos";
+        else if (ind.includes("URBANA")) displayName = "Vía Urbana (RVU)";
+
+        chartMetasLabels.push(displayName);
+        chartMetasPcts.push(parseFloat(pct.toFixed(1)));
+        chartMetasRawInfo.push({
+            achieved: e,
+            target: meta,
+            unit: cfg.unit
+        });
 
         let colorClass = 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
         let barColor = 'bg-red-500';
         let bgClass = 'bg-red-50/60 dark:bg-red-900/10';
-        if (pct >= 80)  { colorClass = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'; barColor = 'bg-emerald-500'; bgClass = 'bg-emerald-50/60 dark:bg-emerald-900/10'; }
-        else if (pct >= 50) { colorClass = 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'; barColor = 'bg-amber-500'; bgClass = 'bg-amber-50/60 dark:bg-amber-900/10'; }
+        let chartColor = 'rgba(239, 68, 68, 0.85)';
+        
+        if (pct >= 80)  { 
+            colorClass = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'; 
+            barColor = 'bg-emerald-500'; 
+            bgClass = 'bg-emerald-50/60 dark:bg-emerald-900/10';
+            chartColor = 'rgba(16, 185, 129, 0.85)';
+        } else if (pct >= 50) { 
+            colorClass = 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'; 
+            barColor = 'bg-amber-500'; 
+            bgClass = 'bg-amber-50/60 dark:bg-amber-900/10';
+            chartColor = 'rgba(245, 158, 11, 0.85)';
+        }
+        chartMetasColors.push(chartColor);
 
-        // Formateo de valores según unidad
         const fmtVal = (v) => {
             if (cfg.tipo === 'km') return v.toFixed(2) + ' km';
             if (cfg.tipo === 'm2') return formatNumber(Math.round(v)) + ' m²';
@@ -3978,7 +4116,7 @@ function renderPlanTab() {
                         <p class="text-[11px] font-black text-slate-800 dark:text-slate-100 leading-none">${fmtVal(meta)}</p>
                     </div>
                     <div class="${bgClass} rounded-lg p-2">
-                        <p class="text-[8px] uppercase font-bold text-slate-400 mb-0.5">Ejecutado</p>
+                        <p class="text-[8px] uppercase font-bold text-slate-400 mb-0.5">${labelMetasMetric}</p>
                         <p class="text-[11px] font-black text-slate-800 dark:text-slate-100 leading-none">${fmtVal(e)}</p>
                     </div>
                     <div class="${bgClass} rounded-lg p-2">
@@ -4005,47 +4143,131 @@ function renderPlanTab() {
     document.getElementById('kpi-plan-inv').textContent = formatCurrency(inversionTotal);
     document.getElementById('kpi-plan-mun').textContent = munis.size;
 
-    // Gráfico: Meta Global vs Ejecutado Total
+    // === 1. GRÁFICO: Cumplimiento Global (Horizontal Bar Chart) ===
     if (charts['plan-metas']) charts['plan-metas'].destroy();
+    
     charts['plan-metas'] = new Chart(document.getElementById('chart-plan-metas'), {
         type: 'bar',
         data: {
             labels: chartMetasLabels,
-            datasets: [
-                { label: 'Meta',      data: chartMetasTargets,  backgroundColor: 'rgba(203,213,225,0.8)', borderColor: '#94a3b8', borderWidth: 1 },
-                { label: 'Ejecutado', data: chartMetasAchieved, backgroundColor: 'rgba(26,127,90,0.85)',  borderColor: '#0e5e40',  borderWidth: 1 }
-            ]
+            datasets: [{
+                label: '% Cumplimiento',
+                data: chartMetasPcts,
+                backgroundColor: chartMetasColors,
+                borderRadius: 5,
+                borderWidth: 0,
+                barThickness: 16
+            }]
         },
         options: {
+            indexAxis: 'y',
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } },
-            scales: { y: { beginAtZero: true, ticks: { font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } }
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const index = context.dataIndex;
+                            const info = chartMetasRawInfo[index];
+                            const rawAchieved = info.unit === 'm²' ? formatNumber(Math.round(info.achieved)) : info.achieved.toFixed(1);
+                            const rawTarget = info.unit === 'm²' ? formatNumber(Math.round(info.target)) : info.target;
+                            return ` ${context.raw}% de cumplimiento (${rawAchieved} ${info.unit} de ${rawTarget} ${info.unit})`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    suggestedMax: 100,
+                    ticks: {
+                        font: { size: 9 },
+                        callback: function(value) { return value + '%'; }
+                    }
+                },
+                y: {
+                    ticks: {
+                        font: { size: 9, weight: 'bold' }
+                    }
+                }
+            }
         }
     });
 
-    // Gráfico: Avance Acumulado por Año
+    // === 2. GRÁFICO DE AVANCE ACUMULADO POR AÑO (Optimizado con curvas y gradiente) ===
     if (charts['plan-anual']) charts['plan-anual'].destroy();
-    charts['plan-anual'] = new Chart(document.getElementById('chart-plan-anual'), {
+    
+    const years = Object.keys(avancePorAnio);
+    const yearlyRaw = Object.values(avancePorAnio);
+    const yearlyAccumulated = [];
+    let accum = 0;
+    for (let idx = 0; idx < yearlyRaw.length; idx++) {
+        accum += yearlyRaw[idx];
+        yearlyAccumulated.push(parseFloat(accum.toFixed(2)));
+    }
+
+    const canvasAnual = document.getElementById('chart-plan-anual');
+    const ctxAnual = canvasAnual.getContext('2d');
+    
+    const gradient = ctxAnual.createLinearGradient(0, 0, 0, 250);
+    const mainColor = planAnualMetric === 'longitud' ? 'rgba(14, 94, 64, 1)' : 'rgba(45, 106, 159, 1)';
+    const startGrad = planAnualMetric === 'longitud' ? 'rgba(14, 94, 64, 0.4)' : 'rgba(45, 106, 159, 0.4)';
+    const endGrad = planAnualMetric === 'longitud' ? 'rgba(14, 94, 64, 0.0)' : 'rgba(45, 106, 159, 0.0)';
+    
+    gradient.addColorStop(0, startGrad);
+    gradient.addColorStop(1, endGrad);
+
+    const labelAnualMetric = planAnualMetric === 'longitud' ? 'Longitud Acumulada (km)' : 'Área Acumulada (m²)';
+    const unitAnual = planAnualMetric === 'longitud' ? 'km' : 'm²';
+
+    charts['plan-anual'] = new Chart(canvasAnual, {
         type: 'line',
         data: {
-            labels: Object.keys(avancePorAnio),
+            labels: years,
             datasets: [{
-                label: 'Acumulado (km / und / m²)',
-                data: Object.values(avancePorAnio).map(v => parseFloat(v.toFixed(2))),
-                borderColor: '#2d6a9f',
-                backgroundColor: 'rgba(45,106,159,0.08)',
+                label: labelAnualMetric,
+                data: yearlyAccumulated,
+                borderColor: mainColor,
+                backgroundColor: gradient,
                 fill: true,
                 tension: 0.4,
                 pointRadius: 5,
-                pointBackgroundColor: '#2d6a9f'
+                pointHoverRadius: 7,
+                pointBackgroundColor: mainColor,
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                borderWidth: 3
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } },
-            scales: { y: { beginAtZero: true, ticks: { font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } }
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { size: 10 } } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const valFmt = planAnualMetric === 'area' ? formatNumber(Math.round(context.raw)) : context.raw;
+                            return ` ${context.dataset.label}: ${valFmt} ${unitAnual}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        font: { size: 9 },
+                        callback: function(value) {
+                            return planAnualMetric === 'area' ? formatNumber(value) + ' m²' : value + ' km';
+                        }
+                    }
+                },
+                x: {
+                    ticks: { font: { size: 9 } }
+                }
+            }
         }
     });
 }
