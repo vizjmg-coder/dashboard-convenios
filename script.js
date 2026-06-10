@@ -290,7 +290,7 @@ function getCoords(layer) {
     };
 }
 
-// ------ FUNCI�"N EXPORTAR PDF (Motor pdfmake - Vectorial Institucional) ------
+// ------ FUNCIÓN EXPORTAR PDF (Motor pdfmake - Vectorial Institucional) ------
 
 async function getBase64ImageFromURL(url) {
     return new Promise((resolve, reject) => {
@@ -301,7 +301,45 @@ async function getBase64ImageFromURL(url) {
             canvas.width = img.width;
             canvas.height = img.height;
             canvas.getContext('2d').drawImage(img, 0, 0);
-            resolve(canvas.toDataURL('image/png'));
+            // Use image/png for transparent assets (like our logo) to avoid black backgrounds
+            const format = (url.includes('.png') || url.endsWith('.png')) ? 'image/png' : 'image/jpeg';
+            resolve(canvas.toDataURL(format, format === 'image/jpeg' ? 0.85 : undefined));
+        };
+        img.onerror = () => reject(new Error('Image load error: ' + url));
+        img.src = url;
+    });
+}
+
+// Crops and resizes gallery photos to a standard 4:3 aspect ratio, compressed to JPEG at 75% quality
+async function getOptimizedBase64Image(url, maxWidth = 600, maxHeight = 450) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = maxWidth;
+            canvas.height = maxHeight;
+            const ctx = canvas.getContext('2d');
+            
+            // Standard landscape crop (4:3 aspect ratio)
+            const targetRatio = maxWidth / maxHeight;
+            let srcWidth = img.width;
+            let srcHeight = img.height;
+            let srcX = 0;
+            let srcY = 0;
+            
+            if (img.width / img.height > targetRatio) {
+                // Image is wider, crop sides
+                srcWidth = img.height * targetRatio;
+                srcX = (img.width - srcWidth) / 2;
+            } else {
+                // Image is taller, crop top/bottom
+                srcHeight = img.width / targetRatio;
+                srcY = (img.height - srcHeight) / 2;
+            }
+            
+            ctx.drawImage(img, srcX, srcY, srcWidth, srcHeight, 0, 0, maxWidth, maxHeight);
+            resolve(canvas.toDataURL('image/jpeg', 0.75));
         };
         img.onerror = () => reject(new Error('Image load error: ' + url));
         img.src = url;
@@ -350,6 +388,233 @@ async function getBase64FromHtmlElement(elementId) {
     }
 }
 
+// Helper: resolves subregion based on municipality name
+function getSubregion(municipalityName) {
+    if (!municipalityName) return 'N/A';
+    const norm = (s) => String(s)
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Z ]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const target = norm(municipalityName);
+    for (const [sub, munis] of Object.entries(antioquiaSubregiones)) {
+        if (munis.map(m => norm(m)).includes(target)) {
+            return sub;
+        }
+    }
+    return 'N/A';
+}
+
+// Generates an off-screen map of the department of Antioquia highlighting the project's municipality
+// Generates an off-screen map of the department of Antioquia highlighting the project's municipality
+async function generateAntioquiaMapBase64(municipalityName, row) {
+    const mapDiv = document.createElement('div');
+    mapDiv.id = 'temp-antioquia-map';
+    mapDiv.style.width = '500px';
+    mapDiv.style.height = '400px';
+    mapDiv.style.position = 'absolute';
+    mapDiv.style.left = '-9999px';
+    mapDiv.style.top = '-9999px';
+    document.body.appendChild(mapDiv);
+
+    const tempMap = L.map(mapDiv, {
+        zoomControl: false,
+        attributionControl: false,
+        fadeAnimation: false,
+        zoomAnimation: false,
+        inertia: false
+    });
+    tempMap.invalidateSize();
+
+    // CartoDB Positron - very clean grayscale background map
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 18,
+        crossOrigin: true
+    }).addTo(tempMap);
+
+    let mpioData = mlMpioData;
+    if (!mpioData) {
+        try {
+            const resp = await fetch('./mpio.json');
+            if (resp.ok) {
+                mpioData = await resp.json();
+                mpioData.features = mpioData.features.filter(f => {
+                    const dpto = String(f.properties.DPTO || '').trim();
+                    const nomDpt = String(f.properties.NOMBRE_DPT || f.properties.NOM_DEPART || '').trim().toUpperCase();
+                    return dpto === '05' || dpto === '5' || nomDpt.includes('ANTIOQUIA');
+                });
+                mlMpioData = mpioData;
+            }
+        } catch (e) {
+            console.error("Error loading mpio for PDF:", e);
+        }
+    }
+
+    const normMuniName = (s) => String(s)
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Z ]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const targetNorm = normMuniName(municipalityName);
+    let allLayer = null;
+    let targetLayer = null;
+
+    if (mpioData) {
+        allLayer = L.geoJSON(mpioData, {
+            style: (feature) => {
+                let mName = feature.properties.NOMBRE_MPI || feature.properties.MPIO_CNMBR || feature.properties.NOM_MPIO || '';
+                mName = String(mName)
+                    .replace(/\uFFFD/g, 'Ñ')
+                    .replace(/\?/g, 'Ñ')
+                    .replace(/¥/g, 'Ñ')
+                    .replace(/\u00A5/g, 'Ñ');
+                    
+                const isTarget = normMuniName(mName) === targetNorm;
+                if (isTarget) {
+                    return {
+                        fillColor: '#0e5e40', // Institutional green
+                        fillOpacity: 0.7,
+                        color: '#0e5e40',
+                        weight: 2
+                    };
+                }
+                return {
+                    fillColor: '#f1f5f9',
+                    fillOpacity: 0.4,
+                    color: '#cbd5e1',
+                    weight: 0.5
+                };
+            },
+            onEachFeature: (feature, layer) => {
+                let mName = feature.properties.NOMBRE_MPI || feature.properties.MPIO_CNMBR || feature.properties.NOM_MPIO || '';
+                mName = String(mName)
+                    .replace(/\uFFFD/g, 'Ñ')
+                    .replace(/\?/g, 'Ñ')
+                    .replace(/¥/g, 'Ñ')
+                    .replace(/\u00A5/g, 'Ñ');
+                if (normMuniName(mName) === targetNorm) {
+                    targetLayer = layer;
+                }
+            }
+        }).addTo(tempMap);
+        
+        // Show the entire department of Antioquia, centered, with target municipality and tramos highlighted in context
+        tempMap.fitBounds(allLayer.getBounds(), { padding: [10, 10] });
+    } else {
+        tempMap.setView([7.15, -75.55], 8);
+    }
+
+    const num = String(row['CONVENIO']).trim();
+    let traceLayer = null;
+    try {
+        const r = await fetch(`./assets/mapas/${num}.geojson`);
+        if(r.ok) {
+            const d = await r.json();
+            traceLayer = L.geoJSON(d, {
+                style: { color: '#ef4444', weight: 4, opacity: 0.9 },
+                pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 4, fillColor: "#ef4444", color: "#fff", weight: 1.5, fillOpacity: 0.9 })
+            }).addTo(tempMap);
+        } else if (typeof omnivore !== 'undefined') {
+            traceLayer = await new Promise(res => {
+                const customLayer = L.geoJSON(null, {
+                    style: { color: '#ef4444', weight: 4, opacity: 0.9 },
+                    pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 4, fillColor: "#ef4444", color: "#fff", weight: 1.5, fillOpacity: 0.9 })
+                });
+                const k = omnivore.kml(`./assets/mapas/${num}.kml`, null, customLayer).on('ready', () => {
+                    k.addTo(tempMap);
+                    res(k);
+                }).on('error', () => res(null));
+            });
+        }
+    } catch(e) {}
+
+    if (!traceLayer) {
+        const la = parseFloat(row['LATITUD']), lo = parseFloat(row['LONGITUD']);
+        if (!isNaN(la) && !isNaN(lo) && la !== 0) {
+            L.marker([la, lo]).addTo(tempMap);
+        }
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    const mapPane = mapDiv.querySelector('.leaflet-map-pane');
+    let oldTransform = '';
+    let oldLeft = '';
+    let oldTop = '';
+    
+    if (mapPane) {
+        oldTransform = mapPane.style.transform;
+        const match = oldTransform.match(/translate3d\(([-0-9.]+)px,\s*([-0-9.]+)px/);
+        if (match) {
+            mapPane.style.transform = '';
+            oldLeft = mapPane.style.left;
+            oldTop = mapPane.style.top;
+            mapPane.style.left = match[1] + 'px';
+            mapPane.style.top = match[2] + 'px';
+        }
+    }
+
+    let mapBase64 = null;
+    try {
+        const canvas = await html2canvas(mapDiv, {
+            useCORS: true,
+            allowTaint: true,
+            scale: 2,
+            logging: false
+        });
+        mapBase64 = canvas.toDataURL('image/jpeg', 0.85);
+    } catch(e) {
+        console.error("Error capturing Antioquia map:", e);
+    }
+
+    if (mapPane && oldTransform) {
+        mapPane.style.transform = oldTransform;
+        mapPane.style.left = oldLeft;
+        mapPane.style.top = oldTop;
+    }
+
+    tempMap.remove();
+    mapDiv.remove();
+
+    return mapBase64;
+}
+
+// Helper: creates a styled institutional section header with a gold bottom bar
+function createSectionHeader(title, pageBreak = null) {
+    const headerObj = {
+        table: {
+            widths: ['*'],
+            body: [
+                [
+                    { 
+                        text: title, 
+                        fontSize: 9.5, 
+                        bold: true, 
+                        color: '#ffffff', 
+                        margin: [8, 5, 8, 5]
+                    }
+                ]
+            ]
+        },
+        layout: {
+            hLineWidth: (i) => i === 1 ? 2 : 0,
+            vLineWidth: () => 0,
+            hLineColor: () => '#a37a3e' // Gold accent line
+        },
+        fillColor: '#0e5e40', // Institutional Green
+        margin: [0, 8, 0, 10]
+    };
+    if (pageBreak) {
+        headerObj.pageBreak = pageBreak;
+    }
+    return headerObj;
+}
+
 async function generateProfessionalPDF(row) {
     const btnPdf = document.getElementById('btn-export-pdf');
     const originalText = btnPdf.innerHTML;
@@ -372,14 +637,17 @@ async function generateProfessionalPDF(row) {
         };
 
         // ===== 1. CAPTURA ASÍNCRONA DE RECURSOS =====
-        const logoBase64 = await getBase64ImageFromURL('https://yt3.googleusercontent.com/-hL8n3r9B7lKAgprKcWs7kIvwynbPUQYhJsDGE5gvnhwhajQl88Fz-kIn-64E2rnsFHjDqZmXU4=s900-c-k-c0x00ffffff-no-rj').catch(() => null);
+        // Official Escudo of Antioquia loaded from local assets
+        const logoBase64 = await getBase64ImageFromURL('./assets/escudo_antioquia.png').catch(() => null);
         const mapBase64 = await getBase64FromHtmlElement('map');
+        const antioquiaMapBase64 = await generateAntioquiaMapBase64(row['MUNICIPIO'], row).catch(() => null);
 
         const antesImgs = document.querySelectorAll('#mod-galeria-antes img');
         const despuesImgs = document.querySelectorAll('#mod-galeria-despues img');
         
-        const antesBase64 = await Promise.all(Array.from(antesImgs).map(img => getBase64ImageFromURL(img.src).catch(() => null)));
-        const despuesBase64 = await Promise.all(Array.from(despuesImgs).map(img => getBase64ImageFromURL(img.src).catch(() => null)));
+        // Fetch and crop/resize gallery images using getOptimizedBase64Image
+        const antesBase64 = await Promise.all(Array.from(antesImgs).map(img => getOptimizedBase64Image(img.src).catch(() => null)));
+        const despuesBase64 = await Promise.all(Array.from(despuesImgs).map(img => getOptimizedBase64Image(img.src).catch(() => null)));
         
         const validAntes = antesBase64.filter(Boolean);
         const validDespues = despuesBase64.filter(Boolean);
@@ -387,103 +655,335 @@ async function generateProfessionalPDF(row) {
 
         const sysState = getSystemState(row['ESTADO CONVENIO']);
 
-        // ===== 2. ESTILOS REUTILIZABLES =====
-        const thCell = (text) => ({ text, fontSize: 9, bold: true, color: '#ffffff', fillColor: '#1a7f5a', margin: [6, 5, 6, 5] });
-        const tdCell = (text, opts = {}) => ({ text: String(text ?? '-'), fontSize: 9, color: '#334155', margin: [6, 4, 6, 4], ...opts });
+        // ===== 2. ESTILOS REUTILIZABLES DE CELDAS =====
+        const thCell = (text) => ({ text, fontSize: 8.5, bold: true, color: '#ffffff', fillColor: '#0e5e40', margin: [6, 4, 6, 4] });
+        const tdCell = (text, opts = {}) => ({ text: String(text ?? '-'), fontSize: 8.5, color: '#334155', margin: [6, 3.5, 6, 3.5], ...opts });
         const tdRight = (text, opts = {}) => tdCell(text, { alignment: 'right', ...opts });
 
         const zebraLayout = {
             fillColor: function (rowIndex, node, columnIndex) {
-                return (rowIndex % 2 === 0) ? '#f8fafc' : null;
+                return (rowIndex > 0 && rowIndex % 2 === 0) ? '#f8fafc' : null;
             },
             hLineColor: function (i, node) { return '#e2e8f0'; },
             vLineColor: function (i, node) { return '#e2e8f0'; },
-            hLineWidth: function (i, node) { return (i === 0 || i === node.table.body.length) ? 0 : 1; },
+            hLineWidth: function (i, node) { return (i === 0 || i === node.table.body.length) ? 0 : 0.5; },
             vLineWidth: function (i, node) { return 0; }
         };
 
         // ===== 3. TABLA DE TRAMOS GEOGRÁFICOS =====
-        const geoRows = (currentExtractedFeatures && currentExtractedFeatures.length > 0)
-            ? currentExtractedFeatures.map(feat => {
+        let geoRows = [];
+        if (currentExtractedFeatures && currentExtractedFeatures.length > 0) {
+            geoRows = currentExtractedFeatures.map(feat => {
                 const c = getCoords(feat.layer) || { start: 'N/A', end: 'N/A' };
                 return [tdCell(feat.name), tdRight(c.start), tdRight(c.end)];
-              })
-            : [[{ text: 'No hay datos geográficos disponibles para este convenio.', colSpan: 3, alignment: 'center', italics: true, fontSize: 9, color: '#94a3b8', margin: [6, 8, 6, 8] }, {}, {}]];
-
-        // ===== 4. GALERÍA DE FOTOS (Antes y Después) =====
-        const photoRows = [];
-        if (hasPhotos) {
-            const maxPhotos = Math.max(validAntes.length, validDespues.length);
-            for (let i = 0; i < maxPhotos; i++) {
-                const left = validAntes[i] ? {
-                    stack: [
-                        { text: 'ANTES', alignment: 'center', fontSize: 10, bold: true, margin: [0, 0, 0, 4], color: '#475569' },
-                        { image: validAntes[i], fit: [230, 180], alignment: 'center', margin: [0, 0, 0, 12] }
-                    ],
-                    margin: [0, 4, 6, 4]
-                } : { text: 'Sin foto (ANTES)', italics: true, color: '#94a3b8', margin: [0, 14, 6, 4], alignment: 'center' };
-                
-                const right = validDespues[i] ? {
-                    stack: [
-                        { text: 'DESPUÉS', alignment: 'center', fontSize: 10, bold: true, margin: [0, 0, 0, 4], color: '#475569' },
-                        { image: validDespues[i], fit: [230, 180], alignment: 'center', margin: [0, 0, 0, 12] }
-                    ],
-                    margin: [6, 4, 0, 4]
-                } : { text: 'Sin foto (DESPUÉS)', italics: true, color: '#94a3b8', margin: [6, 14, 0, 4], alignment: 'center' };
-                
-                photoRows.push([left, right]);
+            });
+        } else {
+            const la = parseFloat(row['LATITUD']), lo = parseFloat(row['LONGITUD']);
+            if (!isNaN(la) && !isNaN(lo) && la !== 0) {
+                geoRows = [[tdCell('Punto de Referencia Único (Coordenadas Centrales)'), tdRight(`${la.toFixed(6)}, ${lo.toFixed(6)}`), tdRight(`${la.toFixed(6)}, ${lo.toFixed(6)}`)]];
+            } else {
+                geoRows = [[{ text: 'No hay datos geográficos disponibles para este convenio.', colSpan: 3, alignment: 'center', italics: true, fontSize: 8.5, color: '#94a3b8', margin: [6, 6, 6, 6] }, {}, {}]];
             }
+        }
+
+        // ===== 4. GALERÍA DE FOTOS DINÁMICA (Multi-página) =====
+        const photoContent = [];
+        if (hasPhotos) {
+            const createPhotoPlaceholder = (stage) => ({
+                table: {
+                    widths: ['*'],
+                    body: [[{
+                        stack: [
+                            { text: 'REGISTRO FOTOGRÁFICO', alignment: 'center', fontSize: 8, bold: true, color: '#94a3b8', margin: [0, 42, 0, 0] },
+                            { text: `NO DISPONIBLE (${stage.toUpperCase()})`, alignment: 'center', fontSize: 7, color: '#94a3b8', margin: [0, 2, 0, 42] }
+                        ]
+                    }]]
+                },
+                layout: {
+                    hLineWidth: () => 1,
+                    vLineWidth: () => 1,
+                    hLineColor: () => '#cbd5e1',
+                    vLineColor: () => '#cbd5e1',
+                    hLineDash: () => ({ length: 4, space: 4 }),
+                    vLineDash: () => ({ length: 4, space: 4 })
+                },
+                fillColor: '#f8fafc',
+                margin: [0, 4, 0, 10]
+            });
+
+            if (validAntes.length === 0 && validDespues.length > 0) {
+                // Chunk into pages of 4 photos (2x2 grid)
+                const itemsPerPage = 4;
+                for (let i = 0; i < validDespues.length; i += itemsPerPage) {
+                    const chunk = validDespues.slice(i, i + itemsPerPage);
+                    const pageIndex = Math.floor(i / itemsPerPage);
+                    
+                    if (pageIndex === 0) {
+                        photoContent.push(createSectionHeader('4. REGISTRO FOTOGRÁFICO DE OBRA', 'before'));
+                        photoContent.push({ text: 'Registro Fotográfico (Después de la Intervención)', style: 'subHeader' });
+                    } else {
+                        photoContent.push(createSectionHeader('4. REGISTRO FOTOGRÁFICO DE OBRA (CONTINUACIÓN)', 'before'));
+                        photoContent.push({ text: 'Registro Fotográfico (Después de la Intervención - Continuación)', style: 'subHeader' });
+                    }
+
+                    const chunkRows = [];
+                    for (let j = 0; j < chunk.length; j += 2) {
+                        const imgIndexLeft = i + j;
+                        const left = {
+                            stack: [
+                                { text: `REGISTRO DESPUÉS - IMAGEN ${imgIndexLeft + 1}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
+                                { image: chunk[j], width: 235, height: 176, alignment: 'center', margin: [0, 0, 0, 10] }
+                            ],
+                            margin: [0, 4, 6, 4]
+                        };
+                        const right = chunk[j + 1] ? {
+                            stack: [
+                                { text: `REGISTRO DESPUÉS - IMAGEN ${imgIndexLeft + 2}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
+                                { image: chunk[j + 1], width: 235, height: 176, alignment: 'center', margin: [0, 0, 0, 10] }
+                            ],
+                            margin: [6, 4, 0, 4]
+                        } : { text: '', margin: [6, 4, 0, 4] };
+                        chunkRows.push([left, right]);
+                    }
+                    photoContent.push({ table: { widths: ['*', '*'], body: chunkRows }, layout: 'noBorders', margin: [0, 4, 0, 0] });
+                }
+            } else if (validDespues.length === 0 && validAntes.length > 0) {
+                // Chunk into pages of 4 photos (2x2 grid)
+                const itemsPerPage = 4;
+                for (let i = 0; i < validAntes.length; i += itemsPerPage) {
+                    const chunk = validAntes.slice(i, i + itemsPerPage);
+                    const pageIndex = Math.floor(i / itemsPerPage);
+                    
+                    if (pageIndex === 0) {
+                        photoContent.push(createSectionHeader('4. REGISTRO FOTOGRÁFICO DE OBRA', 'before'));
+                        photoContent.push({ text: 'Registro Fotográfico (Antes de la Intervención)', style: 'subHeader' });
+                    } else {
+                        photoContent.push(createSectionHeader('4. REGISTRO FOTOGRÁFICO DE OBRA (CONTINUACIÓN)', 'before'));
+                        photoContent.push({ text: 'Registro Fotográfico (Antes de la Intervención - Continuación)', style: 'subHeader' });
+                    }
+
+                    const chunkRows = [];
+                    for (let j = 0; j < chunk.length; j += 2) {
+                        const imgIndexLeft = i + j;
+                        const left = {
+                            stack: [
+                                { text: `REGISTRO ANTES - IMAGEN ${imgIndexLeft + 1}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
+                                { image: chunk[j], width: 235, height: 176, alignment: 'center', margin: [0, 0, 0, 10] }
+                            ],
+                            margin: [0, 4, 6, 4]
+                        };
+                        const right = chunk[j + 1] ? {
+                            stack: [
+                                { text: `REGISTRO ANTES - IMAGEN ${imgIndexLeft + 2}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
+                                { image: chunk[j + 1], width: 235, height: 176, alignment: 'center', margin: [0, 0, 0, 10] }
+                            ],
+                            margin: [6, 4, 0, 4]
+                        } : { text: '', margin: [6, 4, 0, 4] };
+                        chunkRows.push([left, right]);
+                    }
+                    photoContent.push({ table: { widths: ['*', '*'], body: chunkRows }, layout: 'noBorders', margin: [0, 4, 0, 0] });
+                }
+            } else {
+                // Both present: Comparative display (Antes vs Después side-by-side)
+                // Chunk into pages of 3 comparison rows
+                const maxPhotos = Math.max(validAntes.length, validDespues.length);
+                const itemsPerPage = 3;
+                for (let i = 0; i < maxPhotos; i += itemsPerPage) {
+                    const pageIndex = Math.floor(i / itemsPerPage);
+                    
+                    if (pageIndex === 0) {
+                        photoContent.push(createSectionHeader('4. REGISTRO FOTOGRÁFICO DE OBRA', 'before'));
+                        photoContent.push({ text: 'Registro Fotográfico Comparativo (Antes vs Después)', style: 'subHeader' });
+                    } else {
+                        photoContent.push(createSectionHeader('4. REGISTRO FOTOGRÁFICO DE OBRA (CONTINUACIÓN)', 'before'));
+                        photoContent.push({ text: 'Registro Fotográfico Comparativo (Antes vs Después - Continuación)', style: 'subHeader' });
+                    }
+
+                    const chunkRows = [];
+                    const limit = Math.min(i + itemsPerPage, maxPhotos);
+                    for (let k = i; k < limit; k++) {
+                        const left = validAntes[k] 
+                            ? {
+                                stack: [
+                                    { text: `REGISTRO ANTES - IMAGEN ${k + 1}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
+                                    { image: validAntes[k], width: 235, height: 176, alignment: 'center', margin: [0, 0, 0, 10] }
+                                ],
+                                margin: [0, 4, 6, 4]
+                            }
+                            : {
+                                stack: [
+                                    { text: `REGISTRO ANTES - IMAGEN ${k + 1}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
+                                    createPhotoPlaceholder('Antes')
+                                ],
+                                margin: [0, 4, 6, 4]
+                            };
+                        
+                        const right = validDespues[k] 
+                            ? {
+                                stack: [
+                                    { text: `REGISTRO DESPUÉS - IMAGEN ${k + 1}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
+                                    { image: validDespues[k], width: 235, height: 176, alignment: 'center', margin: [0, 0, 0, 10] }
+                                ],
+                                margin: [6, 4, 0, 4]
+                            }
+                            : {
+                                stack: [
+                                    { text: `REGISTRO DESPUÉS - IMAGEN ${k + 1}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
+                                    createPhotoPlaceholder('Después')
+                                ],
+                                margin: [6, 4, 0, 4]
+                            };
+                        chunkRows.push([left, right]);
+                    }
+                    photoContent.push({ table: { widths: ['*', '*'], body: chunkRows }, layout: 'noBorders', margin: [0, 4, 0, 0] });
+                }
+            }
+        } else {
+            // No photos at all
+            photoContent.push(createSectionHeader('4. REGISTRO FOTOGRÁFICO DE OBRA', 'before'));
+            photoContent.push({ text: 'Registro Fotográfico Comparativo (Estandarizado)', style: 'subHeader' });
+            photoContent.push({ 
+                table: {
+                    widths: ['*'],
+                    body: [[{
+                        stack: [
+                            { text: 'REGISTRO FOTOGRÁFICO DE OBRA', alignment: 'center', fontSize: 10, bold: true, color: '#94a3b8', margin: [0, 60, 0, 0] },
+                            { text: 'NO SE DISPONE DE IMÁGENES ASOCIADAS PARA ESTE CONVENIO', alignment: 'center', fontSize: 8.5, color: '#cbd5e1', margin: [0, 4, 0, 60] }
+                        ]
+                    }]]
+                },
+                layout: {
+                    hLineWidth: () => 1,
+                    vLineWidth: () => 1,
+                    hLineColor: () => '#cbd5e1',
+                    vLineColor: () => '#cbd5e1',
+                    hLineDash: () => ({ length: 4, space: 4 }),
+                    vLineDash: () => ({ length: 4, space: 4 })
+                },
+                fillColor: '#f8fafc',
+                margin: [0, 4, 0, 10]
+            });
         }
 
         // ===== 5. FECHA DE GENERACIÓN =====
         const generatedAt = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-        // ===== 6. DOCUMENTO =====
+        // Calculate dynamic contracted/executed labels and values (length and/or area)
+        let labelContratado = 'Alcance Contratado';
+        let valContratado = '';
+        const rawAlcanceM = row['ALCANCE (M)'] || getVal(['ALCANCE (M)']);
+        const rawAlcanceM2 = row['ALCANCE (M2)'] || getVal(['ALCANCE (M2)']);
+        const hasM = rawAlcanceM && Number(rawAlcanceM) > 0;
+        const hasM2 = rawAlcanceM2 && Number(rawAlcanceM2) > 0;
+        if (hasM && hasM2) {
+            labelContratado = 'Longitud / Área Contratada';
+            valContratado = `${Number(rawAlcanceM).toLocaleString('es-CO')} m / ${Number(rawAlcanceM2).toLocaleString('es-CO')} m²`;
+        } else if (hasM) {
+            labelContratado = 'Longitud Contratada';
+            valContratado = `${Number(rawAlcanceM).toLocaleString('es-CO')} m`;
+        } else if (hasM2) {
+            labelContratado = 'Área Contratada';
+            valContratado = `${Number(rawAlcanceM2).toLocaleString('es-CO')} m²`;
+        } else {
+            labelContratado = 'Longitud / Área Contratada';
+            valContratado = 'N/A';
+        }
+
+        let labelEjecutado = 'Ejecución Realizada';
+        let valEjecutado = '';
+        const rawEjecutadoM = row['LONGITUD EJECUTADA'] || getVal(['LONGITUD EJECUTADA']);
+        const rawEjecutadoM2 = row['AREA EJECUTADA (M2)'] || getVal(['AREA EJECUTADA (M2)']) || row['AREA_EJECUTADA'];
+        const hasExeM = rawEjecutadoM && Number(rawEjecutadoM) > 0;
+        const hasExeM2 = rawEjecutadoM2 && Number(rawEjecutadoM2) > 0;
+        if (hasExeM && hasExeM2) {
+            labelEjecutado = 'Longitud / Área Ejecutada';
+            valEjecutado = `${Number(rawEjecutadoM).toLocaleString('es-CO')} m / ${Number(rawEjecutadoM2).toLocaleString('es-CO')} m²`;
+        } else if (hasExeM) {
+            labelEjecutado = 'Longitud Ejecutada';
+            valEjecutado = `${Number(rawEjecutadoM).toLocaleString('es-CO')} m`;
+        } else if (hasExeM2) {
+            labelEjecutado = 'Área Ejecutada';
+            valEjecutado = `${Number(rawEjecutadoM2).toLocaleString('es-CO')} m²`;
+        } else {
+            if (hasM && !hasM2) {
+                labelEjecutado = 'Longitud Ejecutada';
+            } else if (hasM2 && !hasM) {
+                labelEjecutado = 'Área Ejecutada';
+            } else {
+                labelEjecutado = 'Longitud / Área Ejecutada';
+            }
+            valEjecutado = 'N/A';
+        }
+
+        // Logo fallback table layout
+        const logoElement = logoBase64 
+            ? { image: logoBase64, width: 38, margin: [0, 2, 8, 0] } 
+            : {
+                table: {
+                    widths: [44],
+                    body: [[{
+                        text: 'GOB\nANT',
+                        fontSize: 7,
+                        bold: true,
+                        color: '#ffffff',
+                        fillColor: '#0e5e40',
+                        alignment: 'center',
+                        margin: [0, 10, 0, 10]
+                    }]]
+                },
+                layout: 'noBorders',
+                margin: [0, 0, 10, 0]
+              };
+
+        // ===== 6. DEFINICIÓN DEL DOCUMENTO =====
         const docDefinition = {
             pageSize: 'A4',
             pageOrientation: 'portrait',
-            pageMargins: [40, 65, 40, 45],
+            pageMargins: [40, 60, 40, 45],
 
             header: (currentPage, pageCount) => ({
                 margin: [40, 18, 40, 0],
                 columns: [
-                    { text: `Dashboard de Convenios · Secretaría de Infraestructura · Convenio ${row['CONVENIO']}`, fontSize: 7.5, color: '#64748b' },
+                    { text: `Secretaría de Infraestructura · Gobernación de Antioquia · Ficha Convenio ${row['CONVENIO']}`, fontSize: 7.5, color: '#64748b' },
                     { text: `Página ${currentPage} de ${pageCount}`, alignment: 'right', fontSize: 7.5, color: '#64748b' }
                 ]
             }),
 
             footer: () => ({
                 margin: [40, 8, 40, 0],
-                text: `Generado el ${generatedAt} · Documento institucional – no modifique sin autorización`,
+                text: `Generado el ${generatedAt} · Ficha de Seguimiento Técnico Contractual Convenios DIAT`,
                 alignment: 'center', fontSize: 7, color: '#94a3b8'
             }),
 
             content: [
                 // ============================================================
-                // PÁGINA 1 – PORTADA EJECUTIVA
+                // PÁGINA 1 – PORTADA Y RESUMEN EJECUTIVO
                 // ============================================================
                 {
                     columns: [
-                        logoBase64 ? { image: logoBase64, width: 52, margin: [0, 0, 12, 0] } : {},
+                        logoElement,
                         {
                             stack: [
-                                { text: 'FICHA TÉCNICA DE SEGUIMIENTO', fontSize: 17, bold: true, color: '#0f172a' },
-                                { text: 'Gobernación de Antioquia · Secretaría de Infraestructura', fontSize: 9, color: '#1a7f5a', bold: true, margin: [0, 3, 0, 0] }
-                            ]
+                                { text: 'FICHA TÉCNICA DE SEGUIMIENTO', fontSize: 14.5, bold: true, color: '#0f172a', letterSpacing: 0.5 },
+                                { text: 'Secretaría de Infraestructura · Gobernación de Antioquia', fontSize: 8.5, color: '#0e5e40', bold: true, margin: [0, 2, 0, 0] }
+                            ],
+                            margin: [0, 5, 0, 0],
+                            width: '*'
                         },
                         {
                             stack: [
-                                { text: 'Convenio N°', fontSize: 8.5, color: '#64748b', alignment: 'right' },
-                                { text: String(row['CONVENIO']), fontSize: 20, bold: true, color: '#0f172a', alignment: 'right' }
-                            ]
+                                { text: 'CONVENIO N°', fontSize: 7.5, color: '#64748b', alignment: 'right' },
+                                { text: String(row['CONVENIO']), fontSize: 15, bold: true, color: '#0e5e40', alignment: 'right' }
+                            ],
+                            margin: [0, 4, 0, 0],
+                            width: 'auto'
                         }
                     ],
-                    margin: [0, 0, 0, 8]
+                    margin: [0, 0, 0, 6]
                 },
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2.5, lineColor: '#1a7f5a' }], margin: [0, 0, 0, 16] },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#a37a3e' }], margin: [0, 0, 0, 12] },
 
-                // --- 1. BLOQUE IDENTIFICACIÓN ---
-                { text: '1. IDENTIFICACIÓN DEL PROYECTO', style: 'secHeader' },
+                createSectionHeader('1. IDENTIFICACIÓN DEL PROYECTO'),
                 {
                     table: {
                         widths: ['*', 'auto', 'auto', '*'],
@@ -492,16 +992,16 @@ async function generateProfessionalPDF(row) {
                             [
                                 tdCell(row['MUNICIPIO']),
                                 tdCell(row['VIGENCIA']),
-                                { text: sysState.label, fontSize: 9, bold: true, color: sysState.hex, margin: [6, 4, 6, 4] },
+                                { text: sysState.label, fontSize: 8.5, bold: true, color: sysState.hex, margin: [6, 3.5, 6, 3.5] },
                                 tdCell(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'])
                             ]
                         ]
                     },
                     layout: 'lightHorizontalLines',
-                    margin: [0, 0, 0, 16]
+                    margin: [0, 0, 0, 12]
                 },
 
-                // --- KPIs ---
+                // KPIs Avance Físico y Financiero
                 {
                     columns: [
                         {
@@ -509,111 +1009,204 @@ async function generateProfessionalPDF(row) {
                                 widths: ['*'],
                                 body: [[{
                                     stack: [
-                                        { text: 'AVANCE FÍSICO', fontSize: 8, bold: true, color: '#14532d', alignment: 'center', margin: [0, 6, 0, 2] },
-                                        { text: `${(row['FISICO_NORM'] || 0).toFixed(1)}%`, fontSize: 26, bold: true, color: '#166534', alignment: 'center', margin: [0, 0, 0, 6] }
+                                        { text: 'AVANCE FÍSICO REAL', fontSize: 7.5, bold: true, color: '#0e5e40', alignment: 'center', margin: [0, 4, 0, 2] },
+                                        { text: `${(row['FISICO_NORM'] || 0).toFixed(1)}%`, fontSize: 24, bold: true, color: '#0e5e40', alignment: 'center', margin: [0, 0, 0, 4] }
                                     ]
                                 }]]
                             },
-                            layout: { defaultBorder: false, fillColor: '#dcfce7' },
-                            margin: [0, 0, 8, 0]
+                            layout: { defaultBorder: false, fillColor: '#edf7f3' },
+                            margin: [0, 0, 6, 0]
                         },
                         {
                             table: {
                                 widths: ['*'],
                                 body: [[{
                                     stack: [
-                                        { text: 'AVANCE FINANCIERO', fontSize: 8, bold: true, color: '#1e3a8a', alignment: 'center', margin: [0, 6, 0, 2] },
-                                        { text: `${(row['FINANCIERO_NORM'] || 0).toFixed(1)}%`, fontSize: 26, bold: true, color: '#1d4ed8', alignment: 'center', margin: [0, 0, 0, 6] }
+                                        { text: 'AVANCE FINANCIERO EJECUTADO', fontSize: 7.5, bold: true, color: '#2d6a9f', alignment: 'center', margin: [0, 4, 0, 2] },
+                                        { text: `${(row['FINANCIERO_NORM'] || 0).toFixed(1)}%`, fontSize: 24, bold: true, color: '#2d6a9f', alignment: 'center', margin: [0, 0, 0, 4] }
                                     ]
                                 }]]
                             },
-                            layout: { defaultBorder: false, fillColor: '#dbeafe' },
-                            margin: [8, 0, 0, 0]
+                            layout: { defaultBorder: false, fillColor: '#eef4f8' },
+                            margin: [6, 0, 0, 0]
                         }
                     ],
-                    margin: [0, 0, 0, 16]
+                    margin: [0, 0, 0, 12]
                 },
 
-                // --- RESUMEN EJECUTIVO ---
-                { text: 'RESUMEN EJECUTIVO', style: 'secHeader' },
+                createSectionHeader('RESUMEN EJECUTIVO'),
                 {
                     table: {
-                        widths: ['25%', '75%'],
+                        widths: ['28%', '72%'],
                         body: [
-                            [{ text: 'Objeto del Convenio', style: 'fieldLabel' }, { text: row['OBJETO'] || 'Sin objeto definido.', fontSize: 10, alignment: 'justify', margin: [0, 2, 0, 6] }],
-                            (String(row['CONVENIANTE EJECUTOR'] || '').toUpperCase().trim() && String(row['CONVENIANTE EJECUTOR'] || '').toUpperCase().trim() !== String(row['MUNICIPIO'] || '').toUpperCase().trim()) ? [{ text: 'Conveniente Ejecutor', style: 'fieldLabel' }, { text: row['CONVENIANTE EJECUTOR'], fontSize: 10, margin: [0, 2, 0, 6] }] : null,
-                            [{ text: 'Vía Priorizada', style: 'fieldLabel' }, { text: row['VIA_PRIORIZADA'] || 'N/A', fontSize: 10, margin: [0, 2, 0, 6] }],
-                            [{ text: 'Longitud Contratada', style: 'fieldLabel' }, { text: (row['ALCANCE (M)'] || getVal(['ALCANCE (M)'])) ? `${Number(row['ALCANCE (M)'] || getVal(['ALCANCE (M)'])).toLocaleString('es-CO')} m` : 'N/A', fontSize: 10, margin: [0, 2, 0, 6] }],
-                            [{ text: 'Longitud Ejecutada', style: 'fieldLabel' }, { text: (row['LONGITUD EJECUTADA'] || getVal(['LONGITUD EJECUTADA'])) ? `${Number(row['LONGITUD EJECUTADA'] || getVal(['LONGITUD EJECUTADA'])).toLocaleString('es-CO')} m` : 'N/A', fontSize: 10, margin: [0, 2, 0, 6] }],
-                            [{ text: 'Supervisor', style: 'fieldLabel' }, { text: row['SUPERVISOR'] || getVal(['SUPERVISOR']) || 'Sin Asignar', fontSize: 10, margin: [0, 2, 0, 6] }],
-                            [{ text: 'Observaciones', style: 'fieldLabel' }, { text: row['OBSERVACIONES'] || 'Sin observaciones registradas.', fontSize: 9.5, color: '#475569', margin: [0, 2, 0, 0] }]
+                            [{ text: 'Objeto del Convenio', style: 'fieldLabel' }, { text: row['OBJETO'] || 'Sin objeto definido.', style: 'fieldValue', alignment: 'justify' }],
+                            (String(row['CONVENIANTE EJECUTOR'] || '').toUpperCase().trim() && String(row['CONVENIANTE EJECUTOR'] || '').toUpperCase().trim() !== String(row['MUNICIPIO'] || '').toUpperCase().trim()) 
+                                ? [{ text: 'Conveniente Ejecutor', style: 'fieldLabel' }, { text: row['CONVENIANTE EJECUTOR'], style: 'fieldValue' }] 
+                                : null,
+                            [{ text: 'Vía Priorizada', style: 'fieldLabel' }, { text: row['VIA_PRIORIZADA'] || 'N/A', style: 'fieldValue' }],
+                            [{ text: labelContratado, style: 'fieldLabel' }, { text: valContratado, style: 'fieldValue' }],
+                            [{ text: labelEjecutado, style: 'fieldLabel' }, { text: valEjecutado, style: 'fieldValue' }],
+                            [{ text: 'Supervisor', style: 'fieldLabel' }, { text: row['SUPERVISOR'] || getVal(['SUPERVISOR']) || 'Sin Asignar', style: 'fieldValue' }],
+                            [{ text: 'Observaciones', style: 'fieldLabel' }, { text: row['OBSERVACIONES'] || 'Sin observaciones registradas.', style: 'fieldValue', color: '#475569', alignment: 'justify' }]
                         ].filter(Boolean)
                     },
                     layout: 'noBorders',
+                    margin: [0, 0, 0, 10]
+                },
+
+                // ============================================================
+                // PÁGINA 2 – LOCALIZACIÓN DEL PROYECTO
+                // ============================================================
+                createSectionHeader('2. LOCALIZACIÓN Y GEORREFERENCIACIÓN DEL PROYECTO', 'before'),
+                
+                { text: 'Información Geográfica y Territorial', style: 'subHeader' },
+                {
+                    table: {
+                        widths: ['*', '*', '*', '*'],
+                        body: [
+                            [
+                                thCell('Municipio'),
+                                thCell('Subregión'),
+                                thCell(labelContratado),
+                                thCell(labelEjecutado)
+                            ],
+                            [
+                                tdCell(row['MUNICIPIO']),
+                                tdCell(getSubregion(row['MUNICIPIO'])),
+                                tdCell(valContratado),
+                                tdCell(valEjecutado)
+                            ]
+                        ]
+                    },
+                    layout: 'lightHorizontalLines',
                     margin: [0, 0, 0, 12]
                 },
-                { text: 'Tramos Extraídos (Coordenadas)', style: 'subHeader' },
+
+                { text: 'Cartografía Digital Integrada', style: 'subHeader' },
+                {
+                    columns: [
+                        {
+                            stack: [
+                                { text: 'Ubicación General (Departamento)', alignment: 'center', fontSize: 7.5, bold: true, color: '#475569', margin: [0, 0, 0, 4] },
+                                antioquiaMapBase64 
+                                    ? { image: antioquiaMapBase64, width: 235, height: 188, alignment: 'center' }
+                                    : { 
+                                        table: {
+                                            widths: ['*'],
+                                            body: [[{
+                                                stack: [
+                                                    { text: 'MAPA GENERAL DE ANTIOQUIA', alignment: 'center', fontSize: 8, bold: true, color: '#94a3b8', margin: [0, 45, 0, 0] },
+                                                    { text: 'NO DISPONIBLE', alignment: 'center', fontSize: 7, color: '#cbd5e1', margin: [0, 2, 0, 45] }
+                                                ]
+                                            }]]
+                                        },
+                                        layout: {
+                                            hLineWidth: () => 1,
+                                            vLineWidth: () => 1,
+                                            hLineColor: () => '#cbd5e1',
+                                            vLineColor: () => '#cbd5e1',
+                                            hLineDash: () => ({ length: 4, space: 4 }),
+                                            vLineDash: () => ({ length: 4, space: 4 })
+                                        },
+                                        fillColor: '#f8fafc',
+                                        margin: [0, 4, 0, 10]
+                                      }
+                            ],
+                            width: '50%'
+                        },
+                        {
+                            stack: [
+                                { text: 'Detalle del Trazado (Localización)', alignment: 'center', fontSize: 7.5, bold: true, color: '#475569', margin: [0, 0, 0, 4] },
+                                mapBase64
+                                    ? { image: mapBase64, width: 235, height: 188, alignment: 'center' }
+                                    : {
+                                        table: {
+                                            widths: ['*'],
+                                            body: [[{
+                                                stack: [
+                                                    { text: 'DETALLE DEL TRAZADO (KML)', alignment: 'center', fontSize: 8, bold: true, color: '#94a3b8', margin: [0, 45, 0, 0] },
+                                                    { text: 'NO DISPONIBLE / SIN KML', alignment: 'center', fontSize: 7, color: '#cbd5e1', margin: [0, 2, 0, 45] }
+                                                ]
+                                            }]]
+                                        },
+                                        layout: {
+                                            hLineWidth: () => 1,
+                                            vLineWidth: () => 1,
+                                            hLineColor: () => '#cbd5e1',
+                                            vLineColor: () => '#cbd5e1',
+                                            hLineDash: () => ({ length: 4, space: 4 }),
+                                            vLineDash: () => ({ length: 4, space: 4 })
+                                        },
+                                        fillColor: '#f8fafc',
+                                        margin: [0, 4, 0, 10]
+                                      }
+                            ],
+                            width: '50%'
+                        }
+                    ],
+                    margin: [0, 0, 0, 12]
+                },
+
+                { text: 'Tramos y Coordenadas de Referencia', style: 'subHeader' },
                 {
                     table: {
                         headerRows: 1,
                         widths: ['*', 'auto', 'auto'],
                         body: [
-                            [thCell('Tramo / Segmento'), thCell('Inicio (Lat, Lng)'), thCell('Fin (Lat, Lng)')],
+                            [thCell('Tramo / Segmento de Intervención'), thCell('Coordenada Inicio (Lat, Lng)'), thCell('Coordenada Fin (Lat, Lng)')],
                             ...geoRows
                         ]
                     },
                     layout: zebraLayout,
-                    margin: [0, 0, 0, 16]
+                    margin: [0, 0, 0, 10]
                 },
 
                 // ============================================================
-                // PÁGINA 2 – DETALLE FINANCIERO Y CONTRACTUAL (NUEVO ITEM 2)
+                // PÁGINA 3 – DETALLE FINANCIERO Y CONTRACTUAL
                 // ============================================================
-                { text: '2. DETALLE FINANCIERO Y CONTRACTUAL', style: 'secHeader', pageBreak: 'before' },
+                createSectionHeader('3. DETALLE FINANCIERO Y CONTRACTUAL', 'before'),
 
-                { text: 'Recursos del Proyecto', style: 'subHeader' },
+                { text: 'Recursos Financieros del Proyecto', style: 'subHeader' },
                 {
                     table: {
                         widths: ['*', 'auto'],
                         body: [
                             [thCell('Concepto'), thCell('Valor')],
-                            [tdCell('Valor Total del Proyecto'), tdRight(formatCurrency(row['VALOR TOTAL']), { bold: true })],
+                            [tdCell('Valor Total del Proyecto (con adiciones)'), tdRight(formatCurrency(row['VALOR TOTAL']), { bold: true })],
                             [tdCell('Aporte Departamento'), tdRight(formatCurrency(row['APORTE DEPARTAMENTO']))],
                             [tdCell('Aporte Municipio'), tdRight(formatCurrency(row['APORTE MUNICIPIO']))],
                             [tdCell('Adición Departamento'), tdRight(formatCurrency(row['ADICIONES RECURSOS DEPARTAMENTO']))],
                             [tdCell('Adición Municipio'), tdRight(formatCurrency(row['ADICIONES RECURSOS MUNICIPIO']))],
                             [tdCell('Total Desembolsado (Traslado IDEA)', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), { bold: true, color: '#2d6a9f' })],
-                            [tdCell('Total Autorizado Departamento', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO']), { bold: true, color: '#1a7f5a' })]
+                            [tdCell('Total Autorizado Departamento', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO']), { bold: true, color: '#0e5e40' })]
                         ]
                     },
                     layout: 'lightHorizontalLines',
                     margin: [0, 0, 0, 16]
                 },
 
-                { text: 'Tiempos y Plazos', style: 'subHeader' },
+                { text: 'Tiempos, Plazos e Hitos Contractuales', style: 'subHeader' },
                 {
                     table: {
                         widths: ['*', 'auto'],
                         body: [
-                            [thCell('Campo'), thCell('Valor')],
+                            [thCell('Campo / Hito Contractual'), thCell('Fecha / Plazo')],
                             [tdCell('Fecha de Suscripción'), tdRight(getVal(['FECHA DE SUSCRIPC'], true) || '-')],
                             [tdCell('Fecha Acta de Inicio'), tdRight(getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || '-')],
                             [tdCell('Fecha de Terminación Original'), tdRight(getVal(['FECHA DE TERMINAC'], true) || '-')],
-                            [tdCell('Prórrogas'), tdRight((getVal(['PRÓRROGA', 'PR"RROGA']) || 0) + ' meses')],
-                            [tdCell('Suspensiones'), tdRight((getVal(['SUSPENSIÓN', 'SUSPENSI"N']) || 0) + ' meses')],
-                            [tdCell('Nueva Fecha de Terminación', { bold: true }), tdRight(getVal(['NUEVA FECHA DE TERMINAC'], true) || 'Sin cambios', { bold: true, color: '#b7791f' })]
+                            [tdCell('Prórrogas Contractuales'), tdRight((getVal(['PRÓRROGA', 'PR"RROGA']) || 0) + ' meses')],
+                            [tdCell('Suspensiones Temporales'), tdRight((getVal(['SUSPENSIÓN', 'SUSPENSI"N']) || 0) + ' meses')],
+                            [tdCell('Nueva Fecha de Terminación Estimada', { bold: true }), tdRight(getVal(['NUEVA FECHA DE TERMINAC'], true) || 'Sin cambios', { bold: true, color: '#a37a3e' })]
                         ]
                     },
-                    layout: zebraLayout
+                    layout: zebraLayout,
+                    margin: [0, 0, 0, 10]
                 },
 
                 // ============================================================
-                // PÁGINA 3 – REGISTRO FOTOGRÁFICO DE OBRA
+                // PÁGINAS DE REGISTRO FOTOGRÁFICO DE OBRA
                 // ============================================================
-                { text: '3. REGISTRO FOTOGRÁFICO DE OBRA', style: 'secHeader', pageBreak: 'before' },
-                hasPhotos
-                    ? { table: { widths: ['*', '*'], body: photoRows }, layout: 'noBorders', margin: [0, 4, 0, 0] }
-                    : { text: 'No hay fotografías disponibles para este convenio.', italics: true, color: '#94a3b8', margin: [0, 8, 0, 0] }
+                ...photoContent
             ],
 
             styles: {
@@ -621,37 +1214,28 @@ async function generateProfessionalPDF(row) {
                     fontSize: 10,
                     bold: true,
                     color: '#ffffff',
-                    fillColor: '#1a7f5a',
+                    fillColor: '#0e5e40',
                     margin: [0, 8, 0, 10]
                 },
                 subHeader: {
-                    fontSize: 10,
-                    bold: true,
-                    color: '#1a7f5a',
-                    margin: [0, 4, 0, 6]
-                },
-                fieldLabel: {
                     fontSize: 9,
                     bold: true,
+                    color: '#0e5e40',
+                    margin: [0, 6, 0, 4]
+                },
+                fieldLabel: {
+                    fontSize: 8.5,
+                    bold: true,
                     color: '#64748b',
-                    margin: [0, 0, 0, 2]
+                    margin: [0, 1, 0, 2]
+                },
+                fieldValue: {
+                    fontSize: 8.5,
+                    color: '#334155',
+                    margin: [0, 1, 0, 5]
                 }
             }
         };
-
-        // Envolver secHeaders en tabla para fondo con padding
-        docDefinition.content.forEach(item => {
-            if (item && item.style === 'secHeader') {
-                const txt = item.text;
-                const pb = item.pageBreak;
-                delete item.text;
-                delete item.pageBreak;
-                item.table = { widths: ['*'], body: [[{ text: txt, fontSize: 10, bold: true, color: '#ffffff', margin: [6, 5, 6, 5] }]] };
-                item.layout = 'noBorders';
-                item.fillColor = '#1a7f5a';
-                if (pb) item.pageBreak = pb;
-            }
-        });
 
         // ===== 7. DESCARGAR =====
         pdfMake.createPdf(docDefinition).download(`Ficha_Tecnica_Convenio_${row['CONVENIO']}.pdf`);
@@ -1972,7 +2556,30 @@ async function renderMapTab() {
         // Crear instancia del mapa
         mlMap = new maplibregl.Map({
             container: 'main-map',
-            style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+            style: {
+                version: 8,
+                sources: {
+                    'osm-tiles': {
+                        type: 'raster',
+                        tiles: [
+                            'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                        ],
+                        tileSize: 256,
+                        attribution: '© OpenStreetMap contributors'
+                    }
+                },
+                layers: [
+                    {
+                        id: 'osm-tiles-layer',
+                        type: 'raster',
+                        source: 'osm-tiles',
+                        minzoom: 0,
+                        maxzoom: 19
+                    }
+                ]
+            },
             center: [-75.5, 6.55],
             zoom: 7.2,
             pitch: 30,
