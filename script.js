@@ -80,37 +80,37 @@ function getSystemState(estado) {
     const est = String(estado || 'N/A').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
     
     if (est.includes('ejecutado')) return {
-        badgeClass: 'badge-ejecutado bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
-        hex: '#38a169', 
+        badgeClass: 'badge-ejecutado',
+        hex: '#10b981', 
         label: 'Ejecutado'
     };
     if (est.includes('ejecucion')) return {
-        badgeClass: 'badge-ejecucion bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-        hex: '#2d6a9f', 
+        badgeClass: 'badge-ejecucion',
+        hex: '#2563eb', 
         label: 'En Ejecución'
     };
     if (est.includes('proximo') || est.includes('finalizar')) return {
-        badgeClass: 'badge-proximo bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-        hex: '#d69e2e', 
+        badgeClass: 'badge-proximo',
+        hex: '#d97706', 
         label: 'Próximo a finalizar'
     };
     if (est.includes('suspendido') || est.includes('riesgo medio') || est.includes('medio')) return {
-        badgeClass: 'badge-suspendido bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
-        hex: '#f6ad55', 
+        badgeClass: 'badge-suspendido',
+        hex: '#d97706', 
         label: 'Suspendido'
     };
     if (est.includes('por liquidar') || est.includes('riesgo alto') || est.includes('alto') || est.includes('riesgo')) return {
-        badgeClass: 'badge-por-liquidar bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-        hex: '#e53e3e', 
+        badgeClass: 'badge-por-liquidar',
+        hex: '#f97316', 
         label: 'Por Liquidar'
     };
     if (est.includes('liquidado')) return {
-        badgeClass: 'badge-liquidado bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300',
-        hex: '#94a3b8', 
+        badgeClass: 'badge-liquidado',
+        hex: '#10b981', 
         label: 'Liquidado'
     };
     
-    return { badgeClass: 'badge-default bg-slate-100 text-slate-800', hex: '#64748b', label: String(estado).toUpperCase() };
+    return { badgeClass: 'badge-default', hex: '#64748b', label: String(estado).toUpperCase() };
 }
 
 // Función para copiar coordenadas al portapapeles
@@ -480,9 +480,9 @@ async function generateAntioquiaMapBase64(municipalityName, row) {
                 const isTarget = normMuniName(mName) === targetNorm;
                 if (isTarget) {
                     return {
-                        fillColor: '#0e5e40', // Institutional green
+                        fillColor: '#0F766E', // Institutional teal primary
                         fillOpacity: 0.7,
-                        color: '#0e5e40',
+                        color: '#0F766E',
                         weight: 2
                     };
                 }
@@ -607,9 +607,9 @@ function createSectionHeader(title, pageBreak = null) {
         layout: {
             hLineWidth: (i) => i === 1 ? 2 : 0,
             vLineWidth: () => 0,
-            hLineColor: () => '#a37a3e' // Gold accent line
+            hLineColor: () => '#14B8A6' // Teal accent line
         },
-        fillColor: '#0e5e40', // Institutional Green
+        fillColor: '#0F766E', // Institutional Teal Primary
         margin: [0, 8, 0, 10]
     };
     if (pageBreak) {
@@ -659,7 +659,7 @@ async function generateProfessionalPDF(row) {
         const sysState = getSystemState(row['ESTADO CONVENIO']);
 
         // ===== 2. ESTILOS REUTILIZABLES DE CELDAS =====
-        const thCell = (text) => ({ text, fontSize: 8.5, bold: true, color: '#ffffff', fillColor: '#0e5e40', margin: [6, 4, 6, 4] });
+        const thCell = (text) => ({ text, fontSize: 8.5, bold: true, color: '#ffffff', fillColor: '#0F766E', margin: [6, 4, 6, 4] });
         const tdCell = (text, opts = {}) => ({ text: String(text ?? '-'), fontSize: 8.5, color: '#334155', margin: [6, 3.5, 6, 3.5], ...opts });
         const tdRight = (text, opts = {}) => tdCell(text, { alignment: 'right', ...opts });
 
@@ -929,7 +929,7 @@ async function generateProfessionalPDF(row) {
                         fontSize: 7,
                         bold: true,
                         color: '#ffffff',
-                        fillColor: '#0e5e40',
+                        fillColor: '#0F766E',
                         alignment: 'center',
                         margin: [0, 10, 0, 10]
                     }]]
@@ -968,7 +968,7 @@ async function generateProfessionalPDF(row) {
                         {
                             stack: [
                                 { text: 'FICHA TÉCNICA DE SEGUIMIENTO', fontSize: 14.5, bold: true, color: '#0f172a', letterSpacing: 0.5 },
-                                { text: 'Secretaría de Infraestructura · Gobernación de Antioquia', fontSize: 8.5, color: '#0e5e40', bold: true, margin: [0, 2, 0, 0] }
+                                { text: 'Secretaría de Infraestructura · Gobernación de Antioquia', fontSize: 8.5, color: '#0F766E', bold: true, margin: [0, 2, 0, 0] }
                             ],
                             margin: [0, 5, 0, 0],
                             width: '*'
@@ -976,7 +976,7 @@ async function generateProfessionalPDF(row) {
                         {
                             stack: [
                                 { text: 'CONVENIO N°', fontSize: 7.5, color: '#64748b', alignment: 'right' },
-                                { text: String(row['CONVENIO']), fontSize: 15, bold: true, color: '#0e5e40', alignment: 'right' }
+                                { text: String(row['CONVENIO']), fontSize: 15, bold: true, color: '#0F766E', alignment: 'right' }
                             ],
                             margin: [0, 4, 0, 0],
                             width: 'auto'
@@ -984,7 +984,7 @@ async function generateProfessionalPDF(row) {
                     ],
                     margin: [0, 0, 0, 6]
                 },
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#a37a3e' }], margin: [0, 0, 0, 12] },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#14B8A6' }], margin: [0, 0, 0, 12] },
 
                 createSectionHeader('1. IDENTIFICACIÓN DEL PROYECTO'),
                 {
@@ -1012,12 +1012,12 @@ async function generateProfessionalPDF(row) {
                                 widths: ['*'],
                                 body: [[{
                                     stack: [
-                                        { text: 'AVANCE FÍSICO REAL', fontSize: 7.5, bold: true, color: '#0e5e40', alignment: 'center', margin: [0, 4, 0, 2] },
-                                        { text: `${(row['FISICO_NORM'] || 0).toFixed(1)}%`, fontSize: 24, bold: true, color: '#0e5e40', alignment: 'center', margin: [0, 0, 0, 4] }
+                                        { text: 'AVANCE FÍSICO REAL', fontSize: 7.5, bold: true, color: '#0F766E', alignment: 'center', margin: [0, 4, 0, 2] },
+                                        { text: `${(row['FISICO_NORM'] || 0).toFixed(1)}%`, fontSize: 24, bold: true, color: '#0F766E', alignment: 'center', margin: [0, 0, 0, 4] }
                                     ]
                                 }]]
                             },
-                            layout: { defaultBorder: false, fillColor: '#edf7f3' },
+                            layout: { defaultBorder: false, fillColor: '#F0FDFA' },
                             margin: [0, 0, 6, 0]
                         },
                         {
@@ -1025,12 +1025,12 @@ async function generateProfessionalPDF(row) {
                                 widths: ['*'],
                                 body: [[{
                                     stack: [
-                                        { text: 'AVANCE FINANCIERO EJECUTADO', fontSize: 7.5, bold: true, color: '#2d6a9f', alignment: 'center', margin: [0, 4, 0, 2] },
-                                        { text: `${(row['FINANCIERO_NORM'] || 0).toFixed(1)}%`, fontSize: 24, bold: true, color: '#2d6a9f', alignment: 'center', margin: [0, 0, 0, 4] }
+                                        { text: 'AVANCE FINANCIERO EJECUTADO', fontSize: 7.5, bold: true, color: '#2563eb', alignment: 'center', margin: [0, 4, 0, 2] },
+                                        { text: `${(row['FINANCIERO_NORM'] || 0).toFixed(1)}%`, fontSize: 24, bold: true, color: '#2563eb', alignment: 'center', margin: [0, 0, 0, 4] }
                                     ]
                                 }]]
                             },
-                            layout: { defaultBorder: false, fillColor: '#eef4f8' },
+                            layout: { defaultBorder: false, fillColor: '#eff6ff' },
                             margin: [6, 0, 0, 0]
                         }
                     ],
@@ -1180,8 +1180,8 @@ async function generateProfessionalPDF(row) {
                             [tdCell('Aporte Municipio'), tdRight(formatCurrency(row['APORTE MUNICIPIO']))],
                             [tdCell('Adición Departamento'), tdRight(formatCurrency(row['ADICIONES RECURSOS DEPARTAMENTO']))],
                             [tdCell('Adición Municipio'), tdRight(formatCurrency(row['ADICIONES RECURSOS MUNICIPIO']))],
-                            [tdCell('Total Desembolsado (Traslado IDEA)', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), { bold: true, color: '#2d6a9f' })],
-                            [tdCell('Total Autorizado Departamento', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO']), { bold: true, color: '#0e5e40' })]
+                            [tdCell('Total Desembolsado (Traslado IDEA)', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), { bold: true, color: '#2563eb' })],
+                            [tdCell('Total Autorizado Departamento', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO']), { bold: true, color: '#0F766E' })]
                         ]
                     },
                     layout: 'lightHorizontalLines',
@@ -1199,7 +1199,7 @@ async function generateProfessionalPDF(row) {
                             [tdCell('Fecha de Terminación Original'), tdRight(getVal(['FECHA DE TERMINAC'], true) || '-')],
                             [tdCell('Prórrogas Contractuales'), tdRight((getVal(['PRÓRROGA', 'PR"RROGA']) || 0) + ' meses')],
                             [tdCell('Suspensiones Temporales'), tdRight((getVal(['SUSPENSIÓN', 'SUSPENSI"N']) || 0) + ' meses')],
-                            [tdCell('Nueva Fecha de Terminación Estimada', { bold: true }), tdRight(getVal(['NUEVA FECHA DE TERMINAC'], true) || 'Sin cambios', { bold: true, color: '#a37a3e' })]
+                            [tdCell('Nueva Fecha de Terminación Estimada', { bold: true }), tdRight(getVal(['NUEVA FECHA DE TERMINAC'], true) || 'Sin cambios', { bold: true, color: '#14B8A6' })]
                         ]
                     },
                     layout: zebraLayout,
@@ -1217,13 +1217,13 @@ async function generateProfessionalPDF(row) {
                     fontSize: 10,
                     bold: true,
                     color: '#ffffff',
-                    fillColor: '#0e5e40',
+                    fillColor: '#0F766E',
                     margin: [0, 8, 0, 10]
                 },
                 subHeader: {
                     fontSize: 9,
                     bold: true,
-                    color: '#0e5e40',
+                    color: '#0F766E',
                     margin: [0, 6, 0, 4]
                 },
                 fieldLabel: {
@@ -1305,7 +1305,43 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // Updates dropdown setup
+        const btnUpdates = document.getElementById('btn-updates');
+        const updatesDropdown = document.getElementById('updates-dropdown');
+        if (btnUpdates && updatesDropdown) {
+            btnUpdates.addEventListener('click', (e) => {
+                e.stopPropagation();
+                updatesDropdown.classList.toggle('hidden');
+                navAlertsDropdown && navAlertsDropdown.classList.add('hidden');
+            });
+            document.addEventListener('click', (e) => {
+                if (!updatesDropdown.contains(e.target) && !btnUpdates.contains(e.target)) {
+                    updatesDropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        // Helper: popula el panel de actualizaciones
+        window.populateUpdatesPanel = function(changes) {
+            const list = document.getElementById('updates-list');
+            const badge = document.getElementById('updates-badge');
+            const subtitle = document.getElementById('updates-subtitle');
+            if (!list) return;
+            if (badge) { badge.textContent = changes.length; badge.classList.remove('hidden'); }
+            if (subtitle) subtitle.textContent = `${changes.length} actualización(es) — ${new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})}`;
+            list.innerHTML = changes.map(c => `
+                <div class="update-item">
+                    <div class="update-item-badge"><i class="fa-solid fa-check"></i></div>
+                    <div class="update-item-content">
+                        <p class="update-item-title">${c.campo}</p>
+                        <p class="update-item-desc">${c.valorNuevo}</p>
+                        <p class="update-item-time">${c.fecha}</p>
+                    </div>
+                </div>`).join('');
+        };
+
         document.getElementById('file-upload').addEventListener('change', handleFileUpload);
+
         document.getElementById('btn-reset-filters').addEventListener('click', resetFilters);
         document.getElementById('btn-close-modal').addEventListener('click', closeModal);
         
@@ -1378,6 +1414,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+        
+        // --- MOBILE SIDEBAR DRAWER ---
+        const btnSidebarToggle = document.getElementById('btn-sidebar-toggle');
+        const sidebar = document.getElementById('main-tabs-nav');
+        if (btnSidebarToggle && sidebar) {
+            const overlay = document.createElement('div');
+            overlay.className = 'sidebar-overlay';
+            document.body.appendChild(overlay);
+
+            btnSidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('active');
+                overlay.classList.toggle('active');
+            });
+
+            overlay.addEventListener('click', () => {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+            });
+
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    sidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                });
+            });
+        }
 
         loadExcelFile();
     } catch (e) { console.error("Error inicial:", e); }
@@ -1498,10 +1560,16 @@ function processExcelData(data) {
         }
     });
     
-    document.getElementById('welcome-screen').style.display = 'none';
+    const welcomeScreen = document.getElementById('welcome-screen');
+    if (welcomeScreen) welcomeScreen.style.display = 'none';
+    const loader = document.getElementById('dashboard-loader');
+    if (loader) loader.style.display = 'none';
+    const appLayout = document.getElementById('app-layout');
+    if (appLayout) appLayout.style.display = 'flex';
     const mainTabsNav = document.getElementById('main-tabs-nav');
-    if(mainTabsNav) mainTabsNav.style.display = 'block';
-    document.getElementById('main-content').style.display = 'block';
+    if (mainTabsNav) mainTabsNav.style.display = 'flex';
+    const mainContent = document.getElementById('main-content');
+    if (mainContent) mainContent.style.display = 'block';
     
     // Asignar subregión por defecto si está vacía
     rawData.forEach(r => {
@@ -1522,7 +1590,20 @@ function processExcelData(data) {
     const today = new Date();
     const fechaEl = document.getElementById('fecha-actualizacion');
     if(fechaEl) {
-        fechaEl.innerHTML = `<i class="fa-solid fa-clock-rotate-left mr-1.5 text-institutional-accent"></i>Corte: <span class="ml-1 font-bold text-slate-700 dark:text-slate-200">${today.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}</span>`;
+        fechaEl.textContent = today.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    // Poblar panel de actualizaciones con info de la carga
+    if (typeof window.populateUpdatesPanel === 'function') {
+        const updateInfo = [{
+            convenio: 'SISTEMA',
+            fecha: today.toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}),
+            supervisor: `${rawData.length} convenios cargados`,
+            campo: 'Datos actualizados desde Google Sheets',
+            valorAnterior: 'Archivo local',
+            valorNuevo: `${rawData.length} registros activos`
+        }];
+        window.populateUpdatesPanel(updateInfo);
     }
 }
 
@@ -1739,7 +1820,8 @@ function renderTable() {
 
     paginated.forEach(row => {
         const tr = document.createElement('tr');
-        tr.className = 'table-row-hover border-b border-slate-100 dark:border-slate-700/50 group cursor-pointer';
+        tr.className = 'table-row-hover cursor-pointer';
+        tr.style.borderBottom = '1px solid #F1F5F9';
         tr.setAttribute('onclick', `if(!event.target.closest('button')) showSummaryCard('${row['CONVENIO']}')`);
         
         const sysState = getSystemState(row['ESTADO CONVENIO']);
@@ -1768,46 +1850,42 @@ function renderTable() {
         const municipioStrRow = String(row['MUNICIPIO'] || 'N/A').trim().toUpperCase();
         const ejecutorStrRow = String(row['CONVENIANTE EJECUTOR'] || '').trim().toUpperCase();
         if (ejecutorStrRow && ejecutorStrRow !== municipioStrRow && ejecutorStrRow !== 'N/A') {
-            ejecutorHTML = `<span class="mt-1 block text-[9px] font-bold text-slate-500 uppercase" title="Conveniente Ejecutor"><i class="fa-solid fa-building-user mr-1"></i>${row['CONVENIANTE EJECUTOR']}</span>`;
+            ejecutorHTML = `<span style="display:block;margin-top:3px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;" title="Conveniente Ejecutor"><i class="fa-solid fa-building-user" style="margin-right:3px;"></i>${row['CONVENIANTE EJECUTOR']}</span>`;
         }
 
         tr.innerHTML = `
             <td class="px-5 py-3">
-                <div class="flex items-center">
-                    <span class="font-black text-slate-800 dark:text-slate-100 text-sm">${row['CONVENIO'] || 'S/N'}</span>
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <span style="font-weight:900;font-size:14px;color:#0F172A;">${row['CONVENIO'] || 'S/N'}</span>
                     ${alertIcon}
                 </div>
             </td>
             <td class="px-5 py-3">
-                <span class="municipio-chip dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">${row['MUNICIPIO'] || 'N/A'}</span>
+                <span class="municipio-chip">${row['MUNICIPIO'] || 'N/A'}</span>
                 ${ejecutorHTML}
             </td>
             <td class="px-5 py-3">
-                <div class="w-[200px]">
-                    <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate" title="${row['INDICADOR'] || '-'}">${row['INDICADOR'] || '-'}</p>
-                    <p class="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 truncate">${row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '-'}</p>
+                <div style="width:200px;">
+                    <p style="font-size:11px;font-weight:700;color:#0F172A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${row['INDICADOR'] || '-'}">${row['INDICADOR'] || '-'}</p>
+                    <p style="font-size:9px;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '-'}</p>
                 </div>
             </td>
             <td class="px-5 py-3">
-                <div class="text-[10px] font-bold text-slate-600 dark:text-slate-300 min-w-[120px] max-w-[250px] whitespace-normal" title="${row['SUPERVISOR'] || row['NOMBRE SUPERVISOR'] || '-'}">${row['SUPERVISOR'] || row['NOMBRE SUPERVISOR'] || '-'}</div>
+                <div style="font-size:10px;font-weight:700;color:#64748B;min-width:120px;max-width:200px;white-space:normal;" title="${row['SUPERVISOR'] || row['NOMBRE SUPERVISOR'] || '-'}">${row['SUPERVISOR'] || row['NOMBRE SUPERVISOR'] || '-'}</div>
             </td>
             <td class="px-5 py-3">
                 <span class="badge-estado ${sysState.badgeClass}">${sysState.label}</span>
             </td>
             <td class="px-5 py-3">
-                <div class="flex flex-col gap-1.5">
-                    <div class="flex justify-between items-end">
-                        <span class="text-[10px] font-black text-slate-700 dark:text-slate-200">${row['FISICO_NORM'].toFixed(1)}%</span>
-                    </div>
-                    <div class="progress-track"><div class="progress-fisico" style="width: ${row['FISICO_NORM']}%"></div></div>
+                <div style="display:flex;flex-direction:column;gap:5px;">
+                    <span style="font-size:10px;font-weight:800;color:#0F172A;">${row['FISICO_NORM'].toFixed(1)}%</span>
+                    <div class="progress-track"><div class="progress-fisico" style="width: ${Math.min(row['FISICO_NORM'], 100)}%"></div></div>
                 </div>
             </td>
             <td class="px-5 py-3">
-                <div class="flex flex-col gap-1.5">
-                    <div class="flex justify-between items-end">
-                        <span class="text-[10px] font-black text-slate-700 dark:text-slate-200">${row['FINANCIERO_NORM'].toFixed(1)}%</span>
-                    </div>
-                    <div class="progress-track"><div class="progress-financiero" style="width: ${row['FINANCIERO_NORM']}%"></div></div>
+                <div style="display:flex;flex-direction:column;gap:5px;">
+                    <span style="font-size:10px;font-weight:800;color:#0F172A;">${row['FINANCIERO_NORM'].toFixed(1)}%</span>
+                    <div class="progress-track"><div class="progress-financiero" style="width: ${Math.min(row['FINANCIERO_NORM'], 100)}%"></div></div>
                 </div>
             </td>
             <td class="px-5 py-3 text-center">
@@ -1865,7 +1943,7 @@ function renderAlerts() {
             
             if (daysLeft <= 30) {
                 alerts.push({
-                    type: 'proximos', icon: 'fa-hourglass-half text-purple-500', bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800/50',
+                    type: 'proximos', icon: 'fa-hourglass-half',
                     title: 'Próximo a Terminar',
                     desc: `Faltan ${daysLeft} ${daysLeft === 1 ? 'día' : 'días'} para su fecha de terminación (${termStr}).`,
                     conv, mun
@@ -1878,25 +1956,23 @@ function renderAlerts() {
             const msPassed = today.getTime() - termDate.getTime();
             const monthsPassed = msPassed / (1000 * 60 * 60 * 24 * 30.436875);
             
-            if (monthsPassed >= 24) { // Le faltan menos de 6 meses para el límite de 30
+            if (monthsPassed >= 24) {
                 const limitDate = new Date(termDate);
                 limitDate.setMonth(limitDate.getMonth() + 30);
                 const limitStr = `${String(limitDate.getDate()).padStart(2, '0')}/${String(limitDate.getMonth() + 1).padStart(2, '0')}/${limitDate.getFullYear()}`;
-                
                 const monthsLeft = (30 - monthsPassed).toFixed(1);
                 const faltanTxt = monthsLeft > 0 
-                    ? `<span class="inline-block mt-1 font-bold bg-red-200 dark:bg-red-900/50 text-red-900 dark:text-red-200 px-1.5 py-0.5 rounded shadow-sm border border-red-300 dark:border-red-500/30">¡Faltan ${monthsLeft} meses!</span>` 
-                    : `<span class="inline-block mt-1 font-black bg-red-600 dark:bg-red-500 text-white px-1.5 py-0.5 rounded shadow-sm">¡Límite superado por ${Math.abs(monthsLeft).toFixed(1)} meses!</span>`;
-                
+                    ? `<strong style="color:#991B1B;">¡Faltan ${monthsLeft} meses!</strong>` 
+                    : `<strong style="color:#7F1D1D;">¡Límite superado por ${Math.abs(monthsLeft).toFixed(1)} meses!</strong>`;
                 alerts.push({
-                    type: 'competencia', icon: 'fa-gavel text-red-600 fa-beat-fade', bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-300 dark:border-red-800/50',
+                    type: 'competencia', icon: 'fa-gavel fa-beat-fade',
                     title: 'Riesgo: Pérdida de Competencia',
-                    desc: `Finalizó el ${termStr}. Límite legal es a los 30 meses (${limitStr}).<br>${faltanTxt}`,
+                    desc: `Finalizó el ${termStr}. Límite legal: 30 meses (${limitStr}). ${faltanTxt}`,
                     conv, mun
                 });
             } else {
                 alerts.push({
-                    type: 'vencido', icon: 'fa-calendar-xmark text-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/20', border: 'border-orange-100 dark:border-orange-800/50',
+                    type: 'vencido', icon: 'fa-calendar-xmark',
                     title: 'Vencido sin liquidar',
                     desc: `Finalizó el ${termStr} y sigue en ${est}.`,
                     conv, mun
@@ -1907,7 +1983,7 @@ function renderAlerts() {
         // 2. Pagos adelantados (Desfase > 15%)
         if (financiero > fisico + 15) {
             alerts.push({
-                type: 'desfase', icon: 'fa-money-bill-trend-up text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-100 dark:border-amber-800/50',
+                type: 'desfase', icon: 'fa-money-bill-trend-up',
                 title: 'Desfase Financiero Crítico',
                 desc: `Financiero (${financiero.toFixed(1)}%) supera al físico (${fisico.toFixed(1)}%) por >15%.`,
                 conv, mun
@@ -1917,7 +1993,7 @@ function renderAlerts() {
         // 3. Sin evidencia
         if (tieneFotos === 'NO') {
             alerts.push({
-                type: 'evidencia', icon: 'fa-camera-slash text-slate-500', bg: 'bg-slate-50 dark:bg-slate-800/50', border: 'border-slate-200 dark:border-slate-700/50',
+                type: 'vencido', icon: 'fa-camera-slash',
                 title: 'Sin Evidencia Fotográfica',
                 desc: `No hay registro fotográfico cargado en el sistema.`,
                 conv, mun
@@ -1927,7 +2003,7 @@ function renderAlerts() {
         // 4. Suspensión crítica (>= 3 meses)
         if (est.toLowerCase().includes('suspendido') && suspMeses >= 3) {
             alerts.push({
-                type: 'suspension', icon: 'fa-pause text-orange-500', bg: 'bg-orange-50', border: 'border-orange-100',
+                type: 'competencia', icon: 'fa-pause',
                 title: 'Suspensión Prolongada',
                 desc: `Acumula ${suspMeses} meses de suspensión.`,
                 conv, mun
@@ -1937,7 +2013,7 @@ function renderAlerts() {
         // 5. Sin desembolsar estando en ejecución
         if (est.toLowerCase().includes('ejecución') && desembolsado === 0) {
             alerts.push({
-                type: 'nulo', icon: 'fa-triangle-exclamation text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100',
+                type: 'desfase', icon: 'fa-triangle-exclamation',
                 title: 'Cero Desembolsos en Ejecución',
                 desc: `En ejecución pero no hay pagos registrados ($0).`,
                 conv, mun
@@ -1947,6 +2023,22 @@ function renderAlerts() {
 
     const finalAlerts = currentAlertFilter === 'all' ? alerts : alerts.filter(a => a.type === currentAlertFilter);
     countSpan.textContent = finalAlerts.length;
+
+    // Actualizar dinámicamente el contador en los botones de filtro
+    const countAll = alerts.length;
+    const countProximos = alerts.filter(a => a.type === 'proximos').length;
+    const countCompetencia = alerts.filter(a => a.type === 'competencia').length;
+    const countVencido = alerts.filter(a => a.type === 'vencido').length;
+
+    const btnAll = document.querySelector('.alert-filter-btn[data-filter="all"]');
+    const btnProximos = document.querySelector('.alert-filter-btn[data-filter="proximos"]');
+    const btnCompetencia = document.querySelector('.alert-filter-btn[data-filter="competencia"]');
+    const btnVencido = document.querySelector('.alert-filter-btn[data-filter="vencido"]');
+
+    if (btnAll) btnAll.textContent = `Todas (${countAll})`;
+    if (btnProximos) btnProximos.textContent = `Próximos a terminar (${countProximos})`;
+    if (btnCompetencia) btnCompetencia.textContent = `Pérdida de competencia (${countCompetencia})`;
+    if (btnVencido) btnVencido.textContent = `Vencidos sin liquidar (${countVencido})`;
 
     const navFeed = document.getElementById('nav-alerts-list');
     const navCountSpan = document.getElementById('nav-alerts-count');
@@ -1985,23 +2077,40 @@ function renderAlerts() {
     }
 
     if (finalAlerts.length === 0) {
-        feed.innerHTML = `<div class="p-6 text-center text-slate-400 font-medium border border-dashed border-slate-200 rounded-xl"><i class="fa-solid fa-shield-check text-3xl mb-3 block text-emerald-400 opacity-50"></i>No se detectaron riesgos en la selección actual para este filtro.</div>`;
+        feed.innerHTML = `
+            <div style="padding:24px;text-align:center;">
+                <i class="fa-solid fa-shield-check" style="font-size:28px;color:#22C55E;opacity:0.5;display:block;margin-bottom:8px;"></i>
+                <p style="font-size:11px;font-weight:600;color:#94A3B8;">No se detectaron riesgos en la selección actual.</p>
+            </div>`;
         return;
     }
 
-    feed.innerHTML = finalAlerts.map(a => `
-        <div class="p-3 rounded-xl border ${a.border} ${a.bg} flex gap-3 items-start transition hover:shadow-sm cursor-pointer" onclick="showSummaryCard('${a.conv}')">
-            <div class="mt-0.5"><i class="fa-solid ${a.icon} text-lg"></i></div>
-            <div>
-                <h4 class="text-[11px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">${a.title}</h4>
-                <p class="text-[10px] text-slate-600 dark:text-slate-300 font-medium leading-tight mt-0.5">${a.desc}</p>
-                <div class="mt-1.5 flex gap-2 items-center">
-                    <span class="text-[9px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded text-slate-700 dark:text-slate-300">${a.conv}</span>
-                    <span class="text-[9px] font-semibold text-slate-500 dark:text-slate-400 truncate max-w-[120px]">${a.mun}</span>
+    const alertTypeMap = {
+        proximos:    { borderColor: '#F59E0B', iconColor: '#F59E0B', bg: '#FFFBEB' },
+        competencia: { borderColor: '#EF4444', iconColor: '#EF4444', bg: '#FEF2F2' },
+        vencido:     { borderColor: '#7C3AED', iconColor: '#7C3AED', bg: '#F5F3FF' },
+        desfase:     { borderColor: '#3B82F6', iconColor: '#3B82F6', bg: '#EFF6FF' }
+    };
+
+    feed.innerHTML = finalAlerts.map(a => {
+        const colors = alertTypeMap[a.type] || { borderColor: '#94A3B8', iconColor: '#94A3B8', bg: '#F8FAFC' };
+        return `
+        <div class="alert-feed-item alert-${a.type}" onclick="showSummaryCard('${a.conv}')" style="cursor:pointer;">
+            <div class="alert-item-header">
+                <div class="alert-item-icon ${a.type}">
+                    <i class="fa-solid ${a.icon}"></i>
+                </div>
+                <div style="flex:1;">
+                    <h4 class="alert-item-title">${a.title}</h4>
                 </div>
             </div>
-        </div>
-    `).join('');
+            <p style="font-size:10px;font-weight:500;color:#64748B;line-height:1.5;margin-bottom:6px;">${a.desc}</p>
+            <div class="alert-item-meta">
+                <span class="alert-item-tag"><i class="fa-solid fa-hashtag" style="font-size:8px;"></i>${a.conv}</span>
+                <span class="alert-item-tag"><i class="fa-solid fa-location-dot" style="font-size:8px;"></i>${a.mun}</span>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 function updateCharts() {
@@ -2025,6 +2134,11 @@ function updateCharts() {
         const labelsEstado = Object.keys(estMap).sort((a, b) => estMap[b].count - estMap[a].count);
         const dataCount = labelsEstado.map(l => estMap[l].count);
         const bgColors = labelsEstado.map(label => getSystemState(label).hex); 
+        
+        const isDark = document.documentElement.classList.contains('dark');
+        const textColor = isDark ? '#94a3b8' : '#64748b';
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.04)';
+        const chartBorderColor = isDark ? '#1e293b' : '#ffffff';
 
         if(charts['estado']) charts['estado'].destroy();
 
@@ -2036,15 +2150,14 @@ function updateCharts() {
                 const fontSize = (height / 114).toFixed(2);
                 ctx.font = `900 ${fontSize}em Inter`;
                 ctx.textBaseline = "middle";
-                const isDark = document.documentElement.classList.contains('dark');
-                ctx.fillStyle = isDark ? "#f8fafc" : "#1e293b";
+                ctx.fillStyle = isDark ? "#f8fafc" : "#0f172a";
                 const text = totalCount.toString();
                 const textX = Math.round((width - ctx.measureText(text).width) / 2);
                 const textY = height / 2;
                 ctx.fillText(text, textX, textY);
                 
                 ctx.font = `700 ${(height / 250).toFixed(2)}em Inter`;
-                ctx.fillStyle = isDark ? "#94a3b8" : "#64748b";
+                ctx.fillStyle = isDark ? "#64748b" : "#94a3b8";
                 const text2 = "TOTAL";
                 const text2X = Math.round((width - ctx.measureText(text2).width) / 2);
                 ctx.fillText(text2, text2X, textY - (height/8));
@@ -2056,11 +2169,11 @@ function updateCharts() {
             type: 'doughnut',
             data: { 
                 labels: labelsEstado, 
-                datasets: [{ data: dataCount, backgroundColor: bgColors, borderWidth: 2, borderColor: '#ffffff', hoverOffset: 6 }] 
+                datasets: [{ data: dataCount, backgroundColor: bgColors, borderWidth: 2, borderColor: chartBorderColor, hoverOffset: 6 }] 
             },
             plugins: [centerTextPlugin],
             options: { 
-                responsive: true, maintainAspectRatio: false, cutout: '75%', onHover: hoverCursor, 
+                responsive: true, maintainAspectRatio: false, cutout: '78%', onHover: hoverCursor, 
                 animation: { animateScale: true, animateRotate: true, duration: 800, easing: 'easeOutQuart' },
                 onClick: (e, activeEls) => { 
                     if (activeEls.length > 0) { 
@@ -2074,7 +2187,18 @@ function updateCharts() {
                 }, 
                 plugins: { 
                     legend: { display: false }, 
-                    tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.95)', padding: 12, cornerRadius: 8, titleFont: {size: 11}, bodyFont: {size: 13, weight: 'bold'}, callbacks: { label: (c) => ` ${c.label}: ${c.raw} convenios` } } 
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                        titleColor: isDark ? '#f8fafc' : '#0f172a',
+                        bodyColor: isDark ? '#cbd5e1' : '#475569',
+                        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.05)',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8,
+                        titleFont: {size: 11, family: 'Inter'},
+                        bodyFont: {size: 13, weight: 'bold', family: 'Inter'},
+                        callbacks: { label: (c) => ` ${c.label}: ${c.raw} convenios` }
+                    } 
                 } 
             }
         });
@@ -2085,23 +2209,23 @@ function updateCharts() {
                 const sysState = getSystemState(label);
                 const stat = estMap[label];
                 const pct = totalCount > 0 ? Math.round((stat.count / totalCount) * 100) : 0;
-                const isSelected = document.getElementById('filter-estado') && document.getElementById('filter-estado').value === label;
-                const activeClass = isSelected ? 'ring-2 ring-institutional-primary bg-slate-50 dark:bg-slate-800/80' : 'border-transparent';
                 return `
-                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition cursor-pointer border ${activeClass} hover:border-slate-100 dark:hover:border-slate-700/50" onclick="const f = document.getElementById('filter-estado'); if(f) { f.value = f.value === '${label}' ? '' : '${label}'; applyFilters(); }">
-                    <div class="flex items-center gap-3">
-                        <div class="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm" style="background-color: ${sysState.hex}"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:10px;transition:all 0.15s;cursor:pointer;border:1.5px solid #E2E8F0;" 
+                    onmouseover="this.style.background='rgba(15,118,110,0.05)';this.style.borderColor='rgba(15,118,110,0.2)';" 
+                    onmouseout="this.style.background='transparent';this.style.borderColor='#E2E8F0';"
+                    onclick="const f=document.getElementById('filter-estado');if(f){f.value=f.value==='${label}' ?'' :'${label}';applyFilters();}">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:12px;height:12px;border-radius:50%;background:${sysState.hex};box-shadow:0 2px 6px ${sysState.hex}40;flex-shrink:0;"></div>
                         <div>
-                            <p class="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-tight">${label}</p>
-                            <p class="text-[9px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">${formatCurrency(stat.inversion)}</p>
+                            <p style="font-size:10px;font-weight:700;color:#0F172A;text-transform:uppercase;letter-spacing:0.04em;line-height:1.2;">${label}</p>
+                            <p style="font-size:9px;font-weight:600;color:#94A3B8;margin-top:1px;">${formatCurrency(stat.inversion)}</p>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <p class="text-xs font-black text-slate-800 dark:text-slate-100">${stat.count}</p>
-                        <p class="text-[9px] font-bold text-slate-400 dark:text-slate-500">${pct}%</p>
+                    <div style="text-align:right;">
+                        <p style="font-size:13px;font-weight:800;color:#0F172A;line-height:1;">${stat.count}</p>
+                        <p style="font-size:9px;font-weight:700;color:#94A3B8;">${pct}%</p>
                     </div>
-                </div>
-                `;
+                </div>`;
             }).join('');
         }
     }
@@ -2115,25 +2239,40 @@ function updateCharts() {
             tLonEje += r['LONGITUD EJECUTADA'] || 0;
         });
         
+        const isDark = document.documentElement.classList.contains('dark');
+        const textColor = isDark ? '#94a3b8' : '#64748b';
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.04)';
+        
         if (charts['ejecucion']) charts['ejecucion'].destroy();
         charts['ejecucion'] = new Chart(canvasEjecucion, {
             type: 'bar',
             data: {
                 labels: ['Longitud (m)'],
                 datasets: [
-                    { label: 'Contratado', data: [tLonCon], backgroundColor: '#cbd5e1', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 },
-                    { label: 'Ejecutado', data: [tLonEje], backgroundColor: '#1a7f5a', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 }
+                    { label: 'Contratado', data: [tLonCon], backgroundColor: '#94a3b8', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 },
+                    { label: 'Ejecutado', data: [tLonEje], backgroundColor: '#10b981', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 }
                 ]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: { 
-                    legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: {size: 10, family: 'Inter'} } }, 
-                    tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.95)', padding: 12, cornerRadius: 8, titleFont: {size: 11}, bodyFont: {size: 13, weight: 'bold'}, callbacks: { label: (c) => ` ${c.dataset.label}: ${formatNumber(c.raw)} m` } } 
+                    legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: {size: 10, family: 'Inter'}, color: textColor } }, 
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                        titleColor: isDark ? '#f8fafc' : '#0f172a',
+                        bodyColor: isDark ? '#cbd5e1' : '#475569',
+                        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.05)',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8,
+                        titleFont: {size: 11, family: 'Inter'},
+                        bodyFont: {size: 13, weight: 'bold', family: 'Inter'},
+                        callbacks: { label: (c) => ` ${c.dataset.label}: ${formatNumber(c.raw)} m` }
+                    } 
                 },
                 scales: {
-                    x: { grid: { display: false }, ticks: { font: {family: 'Inter', weight: 'bold'} } },
-                    y: { border: { display: false }, grid: { color: document.documentElement.classList.contains('dark') ? '#334155' : '#f1f5f9' }, beginAtZero: true, ticks: { font: {family: 'Inter'}, maxTicksLimit: 6, callback: (v) => formatNumber(v) } }
+                    x: { grid: { display: false }, ticks: { color: textColor, font: {family: 'Inter', weight: 'bold', size: 10} } },
+                    y: { border: { display: false }, grid: { color: gridColor }, beginAtZero: true, ticks: { color: textColor, font: {family: 'Inter', size: 10}, maxTicksLimit: 6, callback: (v) => formatNumber(v) } }
                 },
                 animation: { duration: 800, easing: 'easeOutQuart' }
             }
@@ -2417,11 +2556,9 @@ document.addEventListener('click', (e) => {
     const btn = e.target.closest('.alert-filter-btn');
     if (btn) {
         document.querySelectorAll('.alert-filter-btn').forEach(b => {
-            b.classList.remove('active', 'bg-slate-800', 'text-white');
-            b.classList.add('bg-slate-100', 'text-slate-600', 'hover:bg-slate-200', 'hover:text-slate-800');
+            b.classList.remove('active');
         });
-        btn.classList.remove('bg-slate-100', 'text-slate-600', 'hover:bg-slate-200', 'hover:text-slate-800');
-        btn.classList.add('active', 'bg-slate-800', 'text-white');
+        btn.classList.add('active');
         currentAlertFilter = btn.dataset.filter;
         renderAlerts();
     }
@@ -2436,6 +2573,7 @@ let mlKmlGeojson = null;    // GeoJSON acumulado de convenios
 let mlVialData = { primaria: null, secundaria: null, terciaria: null }; // Caché de GeoJSON de vías
 let mlMpioData = null;      // Caché de GeoJSON de municipios de Antioquia
 let mlSearchMarker = null;  // Marcador temporal del buscador de mapa
+let currentMLPopup = null;   // Popup informativo activo en el mapa
 
 // Estado de visibilidad de capas
 let mlLayersState = {
@@ -2503,10 +2641,22 @@ function buildMLPopupHTML(props, headerColor, badgeText, titleText, showFichaBtn
 // ── Helper: muestra popup en mapa ─────────────────────────────────────────────
 function showMLPopup(lngLat, html) {
     if (!mlMap) return;
-    new maplibregl.Popup({ closeButton: true, maxWidth: '340px', offset: 6 })
+    if (currentMLPopup) {
+        currentMLPopup.remove();
+    }
+    currentMLPopup = new maplibregl.Popup({ 
+        closeButton: true, 
+        maxWidth: '320px', 
+        offset: 0, 
+        className: 'map-info-popup' 
+    })
         .setLngLat(lngLat)
         .setHTML(html)
         .addTo(mlMap);
+
+    currentMLPopup.on('close', () => {
+        currentMLPopup = null;
+    });
 }
 
 // ── FUNCIONES AUXILIARES DE CLICK GLOBALES ─────────────────────────────────────
@@ -2784,7 +2934,7 @@ async function renderMapTab() {
                         source: 'municipios-src',
                         layout: { visibility: 'visible' },
                         paint: {
-                            'fill-color': ['case', ['boolean', ['feature-state', 'blink'], false], '#ffee55', '#2d6a9f'],
+                            'fill-color': ['case', ['boolean', ['feature-state', 'blink'], false], '#ffee55', '#2563eb'],
                             'fill-opacity': ['case',
                                 ['boolean', ['feature-state', 'blink'], false], 0.65,
                                 ['boolean', ['feature-state', 'hover'], false], 0.25,
@@ -3842,25 +3992,53 @@ function updateMapCharts() {
         const el = document.getElementById(id);
         if (!el) return;
         if (charts[id]) charts[id].destroy();
+        
+        const isDark = document.documentElement.classList.contains('dark');
+        const textColor = isDark ? '#94a3b8' : '#64748b';
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.04)';
+        
         charts[id] = new Chart(el, {
             type,
             data: {
                 labels: dataArr.map(d => d[0]),
-                datasets: [{ data: dataArr.map(d => d[1]), backgroundColor: color, borderRadius: 4 }]
+                datasets: [{ data: dataArr.map(d => d[1]), backgroundColor: color, borderRadius: 6 }]
             },
             options: {
                 indexAxis: (type === 'bar' && (id.includes('top-mun') || id.includes('sub-inv'))) ? 'y' : 'x',
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${formatCb(c.raw)}` } } },
-                scales: { x: { ticks: { font: { size: 9 } } }, y: { ticks: { font: { size: 9 } } } }
+                plugins: { 
+                    legend: { display: false }, 
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                        titleColor: isDark ? '#f8fafc' : '#0f172a',
+                        bodyColor: isDark ? '#cbd5e1' : '#475569',
+                        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.05)',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8,
+                        titleFont: {size: 11, family: 'Inter'},
+                        bodyFont: {size: 13, weight: 'bold', family: 'Inter'},
+                        callbacks: { label: (c) => ` ${formatCb(c.raw)}` }
+                    } 
+                },
+                scales: { 
+                    x: { 
+                        grid: { color: (type === 'bar' && (id.includes('top-mun') || id.includes('sub-inv'))) ? gridColor : 'transparent' }, 
+                        ticks: { color: textColor, font: { size: 9, family: 'Inter', weight: '500' } } 
+                    }, 
+                    y: { 
+                        grid: { color: (type === 'bar' && (id.includes('top-mun') || id.includes('sub-inv'))) ? 'transparent' : gridColor }, 
+                        ticks: { color: textColor, font: { size: 9, family: 'Inter', weight: '500' } } 
+                    } 
+                }
             }
         });
     };
 
     drawChart('chart-sub-long',     'bar', sL, v => formatNumber(v) + ' m', '#10b981');
-    drawChart('chart-sub-inv',      'bar', sI, v => formatCurrency(v),       '#3b82f6');
+    drawChart('chart-sub-inv',      'bar', sI, v => formatCurrency(v),       '#2563eb');
     drawChart('chart-top-mun-long', 'bar', mL, v => formatNumber(v) + ' m', '#10b981');
-    drawChart('chart-top-mun-inv',  'bar', mI, v => formatCurrency(v),       '#3b82f6');
+    drawChart('chart-top-mun-inv',  'bar', mI, v => formatCurrency(v),       '#2563eb');
 }
 
 window.setMapMetric = function(val) {
@@ -4104,32 +4282,32 @@ function renderPlanTab() {
             return Math.round(v) + ' und';
         };
 
+        const pctCls = pct >= 80 ? 'cumplida' : pct >= 50 ? 'proceso' : 'riesgo';
         container.innerHTML += `
-            <div class="border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm bg-white dark:bg-slate-800 flex flex-col gap-2 hover:shadow-md transition-shadow">
-                <div class="flex justify-between items-start gap-2">
-                    <h4 class="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest leading-tight">${ind}</h4>
-                    <span class="${colorClass} text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border shrink-0">${pct.toFixed(1)}%</span>
+            <div class="meta-card meta-${pctCls}">
+                <div class="meta-card-header">
+                    <h4 class="meta-card-title">${ind}</h4>
+                    <span class="meta-pct-badge ${pctCls}">${pct.toFixed(1)}%</span>
                 </div>
-                <div class="grid grid-cols-3 gap-2 text-center">
-                    <div class="${bgClass} rounded-lg p-2">
-                        <p class="text-[8px] uppercase font-bold text-slate-400 mb-0.5">Meta</p>
-                        <p class="text-[11px] font-black text-slate-800 dark:text-slate-100 leading-none">${fmtVal(meta)}</p>
-                    </div>
-                    <div class="${bgClass} rounded-lg p-2">
-                        <p class="text-[8px] uppercase font-bold text-slate-400 mb-0.5">${labelMetasMetric}</p>
-                        <p class="text-[11px] font-black text-slate-800 dark:text-slate-100 leading-none">${fmtVal(e)}</p>
-                    </div>
-                    <div class="${bgClass} rounded-lg p-2">
-                        <p class="text-[8px] uppercase font-bold text-slate-400 mb-0.5">Restante</p>
-                        <p class="text-[11px] font-black text-slate-800 dark:text-slate-100 leading-none">${fmtVal(restante)}</p>
-                    </div>
+                <div class="meta-progress-track">
+                    <div class="meta-progress-fill ${pctCls}" style="width:${Math.min(pct, 100)}%"></div>
                 </div>
-                <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
-                    <div class="${barColor} h-2 rounded-full transition-all duration-1000" style="width: ${pct.toFixed(1)}%"></div>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-[9px] text-slate-400 font-medium">${d.convenios} convenio(s) vinculado(s)</span>
-                    <span class="text-[9px] font-bold text-slate-400">${cfg.unit}</span>
+                <div class="meta-card-footer">
+                    <div style="display:flex;gap:12px;">
+                        <div>
+                            <p style="font-size:8px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;">Meta</p>
+                            <p style="font-size:12px;font-weight:800;color:#0F172A;">${fmtVal(meta)}</p>
+                        </div>
+                        <div>
+                            <p style="font-size:8px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;">${labelMetasMetric}</p>
+                            <p style="font-size:12px;font-weight:800;color:#0F766E;">${fmtVal(e)}</p>
+                        </div>
+                        <div>
+                            <p style="font-size:8px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;">Restante</p>
+                            <p style="font-size:12px;font-weight:800;color:#EF4444;">${fmtVal(restante)}</p>
+                        </div>
+                    </div>
+                    <span class="meta-meta-text">${d.convenios} convenio(s)</span>
                 </div>
             </div>
         `;
@@ -4146,6 +4324,10 @@ function renderPlanTab() {
     // === 1. GRÁFICO: Cumplimiento Global (Horizontal Bar Chart) ===
     if (charts['plan-metas']) charts['plan-metas'].destroy();
     
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#94a3b8' : '#64748b';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.04)';
+
     charts['plan-metas'] = new Chart(document.getElementById('chart-plan-metas'), {
         type: 'bar',
         data: {
@@ -4166,6 +4348,15 @@ function renderPlanTab() {
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                    titleColor: isDark ? '#f8fafc' : '#0f172a',
+                    bodyColor: isDark ? '#cbd5e1' : '#475569',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.05)',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8,
+                    titleFont: {size: 11, family: 'Inter'},
+                    bodyFont: {size: 12, family: 'Inter'},
                     callbacks: {
                         label: function(context) {
                             const index = context.dataIndex;
@@ -4181,14 +4372,18 @@ function renderPlanTab() {
                 x: {
                     beginAtZero: true,
                     suggestedMax: 100,
+                    grid: { color: gridColor },
                     ticks: {
-                        font: { size: 9 },
+                        color: textColor,
+                        font: { size: 9, family: 'Inter' },
                         callback: function(value) { return value + '%'; }
                     }
                 },
                 y: {
+                    grid: { display: false },
                     ticks: {
-                        font: { size: 9, weight: 'bold' }
+                        color: textColor,
+                        font: { size: 9, weight: 'bold', family: 'Inter' }
                     }
                 }
             }
@@ -4211,9 +4406,9 @@ function renderPlanTab() {
     const ctxAnual = canvasAnual.getContext('2d');
     
     const gradient = ctxAnual.createLinearGradient(0, 0, 0, 250);
-    const mainColor = planAnualMetric === 'longitud' ? 'rgba(14, 94, 64, 1)' : 'rgba(45, 106, 159, 1)';
-    const startGrad = planAnualMetric === 'longitud' ? 'rgba(14, 94, 64, 0.4)' : 'rgba(45, 106, 159, 0.4)';
-    const endGrad = planAnualMetric === 'longitud' ? 'rgba(14, 94, 64, 0.0)' : 'rgba(45, 106, 159, 0.0)';
+    const mainColor = planAnualMetric === 'longitud' ? '#10b981' : '#2563eb';
+    const startGrad = planAnualMetric === 'longitud' ? 'rgba(16, 185, 129, 0.35)' : 'rgba(37, 99, 235, 0.35)';
+    const endGrad = planAnualMetric === 'longitud' ? 'rgba(16, 185, 129, 0.0)' : 'rgba(37, 99, 235, 0.0)';
     
     gradient.addColorStop(0, startGrad);
     gradient.addColorStop(1, endGrad);
@@ -4244,8 +4439,17 @@ function renderPlanTab() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'bottom', labels: { font: { size: 10 } } },
+                legend: { position: 'bottom', labels: { font: { size: 10, family: 'Inter' }, color: textColor } },
                 tooltip: {
+                    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                    titleColor: isDark ? '#f8fafc' : '#0f172a',
+                    bodyColor: isDark ? '#cbd5e1' : '#475569',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.05)',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8,
+                    titleFont: {size: 11, family: 'Inter'},
+                    bodyFont: {size: 13, weight: 'bold', family: 'Inter'},
                     callbacks: {
                         label: function(context) {
                             const valFmt = planAnualMetric === 'area' ? formatNumber(Math.round(context.raw)) : context.raw;
@@ -4257,15 +4461,18 @@ function renderPlanTab() {
             scales: {
                 y: {
                     beginAtZero: true,
+                    grid: { color: gridColor },
                     ticks: {
-                        font: { size: 9 },
+                        color: textColor,
+                        font: { size: 9, family: 'Inter' },
                         callback: function(value) {
                             return planAnualMetric === 'area' ? formatNumber(value) + ' m²' : value + ' km';
                         }
                     }
                 },
                 x: {
-                    ticks: { font: { size: 9 } }
+                    grid: { display: false },
+                    ticks: { color: textColor, font: { size: 9, family: 'Inter' } }
                 }
             }
         }

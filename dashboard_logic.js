@@ -413,7 +413,7 @@ function renderPlanTab() {
             labels: chartMetasLabels,
             datasets: [
                 { label: 'Meta',      data: chartMetasTargets,  backgroundColor: 'rgba(203,213,225,0.8)', borderColor: '#94a3b8', borderWidth: 1 },
-                { label: 'Ejecutado', data: chartMetasAchieved, backgroundColor: 'rgba(26,127,90,0.85)',  borderColor: '#0e5e40',  borderWidth: 1 }
+                { label: 'Ejecutado', data: chartMetasAchieved, backgroundColor: 'rgba(15, 118, 110, 0.85)',  borderColor: '#0F766E',  borderWidth: 1 }
             ]
         },
         options: {

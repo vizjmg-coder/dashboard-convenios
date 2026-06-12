@@ -3,766 +3,746 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Convenios - DIAT</title>
+    <title>Dashboard Convenios DIAT — Gobernación de Antioquia</title>
+    <meta name="description" content="Centro de control territorial de convenios DIAT. Resumen ejecutivo, mapa interactivo y plan de desarrollo.">
     <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: { inter: ['Inter', 'sans-serif'] },
                     colors: {
                         institutional: {
-                            primary: '#0e5e40',
-                            light: '#1a7f5a',
-                            pale: '#edf7f3',
-                            accent: '#2d6a9f'
+                            primary: '#0F766E',
+                            light: '#14B8A6',
+                            pale: 'rgba(15, 118, 110, 0.08)',
+                            accent: '#3B82F6'
                         }
                     },
                     gridTemplateColumns: {
                         '15': 'repeat(15, minmax(0, 1fr))',
-                    }
+                    },
                 }
             }
         }
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Annotation Plugin para Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/2.2.1/chartjs-plugin-annotation.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- Leaflet (mini-mapa en ficha técnica y resumen) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-omnivore/0.3.4/leaflet-omnivore.min.js"></script>
-    <!-- MapLibre GL JS (visor principal Mapa Territorial) -->
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
     <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-slate-50 dark:bg-slate-800/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-inter antialiased">
+<body class="font-inter antialiased overflow-hidden" style="background-color:#F8FAFC;color:#0F172A;">
 
-    <!-- NAVBAR INSTITUCIONAL -->
-    <nav class="navbar-institutional no-print">
-        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center gap-4">
-                    <div class="navbar-logo-ring">
-                        <img src="./assets/escudo_antioquia.png" alt="Logo Antioquia" class="w-full h-full object-contain p-0.5" onerror="this.src='https://ui-avatars.com/api/?name=Gob+Ant&background=1a7f5a&color=fff'">
-                    </div>
-                    <div>
-                        <h1 class="text-lg sm:text-xl font-black text-slate-900 dark:text-white leading-none tracking-tight">DASHBOARD CONVENIOS 2024-2027</h1>
-                        <p class="text-[10px] font-bold text-institutional-light uppercase tracking-widest mt-0.5">Dirección de Infraestructura y Apoyo Territorial</p>
-                    </div>
-                </div>
-                
-                <div class="flex items-center gap-3 sm:gap-6">
-                    <div class="hidden lg:flex items-center text-[10px] font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
-                        <i class="fa-solid fa-clock-rotate-left mr-1.5 text-institutional-accent"></i>
-                        Corte: <span id="fecha-actualizacion" class="ml-1 font-bold text-slate-700 dark:text-slate-200">Cargando...</span>
-                    </div>
-                    <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
-                    
-                    <div class="flex items-center gap-2">
-                        <button id="btn-theme-toggle" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-institutional-light hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors" title="Alternar modo oscuro">
-                            <i id="theme-icon" class="fa-solid fa-moon"></i>
-                        </button>
-                        
-                        <div class="relative">
-                            <button id="btn-nav-alerts" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-institutional-light hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors relative" title="Alertas">
-                                <i class="fa-solid fa-bell"></i>
-                                <span id="nav-alerts-badge" class="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 border-2 border-white dark:border-slate-900 rounded-full hidden"></span>
-                            </button>
-                            
-                            <div id="nav-alerts-dropdown" class="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 dark:border-slate-700 overflow-hidden hidden z-50 transform origin-top-right transition-all">
-                                <div class="p-3 border-b border-slate-100 dark:border-slate-700/50 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 dark:bg-slate-800/50">
-                                    <h4 class="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">Notificaciones</h4>
-                                    <span id="nav-alerts-count" class="text-[9px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 dark:text-slate-300 px-2 py-0.5 rounded-full">0</span>
-                                </div>
-                                <div id="nav-alerts-list" class="max-h-80 overflow-y-auto custom-scrollbar bg-white dark:bg-slate-800">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
-                    <div class="navbar-user-pill flex items-center gap-3">
-                        <div class="text-right hidden sm:block">
-                            <p class="text-[11px] font-black text-slate-800 dark:text-slate-100 leading-none">Supervisión DIAT</p>
-                            <p class="text-[9px] font-bold text-institutional-light uppercase tracking-widest mt-1">Equipo Técnico</p>
-                        </div>
-                        <div class="relative">
-                            <div class="w-8 h-8 rounded-full overflow-hidden bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700">
-                                <img src="./assets/perfil_equipo.jpg" alt="Perfil" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Equipo+DIAT&background=1a7f5a&color=fff&bold=true';">
-                            </div>
-                            <div class="navbar-online-dot"></div>
-                        </div>
-                    </div>
-                </div>
+    <!-- INDICADOR DE CARGA -->
+    <div id="dashboard-loader" class="fixed inset-0 flex flex-col items-center justify-center z-[200]" style="background:#F8FAFC;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:20px;">
+            <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#0F766E,#14B8A6);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(15,118,110,0.3);">
+                <i class="fa-solid fa-map-location-dot" style="color:white;font-size:22px;"></i>
             </div>
-        </div>
-        <div class="navbar-accent-bar"></div>
-    </nav>
-
-    <!-- PANTALLA DE BIENVENIDA -->
-    <div id="welcome-screen" class="max-w-xl mx-auto mt-16 p-4">
-        <div class="welcome-premium text-center">
-            <div class="welcome-header-band">
-                <i class="fa-solid fa-file-excel text-5xl text-white mb-4 drop-shadow-md"></i>
-                <h2 class="text-2xl font-black text-white tracking-tight">Sistema de Seguimiento</h2>
-                <p class="text-institutional-pale text-xs font-medium mt-2 opacity-90">Gestión y control de infraestructura departamental</p>
+            <div style="text-align:center;">
+                <p style="font-size:14px;font-weight:700;color:#0F172A;letter-spacing:-0.01em;margin-bottom:4px;">Dashboard DIAT</p>
+                <p style="font-size:11px;font-weight:500;color:#94A3B8;">Cargando datos territoriales...</p>
             </div>
-            <div class="p-8">
-                <p class="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm mb-6">Selecciona el archivo maestro de <strong>CONVENIOS</strong> actualizado para cargar el dashboard.</p>
-                <label class="file-upload-zone">
-                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-institutional-light mb-3"></i>
-                    <span class="block text-sm font-bold text-institutional-primary">Explorar archivo Excel</span>
-                    <span class="block text-xs text-slate-400 dark:text-slate-500 mt-1">Formatos soportados: .xlsx, .xls</span>
-                    <input type="file" id="file-upload" accept=".xlsx, .xls, .csv" class="hidden" />
-                </label>
+            <div style="width:180px;height:3px;background:#E2E8F0;border-radius:99px;overflow:hidden;">
+                <div style="width:60%;height:100%;background:linear-gradient(90deg,#0F766E,#14B8A6);border-radius:99px;animation:shimmer 1.5s ease-in-out infinite;background-size:200% auto;"></div>
             </div>
         </div>
     </div>
 
-    <!-- NAVEGACIÓN POR PESTAÑAS -->
-    <div id="main-tabs-nav" class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 no-print" style="display: none;">
-        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex gap-8 overflow-x-auto custom-scrollbar">
-                <button class="tab-btn active px-1 py-4 text-sm font-bold text-institutional-primary border-b-2 border-institutional-primary flex items-center gap-2 whitespace-nowrap transition-colors" data-tab="resumen">
-                    <i class="fa-solid fa-house"></i> Resumen
-                </button>
-                <button class="tab-btn px-1 py-4 text-sm font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap transition-colors" data-tab="mapa">
-                    <i class="fa-solid fa-map-location-dot"></i> Mapa Territorial
-                </button>
-                <button class="tab-btn px-1 py-4 text-sm font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 whitespace-nowrap transition-colors" data-tab="plan">
-                    <i class="fa-solid fa-chart-line"></i> Plan de Desarrollo 2024-2027
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- CONTENEDOR PRINCIPAL DE LA APLICACIÓN -->
+    <div id="app-layout" class="flex h-screen w-screen overflow-hidden" style="display:none!important;">
 
-    <main class="container-main py-8 no-print" id="main-content" style="display: none;">
-        
-        <!-- PESTAÑA 1: RESUMEN -->
-        <div id="tab-resumen" class="tab-content block">
-        
-        <!-- SECCIÓN DE FILTROS -->
-        <section class="filter-section mb-8 bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 relative overflow-hidden">
-            <div class="absolute top-0 left-0 w-1.5 h-full bg-institutional-primary"></div>
-            <div class="mb-5 pb-4 border-b border-slate-100 dark:border-slate-700/50 flex flex-col sm:flex-row justify-between items-start sm:items-center pl-2 gap-3">
-                <div>
-                    <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2"><i class="fa-solid fa-filter text-institutional-primary"></i> Filtros de Búsqueda</h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Refina los resultados del dashboard utilizando los siguientes criterios</p>
-                </div>
-                <button id="btn-reset-filters" class="btn-reset flex items-center gap-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-lg transition-colors text-[10px] font-bold shadow-sm">
-                    <i class="fa-solid fa-eraser"></i> Limpiar Filtros
-                </button>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-4">
-                <div>
-                    <label class="filter-label">Vigencia</label>
-                    <select id="filter-vigencia" class="filter-control"></select>
-                </div>
-                <div>
-                    <label class="filter-label">Supervisor</label>
-                    <select id="filter-supervisor" class="filter-control"></select>
-                </div>
-                <div>
-                    <label class="filter-label">Indicador</label>
-                    <select id="filter-indicador" class="filter-control"></select>
-                </div>
-                <div>
-                    <label class="filter-label">Clasificación</label>
-                    <select id="filter-clasificacion" class="filter-control"></select>
-                </div>
-                <div>
-                    <label class="filter-label">Municipio</label>
-                    <select id="filter-municipio" class="filter-control"></select>
-                </div>
-                <div>
-                    <label class="filter-label">Subregión</label>
-                    <select id="filter-subregion" class="filter-control"></select>
-                </div>
-                <div>
-                    <label class="filter-label">Estado</label>
-                    <select id="filter-estado" class="filter-control"></select>
-                </div>
-                <div>
-                    <label class="filter-label">N° Convenio</label>
-                    <select id="filter-convenio-num" class="filter-control"></select>
-                </div>
-                <div>
-                    <label class="filter-label">Búsqueda Libre</label>
-                    <div class="relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 text-xs"></i>
-                        <input type="text" id="filter-search" placeholder="Objeto, vía..." class="filter-control filter-control-text pl-8">
+        <!-- BARRA LATERAL (SIDEBAR) -->
+        <aside id="main-tabs-nav" class="sidebar-nav shrink-0 no-print" style="width:256px;">
+            <!-- Logo y título -->
+            <div>
+                <div class="sidebar-logo-section">
+                    <div class="sidebar-logo-ring">
+                        <img src="./assets/escudo_antioquia.png" alt="Logo Gobernación" onerror="this.src='https://ui-avatars.com/api/?name=Gob+Ant&background=0F766E&color=fff'">
+                    </div>
+                    <div class="sidebar-logo-text">
+                        <h2>DIRECCIÓN DE INFRAESTRUCTURA Y APOYO TERRITORIAL</h2>
+                        <p>SECRETARÍA DE INFRAESTRUCTURA FÍSICA</p>
                     </div>
                 </div>
-            </div>
-        </section>
 
-        <!-- SECCIÓN DE KPIs -->
-        <section class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-15 gap-4 mb-8">
-            <div class="kpi-card kpi-total xl:col-span-2">
-                <div class="flex items-center gap-3">
-                    <div class="kpi-icon bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 dark:text-slate-500"><i class="fa-solid fa-layer-group"></i></div>
-                    <div>
-                        <p class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Total Convenios</p>
-                        <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mt-1" id="kpi-total">0</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="kpi-card kpi-ejecucion xl:col-span-2">
-                <div class="flex items-center gap-3">
-                    <div class="kpi-icon bg-blue-50 text-institutional-accent"><i class="fa-solid fa-person-digging"></i></div>
-                    <div>
-                        <p class="text-[9px] font-bold text-institutional-accent uppercase tracking-widest">En Ejecución</p>
-                        <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mt-1" id="kpi-activos">0</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="kpi-card kpi-por-liquidar xl:col-span-2">
-                <div class="flex items-center gap-3">
-                    <div class="kpi-icon bg-red-50 text-red-600"><i class="fa-solid fa-file-signature"></i></div>
-                    <div>
-                        <p class="text-[9px] font-bold text-red-600 uppercase tracking-widest">Por Liquidar</p>
-                        <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mt-1" id="kpi-por-liquidar">0</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="kpi-card kpi-inversion xl:col-span-3">
-                <div class="flex items-center gap-3">
-                    <div class="kpi-icon bg-purple-50 text-purple-600"><i class="fa-solid fa-sack-dollar"></i></div>
-                    <div class="w-[calc(100%-50px)]">
-                        <p class="text-[9px] font-bold text-purple-600 uppercase tracking-widest">Inversión Total</p>
-                        <h3 class="text-lg font-black text-slate-800 dark:text-slate-100 leading-none mt-1 truncate" id="kpi-inversion" title="$0">$0</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="kpi-card kpi-desembolsado xl:col-span-3">
-                <div class="flex items-center gap-3">
-                    <div class="kpi-icon bg-blue-50 text-institutional-accent"><i class="fa-solid fa-money-bill-transfer"></i></div>
-                    <div class="w-[calc(100%-50px)]">
-                        <p class="text-[9px] font-bold text-institutional-accent uppercase tracking-widest">Desembolsado</p>
-                        <h3 class="text-lg font-black text-slate-800 dark:text-slate-100 leading-none mt-1 truncate" id="kpi-desembolsado" title="$0">$0</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="kpi-card kpi-autorizado xl:col-span-3">
-                <div class="flex items-center gap-3">
-                    <div class="kpi-icon bg-emerald-50 text-institutional-light"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-                    <div class="w-[calc(100%-50px)]">
-                        <p class="text-[9px] font-bold text-institutional-light uppercase tracking-widest">Autorizado</p>
-                        <h3 class="text-lg font-black text-slate-800 dark:text-slate-100 leading-none mt-1 truncate" id="kpi-autorizado" title="$0">$0</h3>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- SUMMARY CARD OCULTO POR DEFECTO -->
-        <div id="summary-card-container" class="mb-8 hidden">
-            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-premium overflow-hidden flex flex-col lg:flex-row border border-slate-200 dark:border-slate-700 relative">
-                
-                <div class="p-8 lg:w-5/12 flex flex-col justify-center relative z-10">
-                    <span class="text-slate-400 dark:text-slate-500 text-[9px] font-black uppercase tracking-[0.2em] mb-2 border-b border-slate-100 dark:border-slate-700/50 pb-1 inline-block w-max flex items-center gap-1.5"><i class="fa-solid fa-bolt text-amber-400"></i> Vista Detallada Rápida</span>
-                    <div class="flex justify-between items-start w-full gap-3">
-                        <h2 class="text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tight" id="summary-num">--</h2>
-                        <button id="btn-abrir-ficha" class="btn-gestion mt-2" style="padding: 0.8rem 1.5rem; font-size: 0.85rem;">
-                            <i class="fa-solid fa-folder-open icon-accent"></i> Ficha Técnica
-                        </button>
-                    </div>
-                    <p class="text-institutional-light text-sm font-semibold mt-2 mb-6 flex items-center flex-wrap gap-2">
-                        <span><i class="fa-solid fa-location-dot mr-1.5"></i><span id="summary-municipio">MUNICIPIO</span></span>
-                        <span id="summary-ejecutor-container" class="hidden text-xs bg-institutional-pale text-institutional-primary px-2 py-0.5 rounded-full border border-institutional-light/30">
-                            <i class="fa-solid fa-building-user mr-1"></i><span id="summary-ejecutor">EJECUTOR</span>
+                <!-- Menú de navegación -->
+                <nav>
+                    <button class="tab-btn active" data-tab="resumen">
+                        <span class="tab-btn-content">
+                            <span class="tab-icon"><i class="fa-solid fa-chart-pie"></i></span>
+                            <span class="tab-label">Resumen Ejecutivo</span>
                         </span>
-                    </p>
-                    
-                    <div class="grid grid-cols-2 gap-4 mt-auto">
-                        <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 shadow-sm transition hover:shadow-md">
-                            <p id="lbl-alcance" class="text-[9px] text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wider mb-1">Contratado</p>
-                            <p class="text-xl font-black text-slate-800 dark:text-slate-100"><span id="summary-alcance">0</span> <span id="unit-alcance" class="text-xs font-normal text-slate-400 dark:text-slate-500">m</span></p>
-                        </div>
-                        <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 shadow-sm transition hover:shadow-md">
-                            <p id="lbl-ejecutado" class="text-[9px] text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wider mb-1">Ejecutado</p>
-                            <p class="text-xl font-black text-slate-800 dark:text-slate-100"><span id="summary-ejecutado">0</span> <span id="unit-ejecutado" class="text-xs font-normal text-slate-400 dark:text-slate-500">m</span></p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="p-6 lg:w-3/12 flex flex-col items-center justify-center gap-5 relative z-10 border-y lg:border-y-0 lg:border-x border-slate-100 dark:border-slate-700/50 bg-white dark:bg-slate-800">
-                    <div class="flex items-center justify-center gap-4 flex-wrap w-full">
-                        <div class="relative w-32 h-32 flex items-center justify-center shrink-0">
-                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" r="40" stroke="#f1f5f9" stroke-width="8" fill="none" />
-                                <circle id="gauge-fisico" cx="50" cy="50" r="40" stroke="#1a7f5a" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
-                            </svg>
-                            <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span id="summary-fisico-txt" class="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none mb-1">0%</span>
-                                <span class="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold">Físico</span>
-                            </div>
-                        </div>
-                        <div class="relative w-32 h-32 flex items-center justify-center shrink-0">
-                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" r="40" stroke="#f1f5f9" stroke-width="8" fill="none" />
-                                <circle id="gauge-financiero" cx="50" cy="50" r="40" stroke="#2d6a9f" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
-                            </svg>
-                            <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span id="summary-financiero-txt" class="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none mb-1">0%</span>
-                                <span class="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold">Financiero</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="w-full pt-4 border-t border-slate-100 dark:border-slate-700/50 flex items-center gap-3">
-                        <img id="summary-supervisor-img" src="" class="w-14 h-14 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shadow-sm shrink-0" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=SUP&background=1a7f5a&color=fff&bold=true';">
-                        <div class="overflow-hidden">
-                            <p class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">Supervisor</p>
-                            <p id="summary-supervisor-name" class="text-[11px] font-black text-slate-700 dark:text-slate-200 leading-tight whitespace-normal break-words">--</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="lg:w-4/12 relative min-h-[200px] lg:min-h-full z-10 bg-slate-50 dark:bg-slate-800/50 border-l border-slate-100 dark:border-slate-700/50">
-                    <div id="summary-map" class="absolute inset-0 w-full h-full z-0"></div>
-                    <div id="summary-map-overlay" class="absolute inset-0 bg-white dark:bg-slate-800/80 flex items-center justify-center z-10 backdrop-blur-sm transition-opacity duration-300">
-                        <span id="summary-map-msg" class="text-slate-600 dark:text-slate-300 text-xs font-semibold tracking-wide flex items-center"><i class="fa-solid fa-satellite-dish fa-fade mr-2 text-institutional-light"></i>Ubicando trazado...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- GRÁFICOS Y ALERTAS -->
-
-        <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
-            <!-- DONUT CHART + LEYENDA -->
-            <div class="chart-card lg:col-span-4 relative group flex flex-col">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <h3 class="chart-title">Resumen Ejecutivo</h3>
-                        <p class="chart-subtitle">Distribución por estado y montos</p>
-                    </div>
-                    <button class="btn-icon-soft" onclick="document.getElementById('btn-reset-filters').click()" title="Borrar filtros"><i class="fa-solid fa-arrows-rotate"></i></button>
-                </div>
-                <div class="flex flex-col items-center justify-center flex-1 gap-4 w-full">
-                    <div class="relative w-40 h-40 xl:w-48 xl:h-48 shrink-0"><canvas id="chart-estado"></canvas></div>
-                    <div id="chart-estado-legend" class="w-full flex flex-col gap-2 overflow-y-auto table-container-scroll max-h-40 pr-1"></div>
-                </div>
-            </div>
-            
-            <!-- RESUMEN EJECUCIÓN -->
-            <div class="chart-card lg:col-span-4 relative group flex flex-col">
-                <div class="flex justify-between items-start mb-4 border-b border-slate-100 dark:border-slate-700/50 pb-3">
-                    <div>
-                        <h3 class="chart-title flex items-center gap-2"><i class="fa-solid fa-ruler-combined text-institutional-accent"></i> Ejecución Física</h3>
-                        <p class="chart-subtitle">Volumen total de obra</p>
-                    </div>
-                </div>
-                
-                <div class="flex-1 flex flex-col w-full justify-between">
-                    <div class="relative w-full h-48 mb-4 flex-1">
-                        <canvas id="chart-ejecucion"></canvas>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-3 mt-auto shrink-0">
-                        <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center shadow-sm">
-                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Long. Ejecutada</p>
-                            <p id="tot-lon-eje-text" class="text-lg font-black text-[#1a7f5a] dark:text-emerald-400 leading-none">0.00 km</p>
-                            <p class="text-[10px] text-slate-500 font-medium mt-1">de <span id="tot-lon-con-text">0.00 km</span></p>
-                        </div>
-                        <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center shadow-sm">
-                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Área Ejecutada</p>
-                            <p id="tot-are-eje-text" class="text-lg font-black text-slate-700 dark:text-slate-200 leading-none">0 m²</p>
-                            <p class="text-[10px] text-slate-500 font-medium mt-1">de <span id="tot-are-con-text">0</span></p>
-                        </div>
-                    </div>
-                </div>
+                        <span class="active-dot"></span>
+                    </button>
+                    <button class="tab-btn" data-tab="mapa">
+                        <span class="tab-btn-content">
+                            <span class="tab-icon"><i class="fa-solid fa-map-location-dot"></i></span>
+                            <span class="tab-label">Mapa Territorial</span>
+                        </span>
+                        <span class="active-dot hidden"></span>
+                    </button>
+                    <button class="tab-btn" data-tab="plan">
+                        <span class="tab-btn-content">
+                            <span class="tab-icon"><i class="fa-solid fa-flag-checkered"></i></span>
+                            <span class="tab-label">Indicadores</span>
+                        </span>
+                        <span class="active-dot hidden"></span>
+                    </button>
+                </nav>
             </div>
 
-            <!-- ALERTAS DE RIESGO -->
-            <div class="chart-card lg:col-span-4 relative group flex flex-col">
-                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-3 border-b border-slate-100 dark:border-slate-700/50 pb-3">
-                    <div>
-                        <h3 class="chart-title flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Convenios en Riesgo</h3>
-                        <p class="chart-subtitle">Panel de control proactivo y alertas automáticas</p>
-                    </div>
-                    <div class="text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
-                        <span id="alerts-count" class="text-red-600 font-black">0</span> Alertas Detectadas
-                    </div>
-                </div>
-                
-                <!-- FILTROS DE RIESGO -->
-                <div class="flex flex-wrap gap-2 mb-3">
-                    <button class="alert-filter-btn active bg-slate-800 text-white hover:bg-slate-700 px-2.5 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors shadow-sm" data-filter="all">Todas</button>
-                    <button class="alert-filter-btn bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:bg-slate-700 hover:text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors shadow-sm" data-filter="proximos">Próximos a Terminar</button>
-                    <button class="alert-filter-btn bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:bg-slate-700 hover:text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors shadow-sm" data-filter="competencia">Pérdida Competencia</button>
-                    <button class="alert-filter-btn bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:bg-slate-700 hover:text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors shadow-sm" data-filter="desfase">Desfase Financiero</button>
-                    <button class="alert-filter-btn bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:bg-slate-700 hover:text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors shadow-sm" data-filter="vencido">Vencido sin Liquidar</button>
-                </div>
-
-                <div id="alert-feed" class="flex-1 overflow-y-auto max-h-[220px] space-y-3 pr-2 table-container-scroll relative">
-                    <!-- Las alertas se inyectarán aquí dinámicamente -->
-                </div>
+            <!-- Botón de carga en la parte inferior -->
+            <div class="sidebar-bottom">
+                <label for="file-upload" class="sidebar-upload-btn">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    Cargar Excel
+                </label>
+                <input type="file" id="file-upload" accept=".xlsx, .xls, .csv" class="hidden" />
             </div>
-        </section>
+        </aside>
 
-        <!-- LÍNEA DE TIEMPO DEL PROCESO LEGAL (OCULTA POR DEFECTO) -->
-        <div id="timeline-container" class="mb-8 hidden no-print">
-            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 p-6 sm:p-8">
-                <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-8 flex items-center gap-2">
-                    <i class="fa-solid fa-scale-balanced text-institutional-primary"></i> Línea de Tiempo del Proceso Legal
-                </h3>
+        <!-- PANEL DE CONTENIDO PRINCIPAL -->
+        <div id="main-content-container" class="flex-1 flex flex-col h-full overflow-hidden">
 
-                <!-- Contenedor scrolleable horizontalmente para móviles -->
-                <div class="overflow-x-auto pb-6 custom-scrollbar">
-                    <div class="min-w-[1200px] relative pt-12">
-                        
-                        <!-- Brackets Layer (Absolute) -->
-                        <div class="absolute top-0 left-0 w-full h-12 flex items-end">
-                            <!-- FASE CONTRACTUAL (20%) -->
-                            <div class="w-[20%] px-2 flex flex-col h-full justify-end">
-                                <span class="text-center text-[9px] font-black text-blue-600 mb-1 tracking-wider">FASE CONTRACTUAL</span>
-                                <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-blue-400 rounded-t-md"></div>
-                            </div>
-                            <!-- RUTA BILATERAL (20%) -->
-                            <div class="w-[20%] px-2 flex flex-col h-full justify-end">
-                                <span class="text-center text-[9px] font-black text-emerald-600 mb-1 tracking-wider leading-tight">RUTA BILATERAL<br>(NO EXITOSA)</span>
-                                <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-emerald-400 rounded-t-md"></div>
-                            </div>
-                            <!-- RUTA UNILATERAL (10%) -->
-                            <div class="w-[10%] px-2 flex flex-col h-full justify-end">
-                                <span class="text-center text-[9px] font-black text-red-500 mb-1 tracking-wider leading-tight">RUTA<br>UNILATERAL</span>
-                                <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-red-400 rounded-t-md"></div>
-                            </div>
-                            <!-- ACTUACIÓN JURÍDICA (20%) -->
-                            <div class="w-[20%] px-2 flex flex-col h-full justify-end">
-                                <span class="text-center text-[9px] font-black text-purple-600 mb-1 tracking-wider">ACTUACIÓN JURÍDICA</span>
-                                <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-purple-400 rounded-t-md"></div>
-                            </div>
-                            <!-- GESTIÓN POSTLIQUIDACIÓN (20%) -->
-                            <div class="w-[20%] px-2 flex flex-col h-full justify-end">
-                                <span class="text-center text-[9px] font-black text-orange-500 mb-1 tracking-wider">GESTIÓN POSTLIQUIDACIÓN</span>
-                                <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-orange-400 rounded-t-md"></div>
-                            </div>
-                            <!-- CIERRE FINAL (10%) -->
-                            <div class="w-[10%] px-2 flex flex-col h-full justify-end">
-                                <span class="text-center text-[9px] font-black text-slate-600 mb-1 tracking-wider">CIERRE FINAL</span>
-                                <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-slate-400 rounded-t-md"></div>
-                            </div>
-                        </div>
-
-                        <!-- Línea conectora base -->
-                        <div class="absolute top-[84px] left-[5%] right-[5%] h-0.5 bg-slate-200 dark:bg-slate-700 z-0 border-t border-dashed border-slate-300 dark:border-slate-600"></div>
-                        
-                        <!-- Línea conectora de progreso (se llenará por JS) -->
-                        <div id="tl-progress-line" class="absolute top-[84px] left-[5%] h-1 bg-institutional-primary z-0 transition-all duration-1000 shadow-[0_0_8px_rgba(26,127,90,0.5)]" style="width: 0%;"></div>
-
-                        <div class="grid grid-cols-10 w-full relative z-10 pt-6">
-                            <!-- NODO 1 -->
-                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-1">
-                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
-                                    <i class="fa-solid fa-flag"></i>
-                                </div>
-                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Terminación del convenio</h4>
-                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-1">--</span>
-                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-1">Pendiente</span>
-                            </div>
-
-                            <!-- NODO 2 -->
-                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-2">
-                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
-                                    <i class="fa-solid fa-file-contract"></i>
-                                </div>
-                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Preparación de liquidación</h4>
-                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-2">--</span>
-                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-2">Pendiente</span>
-                            </div>
-
-                            <!-- NODO 3 -->
-                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-3">
-                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
-                                    <i class="fa-solid fa-handshake"></i>
-                                </div>
-                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Convocatoria a liquidación</h4>
-                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-3">--</span>
-                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-3">Pendiente</span>
-                            </div>
-
-                            <!-- NODO 3b -->
-                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-3b">
-                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box border-dashed">
-                                    <i class="fa-solid fa-xmark text-xl"></i>
-                                </div>
-                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Sin respuesta del municipio</h4>
-                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-3b">--</span>
-                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-3b">Pendiente</span>
-                            </div>
-
-                            <!-- NODO 4 -->
-                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-4">
-                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
-                                    <i class="fa-solid fa-gavel"></i>
-                                </div>
-                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Resolución unilateral</h4>
-                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-4">--</span>
-                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-4">Pendiente</span>
-                            </div>
-
-                            <!-- NODO 5 -->
-                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-5">
-                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
-                                    <i class="fa-solid fa-scale-unbalanced"></i>
-                                </div>
-                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Recurso de reposición</h4>
-                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-5">--</span>
-                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-5">Pendiente</span>
-                            </div>
-
-                            <!-- NODO 6 -->
-                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-6">
-                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
-                                    <i class="fa-solid fa-file-circle-check"></i>
-                                </div>
-                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Acto Admtvo. en firme</h4>
-                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-6">--</span>
-                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-6">Pendiente</span>
-                            </div>
-
-                            <!-- NODO 7 -->
-                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-7">
-                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
-                                    <i class="fa-solid fa-bullhorn"></i>
-                                </div>
-                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Cobro Persuasivo</h4>
-                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-7">--</span>
-                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-7">Pendiente</span>
-                            </div>
-
-                            <!-- NODO 8 -->
-                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-8">
-                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
-                                    <i class="fa-solid fa-building-columns"></i>
-                                </div>
-                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Cobro Coactivo</h4>
-                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-8">--</span>
-                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-8">Pendiente</span>
-                            </div>
-
-                            <!-- NODO 9 -->
-                            <div class="flex flex-col items-center text-center px-1 tl-node" id="node-9">
-                                <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white dark:border-slate-800 flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box">
-                                    <i class="fa-solid fa-folder-closed"></i>
-                                </div>
-                                <h4 class="text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-3 leading-tight uppercase">Cierre de Expediente</h4>
-                                <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-9">--</span>
-                                <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-9">Pendiente</span>
-                            </div>
-                        </div>
+            <!-- CABECERA SUPERIOR (HEADER) -->
+            <header class="flex items-center justify-between px-6 py-3 sticky top-0 z-40 shrink-0 no-print">
+                <div class="flex items-center gap-3">
+                    <!-- Botón Hamburguesa Móvil -->
+                    <button id="btn-sidebar-toggle" class="lg:hidden header-icon-btn">
+                        <i class="fa-solid fa-bars text-sm"></i>
+                    </button>
+                    <!-- Barra de búsqueda -->
+                    <div class="header-search-wrapper">
+                        <i class="fa-solid fa-magnifying-glass header-search-icon"></i>
+                        <input type="text" id="filter-search" placeholder="Buscar convenios..." class="header-search-input">
                     </div>
                 </div>
 
-                <!-- RESULTADO FINANCIERO -->
-                <div class="mt-8 border border-slate-100 dark:border-slate-700/50 rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 shadow-sm">
-                    <h4 class="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4">Resultado Financiero - Obligaciones Identificadas</h4>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 flex gap-3 items-center">
-                            <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-money-bill-trend-up"></i></div>
-                            <div>
-                                <p class="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Rend. Financieros</p>
-                                <p class="text-sm font-black text-slate-800 dark:text-slate-100 mt-0.5" id="tl-fin-rendimientos">$0</p>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 flex gap-3 items-center">
-                            <div class="w-10 h-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-coins"></i></div>
-                            <div>
-                                <p class="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Rec. No Ejecutados</p>
-                                <p class="text-sm font-black text-slate-800 dark:text-slate-100 mt-0.5" id="tl-fin-recursos">$0</p>
-                            </div>
-                        </div>
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <!-- Fecha de corte -->
+                    <div class="header-date-badge hidden md:flex">
+                        <i class="fa-regular fa-calendar-check" style="color:#0F766E;"></i>
+                        Corte: <span id="fecha-actualizacion" class="ml-1 font-bold" style="color:#0F172A;">Cargando...</span>
+                    </div>
 
-                        <div class="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800/50 flex gap-3 items-center shadow-sm">
-                            <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-sack-dollar"></i></div>
-                            <div>
-                                <p class="text-[9px] font-bold text-amber-700 dark:text-amber-500 uppercase tracking-widest">Total a Reintegrar</p>
-                                <p class="text-lg font-black text-amber-900 dark:text-amber-400 mt-0.5 leading-none" id="tl-fin-total">$0</p>
+                    <!-- Actualizaciones de datos -->
+                    <div class="relative">
+                        <button id="btn-updates" class="header-icon-btn" title="Actualizaciones recientes">
+                            <i class="fa-solid fa-rotate"></i>
+                            <span id="updates-badge" class="header-badge hidden"></span>
+                        </button>
+                        <div id="updates-dropdown" class="updates-dropdown hidden">
+                            <div class="updates-header">
+                                <h4><i class="fa-solid fa-rotate mr-2"></i>Actualizaciones Recientes</h4>
+                                <p id="updates-subtitle">Historial de cambios al cargar los datos</p>
                             </div>
-                        </div>
-
-                        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 flex gap-3 items-center">
-                            <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0"><i class="fa-regular fa-calendar-check"></i></div>
-                            <div>
-                                <p class="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Fecha Cierre</p>
-                                <p class="text-sm font-black text-slate-800 dark:text-slate-100 mt-0.5" id="tl-fin-fecha">--</p>
-                                <p class="text-[8px] font-bold text-emerald-600 uppercase mt-1 hidden" id="tl-fin-estado">Expediente Cerrado <i class="fa-solid fa-check ml-1"></i></p>
+                            <div id="updates-list" class="updates-list">
+                                <div class="update-item" style="text-align:center;padding:24px 20px;">
+                                    <i class="fa-solid fa-database" style="font-size:24px;color:#E2E8F0;margin-bottom:8px;display:block;"></i>
+                                    <p style="font-size:11px;color:#94A3B8;font-weight:500;">Carga un archivo Excel para ver el historial de actualizaciones</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- TABLA PRINCIPAL -->
-        <section class="table-section mb-8">
-            <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-slate-800 gap-4 relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-1.5 h-full bg-institutional-primary"></div>
-                <div class="pl-3">
-                    <h2 class="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Directorio de Convenios</h2>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-0.5 font-medium">Listado detallado con indicadores de progreso</p>
-                </div>
-                <button id="btn-export" class="btn-export">
-                    <i class="fa-solid fa-file-csv text-institutional-light"></i> Exportar CSV
-                </button>
-            </div>
-            
-            <div class="overflow-x-auto max-h-[600px] table-container-scroll bg-white dark:bg-slate-800">
-                <table class="w-full text-sm text-left border-collapse">
-                    <thead class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky-header">
-                        <tr>
-                            <th class="px-5 py-4 cursor-pointer hover:text-slate-800 dark:text-slate-100 transition bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700" onclick="sortTable('CONVENIO')">ID Convenio <i class="fa-solid fa-sort ml-1 opacity-40"></i></th>
-                            <th class="px-5 py-4 cursor-pointer hover:text-slate-800 dark:text-slate-100 transition bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700" onclick="sortTable('MUNICIPIO')">Municipio <i class="fa-solid fa-sort ml-1 opacity-40"></i></th>
-                            <th class="px-5 py-4 w-[200px] bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Indicador / Clasificación</th>
-                            <th class="px-5 py-4 w-32 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Supervisor</th>
-                            <th class="px-5 py-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Estado</th>
-                            <th class="px-5 py-4 w-48 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Avance Físico</th>
-                            <th class="px-5 py-4 w-48 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">Avance Financiero</th>
-                            <th class="px-5 py-4 text-center bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 w-28">Gestión</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-200"></tbody>
-                </table>
-            </div>
-            
-            <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-                <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase tracking-widest" id="table-info">Mostrando registros...</span>
-                <div class="flex gap-2">
-                    <button id="btn-first" class="btn-page">&lt;&lt; Primera</button>
-                    <button id="btn-prev" class="btn-page">Anterior</button>
-                    <button id="btn-next" class="btn-page">Siguiente</button>
-                    <button id="btn-last" class="btn-page">Última &gt;&gt;</button>
-                </div>
-            </div>
-        </section>
-        </div> <!-- Fin tab-resumen -->
-
-        <!-- PESTAÑA 2: MAPA -->
-        <div id="tab-mapa" class="tab-content hidden space-y-6">
-            <!-- FILTROS MAPA -->
-            <section class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-1.5 h-full bg-institutional-primary"></div>
-                <div class="mb-5 pb-4 border-b border-slate-100 dark:border-slate-700/50 flex flex-col sm:flex-row justify-between items-start sm:items-center pl-2 gap-3">
-                    <div>
-                        <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2"><i class="fa-solid fa-map text-institutional-primary"></i> Filtros del Mapa</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Refina los convenios y tramos visualizados en el mapa interactivo</p>
+                    <!-- Alertas / Notificaciones -->
+                    <div class="relative">
+                        <button id="btn-nav-alerts" class="header-icon-btn" title="Alertas">
+                            <i class="fa-solid fa-bell"></i>
+                            <span id="nav-alerts-badge" class="header-badge hidden"></span>
+                        </button>
+                        <div id="nav-alerts-dropdown" class="nav-alerts-dropdown hidden" style="position:absolute;right:0;top:calc(100% + 10px);width:340px;background:#fff;border:1.5px solid #E2E8F0;border-radius:20px;box-shadow:0 24px 60px rgba(15,23,42,0.10);z-index:100;overflow:hidden;">
+                            <div style="padding:14px 18px 12px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;background:#F8FAFC;">
+                                <h4 style="font-size:11px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;">Notificaciones</h4>
+                                <span id="nav-alerts-count" style="font-size:10px;font-weight:700;background:#E2E8F0;color:#64748B;padding:2px 8px;border-radius:99px;">0</span>
+                            </div>
+                            <div id="nav-alerts-list" class="max-h-80 overflow-y-auto custom-scrollbar"></div>
+                        </div>
                     </div>
-                    <button id="btn-map-reset" class="btn-reset flex items-center gap-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-lg transition-colors text-[10px] font-bold shadow-sm">
+
+                    <div style="width:1px;height:24px;background:#E2E8F0;"></div>
+
+                    <!-- Perfil de usuario -->
+                    <div class="header-profile">
+                        <div class="header-profile-avatar">
+                            <img src="./assets/perfil_equipo.jpg" alt="Perfil" class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name=DIAT&background=0F766E&color=fff&bold=true';">
+                        </div>
+                        <div class="header-profile-info hidden sm:block">
+                            <p class="name">Supervisión DIAT</p>
+                            <p class="role">Equipo Técnico</p>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- CONTENIDO CON SCROLL EN EL CUERPO -->
+            <main class="flex-1 overflow-y-auto custom-scrollbar" style="padding:24px 32px;">
+                <div class="max-w-screen-2xl mx-auto">
+                    <div class="no-print" id="main-content" style="display:none;">
+
+        <!-- ================================================================
+             PESTAÑA 1: RESUMEN EJECUTIVO
+             ================================================================ -->
+        <div id="tab-resumen" class="tab-content block space-y-6">
+
+            <!-- SECCIÓN DE FILTROS -->
+            <section class="filter-section">
+                <div class="filter-section-header">
+                    <div class="filter-section-title">
+                        <i class="fa-solid fa-filter"></i>
+                        Filtros de Búsqueda
+                    </div>
+                    <button id="btn-reset-filters" class="btn-reset">
                         <i class="fa-solid fa-eraser"></i> Limpiar Filtros
                     </button>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-4">
                     <div>
                         <label class="filter-label">Vigencia</label>
-                        <select id="map-filter-vigencia" class="filter-control"></select>
+                        <select id="filter-vigencia" class="filter-control"></select>
                     </div>
                     <div>
                         <label class="filter-label">Supervisor</label>
-                        <select id="map-filter-supervisor" class="filter-control"></select>
+                        <select id="filter-supervisor" class="filter-control"></select>
                     </div>
                     <div>
                         <label class="filter-label">Indicador</label>
-                        <select id="map-filter-indicador" class="filter-control"></select>
+                        <select id="filter-indicador" class="filter-control"></select>
                     </div>
                     <div>
                         <label class="filter-label">Clasificación</label>
-                        <select id="map-filter-clasificacion" class="filter-control"></select>
+                        <select id="filter-clasificacion" class="filter-control"></select>
                     </div>
                     <div>
                         <label class="filter-label">Municipio</label>
-                        <select id="map-filter-municipio" class="filter-control"></select>
+                        <select id="filter-municipio" class="filter-control"></select>
                     </div>
                     <div>
                         <label class="filter-label">Subregión</label>
-                        <select id="map-filter-subregion" class="filter-control"></select>
+                        <select id="filter-subregion" class="filter-control"></select>
                     </div>
                     <div>
                         <label class="filter-label">Estado</label>
-                        <select id="map-filter-estado" class="filter-control"></select>
+                        <select id="filter-estado" class="filter-control"></select>
                     </div>
                     <div>
                         <label class="filter-label">N° Convenio</label>
-                        <select id="map-filter-convenio-num" class="filter-control"></select>
+                        <select id="filter-convenio-num" class="filter-control"></select>
                     </div>
-                    <div>
-                        <label class="filter-label">Búsqueda Libre</label>
-                        <div class="relative">
-                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 text-xs"></i>
-                            <input type="text" id="map-filter-search" placeholder="Objeto, Convenio..." class="filter-control filter-control-text pl-8">
-                        </div>
-                    </div>
+                    <!-- Campo Búsqueda Libre eliminado según spec -->
                 </div>
             </section>
 
-            <!-- KPIs MAPA -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <!-- SECCIÓN DE KPIs -->
+            <section class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                <!-- KPI Total Convenios -->
                 <div class="kpi-card kpi-total">
-                    <div class="flex items-center gap-3">
-                        <div class="kpi-icon bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"><i class="fa-solid fa-location-dot"></i></div>
-                        <div>
-                            <p class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Municipios Impactados</p>
-                            <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mt-1" id="kpi-map-mun">0</h3>
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="kpi-icon" style="background:#F1F5F9;color:#64748B;">
+                            <i class="fa-solid fa-layer-group"></i>
                         </div>
+                        <span class="kpi-trend neutral">
+                            <i class="fa-solid fa-circle-dot"></i> Total
+                        </span>
                     </div>
+                    <span class="kpi-label">Total Convenios</span>
+                    <h3 class="kpi-value" id="kpi-total">0</h3>
                 </div>
-                <div class="kpi-card kpi-inversion">
-                    <div class="flex items-center gap-3">
-                        <div class="kpi-icon bg-purple-50 text-purple-600"><i class="fa-solid fa-draw-polygon"></i></div>
-                        <div>
-                            <p class="text-[9px] font-bold text-purple-600 uppercase tracking-widest">Subregiones Impactadas</p>
-                            <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mt-1" id="kpi-map-sub">0</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="kpi-card kpi-autorizado">
-                    <div class="flex items-center gap-3">
-                        <div class="kpi-icon bg-emerald-50 text-institutional-light"><i class="fa-solid fa-route"></i></div>
-                        <div>
-                            <p class="text-[9px] font-bold text-institutional-light uppercase tracking-widest">Longitud (km)</p>
-                            <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mt-1" id="kpi-map-km">0</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="kpi-card kpi-desembolsado">
-                    <div class="flex items-center gap-3">
-                        <div class="kpi-icon bg-blue-50 text-institutional-accent"><i class="fa-solid fa-vector-square"></i></div>
-                        <div class="w-[calc(100%-50px)]">
-                            <p class="text-[9px] font-bold text-institutional-accent uppercase tracking-widest">Área (m²)</p>
-                            <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mt-1" id="kpi-map-area" title="0">0</h3>
-                        </div>
-                    </div>
-                </div>
+
+                <!-- KPI En Ejecución -->
                 <div class="kpi-card kpi-ejecucion">
-                    <div class="flex items-center gap-3">
-                        <div class="kpi-icon bg-blue-50 text-institutional-accent"><i class="fa-solid fa-person-digging"></i></div>
-                        <div>
-                            <p class="text-[9px] font-bold text-institutional-accent uppercase tracking-widest">En Ejecución</p>
-                            <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none mt-1" id="kpi-map-activos">0</h3>
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="kpi-icon" style="background:#EFF6FF;color:#3B82F6;">
+                            <i class="fa-solid fa-person-digging"></i>
+                        </div>
+                        <span class="kpi-trend" style="color:#3B82F6;">
+                            <i class="fa-solid fa-circle-play"></i> Activo
+                        </span>
+                    </div>
+                    <span class="kpi-label">En Ejecución</span>
+                    <h3 class="kpi-value" id="kpi-activos">0</h3>
+                </div>
+
+                <!-- KPI Por Liquidar -->
+                <div class="kpi-card kpi-por-liquidar">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="kpi-icon" style="background:#FFFBEB;color:#F59E0B;">
+                            <i class="fa-solid fa-file-signature"></i>
+                        </div>
+                        <span class="kpi-trend down">
+                            <i class="fa-solid fa-circle-exclamation"></i> Pendiente
+                        </span>
+                    </div>
+                    <span class="kpi-label">Por Liquidar</span>
+                    <h3 class="kpi-value" id="kpi-por-liquidar">0</h3>
+                </div>
+
+                <!-- KPI Inversión Total -->
+                <div class="kpi-card kpi-inversion">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="kpi-icon" style="background:#F5F3FF;color:#7C3AED;">
+                            <i class="fa-solid fa-sack-dollar"></i>
+                        </div>
+                        <span class="kpi-trend up">
+                            <i class="fa-solid fa-arrow-trend-up"></i> Total
+                        </span>
+                    </div>
+                    <span class="kpi-label">Inversión Total</span>
+                    <h3 class="kpi-value kpi-value-large truncate" id="kpi-inversion" title="$0">$0</h3>
+                </div>
+
+                <!-- KPI Desembolsado -->
+                <div class="kpi-card kpi-desembolsado">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="kpi-icon" style="background:#EFF6FF;color:#3B82F6;">
+                            <i class="fa-solid fa-money-bill-transfer"></i>
+                        </div>
+                        <span class="kpi-trend" style="color:#3B82F6;">
+                            <i class="fa-solid fa-circle-check"></i> IDEA
+                        </span>
+                    </div>
+                    <span class="kpi-label">Desembolsado</span>
+                    <h3 class="kpi-value kpi-value-large truncate" id="kpi-desembolsado" title="$0">$0</h3>
+                </div>
+
+                <!-- KPI Autorizado -->
+                <div class="kpi-card kpi-autorizado">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="kpi-icon" style="background:#F0FDF4;color:#22C55E;">
+                            <i class="fa-solid fa-file-invoice-dollar"></i>
+                        </div>
+                        <span class="kpi-trend up">
+                            <i class="fa-solid fa-circle-check"></i> Depto.
+                        </span>
+                    </div>
+                    <span class="kpi-label">Autorizado</span>
+                    <h3 class="kpi-value kpi-value-large truncate" id="kpi-autorizado" title="$0">$0</h3>
+                </div>
+            </section>
+
+            <!-- SUMMARY CARD (convenio seleccionado — oculto por defecto) -->
+            <div id="summary-card-container" class="hidden">
+                <div class="bg-white overflow-hidden flex flex-col lg:flex-row" style="border-radius:20px;border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
+                    <div class="p-8 lg:w-5/12 flex flex-col justify-center relative z-10">
+                        <span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:#94A3B8;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                            <i class="fa-solid fa-bolt" style="color:#F59E0B;"></i> Vista Detallada Rápida
+                        </span>
+                        <div class="flex justify-between items-start w-full gap-3">
+                            <h2 style="font-size:32px;font-weight:900;color:#0F172A;letter-spacing:-0.02em;" id="summary-num">--</h2>
+                            <button id="btn-abrir-ficha" class="btn-gestion mt-2" style="padding:10px 20px;font-size:12px;">
+                                <i class="fa-solid fa-folder-open"></i> Ficha Técnica
+                            </button>
+                        </div>
+                        <p style="color:#0F766E;font-size:13px;font-weight:600;margin-top:8px;margin-bottom:20px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+                            <span><i class="fa-solid fa-location-dot mr-1.5"></i><span id="summary-municipio">MUNICIPIO</span></span>
+                            <span id="summary-ejecutor-container" class="hidden" style="font-size:11px;background:rgba(15,118,110,0.08);color:#0F766E;padding:2px 10px;border-radius:99px;border:1px solid rgba(15,118,110,0.2);">
+                                <i class="fa-solid fa-building-user mr-1"></i><span id="summary-ejecutor">EJECUTOR</span>
+                            </span>
+                        </p>
+                        <div class="grid grid-cols-2 gap-4 mt-auto">
+                            <div style="background:#F8FAFC;padding:16px;border-radius:14px;border:1.5px solid #E2E8F0;">
+                                <p id="lbl-alcance" style="font-size:9px;color:#94A3B8;text-transform:uppercase;font-weight:700;letter-spacing:0.08em;margin-bottom:4px;">Contratado</p>
+                                <p style="font-size:20px;font-weight:800;color:#0F172A;"><span id="summary-alcance">0</span> <span id="unit-alcance" style="font-size:11px;font-weight:400;color:#94A3B8;">m</span></p>
+                            </div>
+                            <div style="background:#F8FAFC;padding:16px;border-radius:14px;border:1.5px solid #E2E8F0;">
+                                <p id="lbl-ejecutado" style="font-size:9px;color:#94A3B8;text-transform:uppercase;font-weight:700;letter-spacing:0.08em;margin-bottom:4px;">Ejecutado</p>
+                                <p style="font-size:20px;font-weight:800;color:#0F172A;"><span id="summary-ejecutado">0</span> <span id="unit-ejecutado" style="font-size:11px;font-weight:400;color:#94A3B8;">m</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-6 lg:w-3/12 flex flex-col items-center justify-center gap-5 relative z-10" style="border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0;">
+                        <div class="flex items-center justify-center gap-4 flex-wrap w-full">
+                            <div class="relative w-32 h-32 flex items-center justify-center shrink-0">
+                                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="40" stroke="#E2E8F0" stroke-width="8" fill="none" />
+                                    <circle id="gauge-fisico" cx="50" cy="50" r="40" stroke="#0F766E" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span id="summary-fisico-txt" style="font-size:22px;font-weight:900;color:#0F172A;line-height:1;">0%</span>
+                                    <span style="font-size:8px;color:#94A3B8;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-top:2px;">Físico</span>
+                                </div>
+                            </div>
+                            <div class="relative w-32 h-32 flex items-center justify-center shrink-0">
+                                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="40" stroke="#E2E8F0" stroke-width="8" fill="none" />
+                                    <circle id="gauge-financiero" cx="50" cy="50" r="40" stroke="#3B82F6" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span id="summary-financiero-txt" style="font-size:22px;font-weight:900;color:#0F172A;line-height:1;">0%</span>
+                                    <span style="font-size:8px;color:#94A3B8;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-top:2px;">Financiero</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="w-full pt-4 flex items-center gap-3" style="border-top:1px solid #E2E8F0;">
+                            <img id="summary-supervisor-img" src="" class="w-14 h-14 rounded-full object-cover shrink-0" style="border:2px solid #E2E8F0;"
+                                onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name=SUP&background=0F766E&color=fff&bold=true';">
+                            <div class="overflow-hidden">
+                                <p style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;">Supervisor</p>
+                                <p id="summary-supervisor-name" style="font-size:11px;font-weight:700;color:#0F172A;line-height:1.3;">--</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:w-4/12 relative min-h-[200px] lg:min-h-full z-10" style="background:#F8FAFC;">
+                        <div id="summary-map" class="absolute inset-0 w-full h-full z-0"></div>
+                        <div id="summary-map-overlay" class="absolute inset-0 flex items-center justify-center z-10 backdrop-blur-sm transition-opacity duration-300" style="background:rgba(248,250,252,0.85);">
+                            <span id="summary-map-msg" style="font-size:12px;font-weight:600;color:#94A3B8;display:flex;align-items:center;gap:6px;">
+                                <i class="fa-solid fa-satellite-dish fa-fade" style="color:#14B8A6;"></i>Ubicando trazado...
+                            </span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- CONTENEDOR DEL MAPA PRINCIPAL -->
-            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 flex flex-col h-[700px] overflow-hidden relative">
-                <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 z-10 shrink-0">
-                    <h2 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest"><i class="fa-solid fa-map mr-2 text-institutional-primary"></i> Mapa Interactivo de Antioquia</h2>
-                    <span id="main-map-loading" class="text-xs font-bold text-slate-500 hidden"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Sincronizando KMLs...</span>
+            <!-- GRÁFICOS Y ALERTAS -->
+            <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- DONUT CHART — RESUMEN EJECUTIVO -->
+                <div class="chart-card lg:col-span-4 relative group flex flex-col">
+                    <div class="flex justify-between items-start mb-4 pb-3" style="border-bottom:1px solid #E2E8F0;">
+                        <div>
+                            <h3 class="chart-title">Resumen Ejecutivo</h3>
+                            <p class="chart-subtitle">Distribución por estado y montos</p>
+                        </div>
+                        <button class="btn-icon-soft" onclick="document.getElementById('btn-reset-filters').click()" title="Borrar filtros">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                    </div>
+                    <div class="flex flex-col items-center justify-center flex-1 gap-4 w-full">
+                        <div class="relative w-44 h-44 xl:w-48 xl:h-48 shrink-0"><canvas id="chart-estado"></canvas></div>
+                        <div id="chart-estado-legend" class="w-full flex flex-col gap-2 overflow-y-auto custom-scrollbar max-h-40 pr-1"></div>
+                    </div>
                 </div>
-                <div id="main-map" class="flex-1 bg-slate-100 dark:bg-slate-900 w-full z-0 relative">
+
+                <!-- EJECUCIÓN FÍSICA -->
+                <div class="chart-card lg:col-span-4 relative group flex flex-col">
+                    <div class="flex justify-between items-start mb-4 pb-3" style="border-bottom:1px solid #E2E8F0;">
+                        <div>
+                            <h3 class="chart-title" style="display:flex;align-items:center;gap:6px;">
+                                <i class="fa-solid fa-ruler-combined" style="color:#3B82F6;"></i> Ejecución Física
+                            </h3>
+                            <p class="chart-subtitle">Volumen total de obra</p>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex flex-col w-full justify-between">
+                        <div class="relative w-full mb-4 flex-1" style="min-height:180px;">
+                            <canvas id="chart-ejecucion"></canvas>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mt-auto shrink-0">
+                            <div style="background:#F0FDFA;padding:14px;border-radius:14px;border:1.5px solid rgba(20,184,166,0.2);text-align:center;">
+                                <p style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Long. Ejecutada</p>
+                                <p id="tot-lon-eje-text" style="font-size:17px;font-weight:800;color:#0F766E;line-height:1;">0.00 km</p>
+                                <p style="font-size:10px;color:#94A3B8;font-weight:500;margin-top:3px;">de <span id="tot-lon-con-text">0.00 km</span></p>
+                            </div>
+                            <div style="background:#F8FAFC;padding:14px;border-radius:14px;border:1.5px solid #E2E8F0;text-align:center;">
+                                <p style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Área Ejecutada</p>
+                                <p id="tot-are-eje-text" style="font-size:17px;font-weight:800;color:#0F172A;line-height:1;">0 m²</p>
+                                <p style="font-size:10px;color:#94A3B8;font-weight:500;margin-top:3px;">de <span id="tot-are-con-text">0</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CENTRO DE ALERTAS -->
+                <div class="chart-card lg:col-span-4 relative group flex flex-col">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-3 pb-3" style="border-bottom:1px solid #E2E8F0;">
+                        <div>
+                            <h3 class="chart-title" style="display:flex;align-items:center;gap:6px;">
+                                <i class="fa-solid fa-shield-halved" style="color:#F59E0B;"></i> Centro de Alertas
+                            </h3>
+                            <p class="chart-subtitle">Panel proactivo de riesgos detectados</p>
+                        </div>
+                        <div style="font-size:10px;font-weight:700;color:#64748B;background:#F8FAFC;padding:5px 12px;border-radius:99px;border:1.5px solid #E2E8F0;white-space:nowrap;align-self:flex-start;">
+                            <span id="alerts-count" style="color:#EF4444;font-weight:800;">0</span> Alertas
+                        </div>
+                    </div>
+
+                    <!-- Filtros de riesgo -->
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        <button class="alert-filter-btn active" data-filter="all">Todas (0)</button>
+                        <button class="alert-filter-btn" data-filter="proximos">Próximos a terminar (0)</button>
+                        <button class="alert-filter-btn" data-filter="competencia">Pérdida de competencia (0)</button>
+                        <button class="alert-filter-btn" data-filter="vencido">Vencidos sin liquidar (0)</button>
+                    </div>
+
+                    <div id="alert-feed" class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar relative" style="max-height: 350px;"></div>
+                </div>
+            </section>
+
+            <!-- LÍNEA DE TIEMPO DEL PROCESO LEGAL (OCULTA POR DEFECTO) -->
+            <div id="timeline-container" class="hidden no-print">
+                <div class="bg-white rounded-2xl p-6 sm:p-8" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
+                    <h3 style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:32px;display:flex;align-items:center;gap:8px;">
+                        <i class="fa-solid fa-scale-balanced" style="color:#0F766E;"></i> Línea de Tiempo del Proceso Legal
+                    </h3>
+                    <div class="overflow-x-auto pb-6 custom-scrollbar">
+                        <div class="min-w-[1200px] relative pt-12">
+                            <!-- Brackets Layer -->
+                            <div class="absolute top-0 left-0 w-full h-12 flex items-end">
+                                <div class="w-[20%] px-2 flex flex-col h-full justify-end">
+                                    <span class="text-center text-[9px] font-black text-blue-600 mb-1 tracking-wider">FASE CONTRACTUAL</span>
+                                    <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-blue-400 rounded-t-md"></div>
+                                </div>
+                                <div class="w-[20%] px-2 flex flex-col h-full justify-end">
+                                    <span class="text-center text-[9px] font-black text-emerald-600 mb-1 tracking-wider leading-tight">RUTA BILATERAL<br>(NO EXITOSA)</span>
+                                    <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-emerald-400 rounded-t-md"></div>
+                                </div>
+                                <div class="w-[10%] px-2 flex flex-col h-full justify-end">
+                                    <span class="text-center text-[9px] font-black text-red-500 mb-1 tracking-wider leading-tight">RUTA<br>UNILATERAL</span>
+                                    <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-red-400 rounded-t-md"></div>
+                                </div>
+                                <div class="w-[20%] px-2 flex flex-col h-full justify-end">
+                                    <span class="text-center text-[9px] font-black text-purple-600 mb-1 tracking-wider">ACTUACIÓN JURÍDICA</span>
+                                    <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-purple-400 rounded-t-md"></div>
+                                </div>
+                                <div class="w-[20%] px-2 flex flex-col h-full justify-end">
+                                    <span class="text-center text-[9px] font-black text-orange-500 mb-1 tracking-wider">GESTIÓN POSTLIQUIDACIÓN</span>
+                                    <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-orange-400 rounded-t-md"></div>
+                                </div>
+                                <div class="w-[10%] px-2 flex flex-col h-full justify-end">
+                                    <span class="text-center text-[9px] font-black text-slate-600 mb-1 tracking-wider">CIERRE FINAL</span>
+                                    <div class="w-full h-1.5 border-t-2 border-l-2 border-r-2 border-slate-400 rounded-t-md"></div>
+                                </div>
+                            </div>
+                            <div class="absolute top-[84px] left-[5%] right-[5%] h-0.5 border-t border-dashed" style="background:transparent;border-color:#E2E8F0;z-index:0;"></div>
+                            <div id="tl-progress-line" class="absolute top-[84px] left-[5%] h-1 z-0 transition-all duration-1000" style="width:0%;background:linear-gradient(90deg,#0F766E,#14B8A6);box-shadow:0 0 8px rgba(15,118,110,0.4);border-radius:99px;"></div>
+                            <div class="grid grid-cols-10 w-full relative z-10 pt-6">
+                                <div class="flex flex-col items-center text-center px-1 tl-node" id="node-1">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box"><i class="fa-solid fa-flag"></i></div>
+                                    <h4 class="text-[10px] font-bold text-slate-700 mt-3 leading-tight uppercase">Terminación del convenio</h4>
+                                    <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-1">--</span>
+                                    <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-1">Pendiente</span>
+                                </div>
+                                <div class="flex flex-col items-center text-center px-1 tl-node" id="node-2">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box"><i class="fa-solid fa-file-contract"></i></div>
+                                    <h4 class="text-[10px] font-bold text-slate-700 mt-3 leading-tight uppercase">Preparación de liquidación</h4>
+                                    <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-2">--</span>
+                                    <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-2">Pendiente</span>
+                                </div>
+                                <div class="flex flex-col items-center text-center px-1 tl-node" id="node-3">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box"><i class="fa-solid fa-handshake"></i></div>
+                                    <h4 class="text-[10px] font-bold text-slate-700 mt-3 leading-tight uppercase">Convocatoria a liquidación</h4>
+                                    <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-3">--</span>
+                                    <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-3">Pendiente</span>
+                                </div>
+                                <div class="flex flex-col items-center text-center px-1 tl-node" id="node-3b">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box border-dashed"><i class="fa-solid fa-xmark text-xl"></i></div>
+                                    <h4 class="text-[10px] font-bold text-slate-700 mt-3 leading-tight uppercase">Sin respuesta del municipio</h4>
+                                    <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-3b">--</span>
+                                    <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-3b">Pendiente</span>
+                                </div>
+                                <div class="flex flex-col items-center text-center px-1 tl-node" id="node-4">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box"><i class="fa-solid fa-gavel"></i></div>
+                                    <h4 class="text-[10px] font-bold text-slate-700 mt-3 leading-tight uppercase">Resolución unilateral</h4>
+                                    <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-4">--</span>
+                                    <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-4">Pendiente</span>
+                                </div>
+                                <div class="flex flex-col items-center text-center px-1 tl-node" id="node-5">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box"><i class="fa-solid fa-scale-unbalanced"></i></div>
+                                    <h4 class="text-[10px] font-bold text-slate-700 mt-3 leading-tight uppercase">Recurso de reposición</h4>
+                                    <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-5">--</span>
+                                    <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-5">Pendiente</span>
+                                </div>
+                                <div class="flex flex-col items-center text-center px-1 tl-node" id="node-6">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box"><i class="fa-solid fa-file-circle-check"></i></div>
+                                    <h4 class="text-[10px] font-bold text-slate-700 mt-3 leading-tight uppercase">Acto Admtvo. en firme</h4>
+                                    <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-6">--</span>
+                                    <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-6">Pendiente</span>
+                                </div>
+                                <div class="flex flex-col items-center text-center px-1 tl-node" id="node-7">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box"><i class="fa-solid fa-bullhorn"></i></div>
+                                    <h4 class="text-[10px] font-bold text-slate-700 mt-3 leading-tight uppercase">Cobro Persuasivo</h4>
+                                    <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-7">--</span>
+                                    <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-7">Pendiente</span>
+                                </div>
+                                <div class="flex flex-col items-center text-center px-1 tl-node" id="node-8">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box"><i class="fa-solid fa-building-columns"></i></div>
+                                    <h4 class="text-[10px] font-bold text-slate-700 mt-3 leading-tight uppercase">Cobro Coactivo</h4>
+                                    <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-8">--</span>
+                                    <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-8">Pendiente</span>
+                                </div>
+                                <div class="flex flex-col items-center text-center px-1 tl-node" id="node-9">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box"><i class="fa-solid fa-folder-closed"></i></div>
+                                    <h4 class="text-[10px] font-bold text-slate-700 mt-3 leading-tight uppercase">Cierre de Expediente</h4>
+                                    <span class="text-[9px] text-slate-400 font-semibold mt-1 tl-date" id="tl-date-9">--</span>
+                                    <span class="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-1 font-bold tl-badge" id="tl-badge-9">Pendiente</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resultado Financiero -->
+                    <div class="mt-8 p-5 rounded-2xl" style="border:1.5px solid #E2E8F0;background:#F8FAFC;">
+                        <h4 style="font-size:11px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;">Resultado Financiero — Obligaciones Identificadas</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div class="bg-white p-4 rounded-xl flex gap-3 items-center" style="border:1.5px solid #E2E8F0;">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style="background:#F0FDF4;color:#22C55E;"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                                <div>
+                                    <p style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;">Rend. Financieros</p>
+                                    <p style="font-size:14px;font-weight:800;color:#0F172A;margin-top:2px;" id="tl-fin-rendimientos">$0</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl flex gap-3 items-center" style="border:1.5px solid #E2E8F0;">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style="background:#FFFBEB;color:#F59E0B;"><i class="fa-solid fa-coins"></i></div>
+                                <div>
+                                    <p style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;">Rec. No Ejecutados</p>
+                                    <p style="font-size:14px;font-weight:800;color:#0F172A;margin-top:2px;" id="tl-fin-recursos">$0</p>
+                                </div>
+                            </div>
+                            <div class="p-4 rounded-xl flex gap-3 items-center" style="background:#FFFBEB;border:1.5px solid rgba(245,158,11,0.25);">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style="background:rgba(245,158,11,0.12);color:#D97706;"><i class="fa-solid fa-sack-dollar"></i></div>
+                                <div>
+                                    <p style="font-size:9px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.08em;">Total a Reintegrar</p>
+                                    <p style="font-size:17px;font-weight:900;color:#92400E;margin-top:2px;line-height:1;" id="tl-fin-total">$0</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl flex gap-3 items-center" style="border:1.5px solid #E2E8F0;">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style="background:#F8FAFC;color:#94A3B8;"><i class="fa-regular fa-calendar-check"></i></div>
+                                <div>
+                                    <p style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;">Fecha Cierre</p>
+                                    <p style="font-size:14px;font-weight:800;color:#0F172A;margin-top:2px;" id="tl-fin-fecha">--</p>
+                                    <p style="font-size:8px;font-weight:700;color:#22C55E;text-transform:uppercase;margin-top:2px;" class="hidden" id="tl-fin-estado">Expediente Cerrado <i class="fa-solid fa-check ml-1"></i></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DIRECTORIO DE CONVENIOS -->
+            <section class="table-section">
+                <div class="p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style="border-bottom:1.5px solid #E2E8F0;background:white;position:relative;overflow:hidden;">
+                    <div style="position:absolute;top:0;left:0;width:3px;height:100%;background:linear-gradient(180deg,#0F766E,#14B8A6);"></div>
+                    <div style="padding-left:12px;">
+                        <h2 style="font-size:18px;font-weight:800;color:#0F172A;letter-spacing:-0.01em;">Directorio de Convenios</h2>
+                        <p style="font-size:11px;color:#94A3B8;font-weight:500;margin-top:2px;">Listado detallado con indicadores de progreso</p>
+                    </div>
+                    <button id="btn-export" class="btn-export">
+                        <i class="fa-solid fa-file-csv" style="color:#0F766E;"></i> Exportar CSV
+                    </button>
+                </div>
+                <div class="overflow-x-auto table-container-scroll" style="max-height:560px;background:white;">
+                    <table class="w-full text-sm text-left border-collapse">
+                        <thead style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;" class="sticky-header">
+                            <tr>
+                                <th class="px-5 py-4 cursor-pointer transition" style="background:#F8FAFC;border-bottom:1.5px solid #E2E8F0;" onclick="sortTable('CONVENIO')">ID Convenio <i class="fa-solid fa-sort ml-1 opacity-40"></i></th>
+                                <th class="px-5 py-4 cursor-pointer transition" style="background:#F8FAFC;border-bottom:1.5px solid #E2E8F0;" onclick="sortTable('MUNICIPIO')">Municipio <i class="fa-solid fa-sort ml-1 opacity-40"></i></th>
+                                <th class="px-5 py-4" style="background:#F8FAFC;border-bottom:1.5px solid #E2E8F0;width:200px;">Indicador / Clasificación</th>
+                                <th class="px-5 py-4" style="background:#F8FAFC;border-bottom:1.5px solid #E2E8F0;width:128px;">Supervisor</th>
+                                <th class="px-5 py-4" style="background:#F8FAFC;border-bottom:1.5px solid #E2E8F0;">Estado</th>
+                                <th class="px-5 py-4" style="background:#F8FAFC;border-bottom:1.5px solid #E2E8F0;width:192px;">Avance Físico</th>
+                                <th class="px-5 py-4" style="background:#F8FAFC;border-bottom:1.5px solid #E2E8F0;width:192px;">Avance Financiero</th>
+                                <th class="px-5 py-4 text-center" style="background:#F8FAFC;border-bottom:1.5px solid #E2E8F0;width:112px;">Gestión</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" style="color:#0F172A;" class="divide-y" style="border-color:#F1F5F9;"></tbody>
+                    </table>
+                </div>
+                <div class="p-4 flex items-center justify-between" style="border-top:1.5px solid #E2E8F0;background:#F8FAFC;">
+                    <span style="font-size:10px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;" id="table-info">Mostrando registros...</span>
+                    <div class="flex gap-2">
+                        <button id="btn-first" class="btn-page">&lt;&lt; Primera</button>
+                        <button id="btn-prev" class="btn-page">Anterior</button>
+                        <button id="btn-next" class="btn-page">Siguiente</button>
+                        <button id="btn-last" class="btn-page">Última &gt;&gt;</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <!-- Fin tab-resumen -->
+
+        <!-- ================================================================
+             PESTAÑA 2: MAPA TERRITORIAL
+             ================================================================ -->
+        <div id="tab-mapa" class="tab-content hidden space-y-6">
+
+            <!-- FILTROS MAPA -->
+            <section class="filter-section">
+                <div class="filter-section-header">
+                    <div class="filter-section-title">
+                        <i class="fa-solid fa-map"></i>
+                        Filtros del Mapa
+                    </div>
+                    <button id="btn-map-reset" class="btn-reset">
+                        <i class="fa-solid fa-eraser"></i> Limpiar Filtros
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+                    <div><label class="filter-label">Vigencia</label><select id="map-filter-vigencia" class="filter-control"></select></div>
+                    <div><label class="filter-label">Supervisor</label><select id="map-filter-supervisor" class="filter-control"></select></div>
+                    <div><label class="filter-label">Indicador</label><select id="map-filter-indicador" class="filter-control"></select></div>
+                    <div><label class="filter-label">Clasificación</label><select id="map-filter-clasificacion" class="filter-control"></select></div>
+                    <div><label class="filter-label">Municipio</label><select id="map-filter-municipio" class="filter-control"></select></div>
+                    <div><label class="filter-label">Subregión</label><select id="map-filter-subregion" class="filter-control"></select></div>
+                    <div><label class="filter-label">Estado</label><select id="map-filter-estado" class="filter-control"></select></div>
+                    <div><label class="filter-label">N° Convenio</label><select id="map-filter-convenio-num" class="filter-control"></select></div>
+                </div>
+            </section>
+
+            <!-- KPIs MAPA — Indicadores Territoriales -->
+            <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="kpi-card kpi-total">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="kpi-icon" style="background:#F8FAFC;color:#64748B;"><i class="fa-solid fa-location-dot"></i></div>
+                        <span class="kpi-trend neutral" style="font-size:9px;">Territorial</span>
+                    </div>
+                    <span class="kpi-label">Municipios Impactados</span>
+                    <h3 class="kpi-value" id="kpi-map-mun">0</h3>
+                </div>
+                <div class="kpi-card kpi-ejecucion">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="kpi-icon" style="background:#EFF6FF;color:#3B82F6;"><i class="fa-solid fa-draw-polygon"></i></div>
+                        <span class="kpi-trend" style="color:#3B82F6;font-size:9px;">Cobertura</span>
+                    </div>
+                    <span class="kpi-label">Subregiones</span>
+                    <h3 class="kpi-value" id="kpi-map-sub">0</h3>
+                </div>
+                <div class="kpi-card kpi-autorizado">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="kpi-icon" style="background:#F0FDFA;color:#14B8A6;"><i class="fa-solid fa-route"></i></div>
+                        <span class="kpi-trend up" style="font-size:9px;">km</span>
+                    </div>
+                    <span class="kpi-label">Km Intervenidos</span>
+                    <h3 class="kpi-value" id="kpi-map-km">0</h3>
+                </div>
+                <div class="kpi-card kpi-desembolsado">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="kpi-icon" style="background:#EFF6FF;color:#3B82F6;"><i class="fa-solid fa-person-digging"></i></div>
+                        <span class="kpi-trend" style="color:#3B82F6;font-size:9px;">Activos</span>
+                    </div>
+                    <span class="kpi-label">En Ejecución</span>
+                    <h3 class="kpi-value" id="kpi-map-activos">0</h3>
+                </div>
+            </div>
+
+            <!-- KPI Área adicional (oculto visualmente pero mantenido para JS) -->
+            <div class="hidden"><h3 id="kpi-map-area">0</h3></div>
+
+            <!-- MAPA PRINCIPAL -->
+            <div class="bg-white flex flex-col overflow-hidden relative" style="border:1.5px solid #E2E8F0;border-radius:20px;box-shadow:0 8px 24px rgba(15,23,42,0.06);height:700px;">
+                <div class="flex justify-between items-center shrink-0 z-10" style="padding:16px 20px;border-bottom:1.5px solid #E2E8F0;background:#F8FAFC;">
+                    <h2 style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:8px;">
+                        <i class="fa-solid fa-map" style="color:#0F766E;"></i> Mapa Interactivo de Antioquia
+                    </h2>
+                    <span id="main-map-loading" class="hidden" style="font-size:11px;font-weight:700;color:#64748B;">
+                        <i class="fa-solid fa-spinner fa-spin mr-1"></i> Sincronizando KMLs...
+                    </span>
+                </div>
+                <div id="main-map" class="flex-1 w-full z-0 relative" style="background:#F1F5F9;">
                     <!-- Buscador Interactivo MapLibre GL -->
                     <div class="map-search-container" id="map-search-container">
                         <div class="map-search-bar">
@@ -775,27 +755,21 @@
                         <div class="map-search-results hidden" id="map-search-results"></div>
                     </div>
 
-                    <!-- Control de Capas MapLibre GL -->
+                    <!-- Panel de Capas -->
                     <div class="map-layer-panel" id="map-layer-panel">
                         <div class="layer-panel-header">
-                            <h3 class="layer-panel-title">
-                                <i class="fa-solid fa-layer-group"></i> Capas del Mapa
-                            </h3>
+                            <h3 class="layer-panel-title"><i class="fa-solid fa-layer-group"></i> Capas del Mapa</h3>
                             <button id="btn-toggle-panel" class="layer-panel-toggle" title="Colapsar panel">
                                 <i class="fa-solid fa-chevron-up"></i>
                             </button>
                         </div>
-
                         <div id="layer-panel-content">
-                            <!-- Sección: Convenios -->
                             <div class="layer-group-label">Convenios</div>
                             <label class="layer-item">
                                 <input type="checkbox" id="layer-chk-tramosKml" checked>
                                 <span class="layer-dot" style="background:#0066FF"></span>
                                 <span class="layer-name"><i class="fa-solid fa-route"></i> Tramos KML Convenios</span>
                             </label>
-
-                            <!-- Sección: Red Vial -->
                             <div class="layer-group-label">Red Vial Oficial</div>
                             <label class="layer-item">
                                 <input type="checkbox" id="layer-chk-primaria" checked>
@@ -812,8 +786,6 @@
                                 <span class="layer-dot" style="background:#d69e2e"></span>
                                 <span class="layer-name"><i class="fa-solid fa-road"></i> Vías Terciarias</span>
                             </label>
-
-                            <!-- Sección: División Territorial -->
                             <div class="layer-group-label">División Territorial</div>
                             <label class="layer-item">
                                 <input type="checkbox" id="layer-chk-subregiones" checked>
@@ -825,15 +797,12 @@
                                 <span class="layer-dot" style="background:#94a3b8"></span>
                                 <span class="layer-name"><i class="fa-solid fa-border-all"></i> Municipios</span>
                             </label>
-
-                            <!-- Sección: Terreno -->
                             <div class="layer-group-label">Vista 3D</div>
                             <label class="layer-item">
                                 <input type="checkbox" id="layer-chk-terrain" checked>
                                 <span class="layer-dot" style="background:#78716c"></span>
                                 <span class="layer-name"><i class="fa-solid fa-mountain"></i> Terreno 3D</span>
                             </label>
-
                             <div class="layer-panel-actions">
                                 <button id="btn-layers-show-all"><i class="fa-solid fa-eye"></i> Mostrar todas</button>
                                 <button id="btn-layers-hide-all"><i class="fa-solid fa-eye-slash"></i> Ocultar todas</button>
@@ -848,19 +817,19 @@
                 </div>
             </div>
 
-            <!-- Selector de Métrica Base para Gráficos de Mapa (Contratado vs Ejecutado) -->
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 gap-4 mb-6">
+            <!-- SELECTOR DE MÉTRICA BASE — MAPA -->
+            <div class="bg-white p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
                 <div>
-                    <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2">
-                        <i class="fa-solid fa-sliders text-institutional-primary"></i> Base de Medición de Gráficos
+                    <h3 style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:8px;">
+                        <i class="fa-solid fa-sliders" style="color:#0F766E;"></i> Base de Medición de Gráficos
                     </h3>
-                    <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">Define si los gráficos de longitud muestran el alcance contratado o el avance ejecutado</p>
+                    <p style="font-size:10.5px;color:#94A3B8;font-weight:500;margin-top:3px;">Define si los gráficos muestran el alcance contratado o el avance ejecutado</p>
                 </div>
-                <div class="flex bg-slate-100 dark:bg-slate-700/50 p-1 rounded-lg border border-slate-200 dark:border-slate-600 shrink-0 self-end sm:self-auto">
-                    <button id="btn-map-metric-contratado" class="px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-md transition-all bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm" onclick="setMapMetric('contratado')">
+                <div class="metric-pill-toggle shrink-0">
+                    <button id="btn-map-metric-contratado" class="metric-pill-btn active" onclick="setMapMetric('contratado')">
                         Longitud Contratada
                     </button>
-                    <button id="btn-map-metric-ejecutado" class="px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" onclick="setMapMetric('ejecutado')">
+                    <button id="btn-map-metric-ejecutado" class="metric-pill-btn" onclick="setMapMetric('ejecutado')">
                         Longitud Ejecutada
                     </button>
                 </div>
@@ -868,283 +837,354 @@
 
             <!-- PANELES TERRITORIALES -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Longitud y Subregiones -->
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700">
-                    <h3 id="lbl-map-sub-long" class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4">Longitud Intervenida por Subregión</h3>
-                    <div class="h-64"><canvas id="chart-sub-long"></canvas></div>
+                <div class="bg-white p-5 rounded-2xl" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
+                    <h3 id="lbl-map-sub-long" style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;">Longitud Intervenida por Subregión</h3>
+                    <div style="height:256px;"><canvas id="chart-sub-long"></canvas></div>
                 </div>
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700">
-                    <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4">Inversión por Subregión</h3>
-                    <div class="h-64"><canvas id="chart-sub-inv"></canvas></div>
+                <div class="bg-white p-5 rounded-2xl" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
+                    <h3 style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;">Inversión por Subregión</h3>
+                    <div style="height:256px;"><canvas id="chart-sub-inv"></canvas></div>
                 </div>
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700">
-                    <h3 id="lbl-map-mun-long" class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4">Top Municipios (Longitud)</h3>
-                    <div class="h-64"><canvas id="chart-top-mun-long"></canvas></div>
+                <div class="bg-white p-5 rounded-2xl" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
+                    <h3 id="lbl-map-mun-long" style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;">Top Municipios (Longitud)</h3>
+                    <div style="height:256px;"><canvas id="chart-top-mun-long"></canvas></div>
                 </div>
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700">
-                    <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4">Top Municipios (Inversión)</h3>
-                    <div class="h-64"><canvas id="chart-top-mun-inv"></canvas></div>
+                <div class="bg-white p-5 rounded-2xl" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
+                    <h3 style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;">Top Municipios (Inversión)</h3>
+                    <div style="height:256px;"><canvas id="chart-top-mun-inv"></canvas></div>
                 </div>
             </div>
         </div>
 
-        <!-- PESTAÑA 3: PLAN DE DESARROLLO -->
+        <!-- ================================================================
+             PESTAÑA 3: PLAN DE DESARROLLO
+             ================================================================ -->
         <div id="tab-plan" class="tab-content hidden space-y-6">
-            
-            <!-- Selector de Métrica Base (Contratado vs Ejecutado) -->
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 gap-4">
+
+            <!-- SELECTOR DE MÉTRICA BASE — PLAN -->
+            <div class="bg-white p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
                 <div>
-                    <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2">
-                        <i class="fa-solid fa-sliders text-institutional-primary"></i> Base de Medición del Plan
+                    <h3 style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:8px;">
+                        <i class="fa-solid fa-sliders" style="color:#0F766E;"></i> Base de Medición del Plan
                     </h3>
-                    <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">Define si el progreso se calcula sobre la longitud/área contratada (Alcance) o la ejecutada (Avance)</p>
+                    <p style="font-size:10.5px;color:#94A3B8;font-weight:500;margin-top:3px;">Define si el progreso se calcula sobre la longitud/área contratada o la ejecutada</p>
                 </div>
-                <div class="flex bg-slate-100 dark:bg-slate-700/50 p-1 rounded-lg border border-slate-200 dark:border-slate-600 shrink-0 self-end sm:self-auto">
-                    <button id="btn-plan-metric-contratado" class="px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-md transition-all bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm" onclick="setPlanMetric('contratado')">
+                <div class="metric-pill-toggle shrink-0">
+                    <button id="btn-plan-metric-contratado" class="metric-pill-btn active" onclick="setPlanMetric('contratado')">
                         Longitud/Área Contratada
                     </button>
-                    <button id="btn-plan-metric-ejecutado" class="px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" onclick="setPlanMetric('ejecutado')">
+                    <button id="btn-plan-metric-ejecutado" class="metric-pill-btn" onclick="setPlanMetric('ejecutado')">
                         Longitud/Área Ejecutada
                     </button>
                 </div>
             </div>
-            
-            <!-- Indicadores Ejecutivos -->
-            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                <div class="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                    <p class="text-[9px] font-bold text-emerald-700 uppercase">Metas Cumplidas (>80%)</p>
-                    <h3 class="text-2xl font-black text-emerald-600 mt-1" id="kpi-plan-cumplidas">0</h3>
+
+            <!-- INDICADORES EJECUTIVOS DEL PLAN — Solo metas (sin Inversión y sin Municipios según spec) -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="plan-kpi-card cumplidas">
+                    <p style="font-size:9px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Metas Cumplidas (&gt;80%)</p>
+                    <h3 style="font-size:28px;font-weight:900;color:#15803D;letter-spacing:-0.03em;line-height:1;" id="kpi-plan-cumplidas">0</h3>
+                    <div style="display:flex;align-items:center;gap:4px;margin-top:6px;">
+                        <i class="fa-solid fa-circle-check" style="color:#22C55E;font-size:11px;"></i>
+                        <span style="font-size:10px;font-weight:600;color:#166534;">Indicadores completados</span>
+                    </div>
                 </div>
-                <div class="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-800">
-                    <p class="text-[9px] font-bold text-amber-700 uppercase">Metas en Proceso (50-80%)</p>
-                    <h3 class="text-2xl font-black text-amber-600 mt-1" id="kpi-plan-proceso">0</h3>
+                <div class="plan-kpi-card proceso">
+                    <p style="font-size:9px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Metas en Proceso (50-80%)</p>
+                    <h3 style="font-size:28px;font-weight:900;color:#D97706;letter-spacing:-0.03em;line-height:1;" id="kpi-plan-proceso">0</h3>
+                    <div style="display:flex;align-items:center;gap:4px;margin-top:6px;">
+                        <i class="fa-solid fa-circle-half-stroke" style="color:#F59E0B;font-size:11px;"></i>
+                        <span style="font-size:10px;font-weight:600;color:#92400E;">En progreso</span>
+                    </div>
                 </div>
-                <div class="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800">
-                    <p class="text-[9px] font-bold text-red-700 uppercase">Metas en Riesgo (<50%)</p>
-                    <h3 class="text-2xl font-black text-red-600 mt-1" id="kpi-plan-riesgo">0</h3>
+                <div class="plan-kpi-card riesgo">
+                    <p style="font-size:9px;font-weight:700;color:#991B1B;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Metas en Riesgo (&lt;50%)</p>
+                    <h3 style="font-size:28px;font-weight:900;color:#DC2626;letter-spacing:-0.03em;line-height:1;" id="kpi-plan-riesgo">0</h3>
+                    <div style="display:flex;align-items:center;gap:4px;margin-top:6px;">
+                        <i class="fa-solid fa-circle-exclamation" style="color:#EF4444;font-size:11px;"></i>
+                        <span style="font-size:10px;font-weight:600;color:#991B1B;">Requieren atención</span>
+                    </div>
                 </div>
-                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                    <p class="text-[9px] font-bold text-slate-500 uppercase">Avance Promedio</p>
-                    <h3 class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1" id="kpi-plan-promedio">0%</h3>
-                </div>
-                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                    <p class="text-[9px] font-bold text-slate-500 uppercase">Inversión Asociada</p>
-                    <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 mt-1 truncate" id="kpi-plan-inv" title="$0">$0</h3>
-                </div>
-                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                    <p class="text-[9px] font-bold text-slate-500 uppercase">Municipios Impactados</p>
-                    <h3 class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1" id="kpi-plan-mun">0</h3>
+                <div class="plan-kpi-card promedio">
+                    <p style="font-size:9px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Avance Promedio</p>
+                    <h3 style="font-size:28px;font-weight:900;color:#0F172A;letter-spacing:-0.03em;line-height:1;" id="kpi-plan-promedio">0%</h3>
+                    <div style="display:flex;align-items:center;gap:4px;margin-top:6px;">
+                        <i class="fa-solid fa-chart-line" style="color:#64748B;font-size:11px;"></i>
+                        <span style="font-size:10px;font-weight:600;color:#64748B;">Global del plan</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Gráficos Gerenciales -->
+            <!-- KPIs ocultos preservados para la lógica JS (no se muestran en UI) -->
+            <div class="hidden">
+                <h3 id="kpi-plan-inv">$0</h3>
+                <h3 id="kpi-plan-mun">0</h3>
+            </div>
+
+            <!-- GRÁFICOS GERENCIALES -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                <div class="bg-white p-5 rounded-2xl flex flex-col" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
                     <div>
-                        <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest" id="lbl-chart-metas">Porcentaje de Cumplimiento por Indicador</h3>
-                        <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">Porcentaje de cumplimiento de cada indicador frente a su meta de plan</p>
+                        <h3 style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;" id="lbl-chart-metas">Porcentaje de Cumplimiento por Indicador</h3>
+                        <p style="font-size:10.5px;color:#94A3B8;font-weight:500;margin-top:3px;">Porcentaje de cumplimiento frente a la meta de plan</p>
                     </div>
-                    <div class="h-72 mt-4"><canvas id="chart-plan-metas"></canvas></div>
+                    <div style="height:288px;margin-top:16px;"><canvas id="chart-plan-metas"></canvas></div>
                 </div>
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                <div class="bg-white p-5 rounded-2xl flex flex-col" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div>
-                            <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest">Avance Acumulado por Año</h3>
-                            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">Evolución del alcance acumulado por año de vigencia</p>
+                            <h3 style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;">Avance Acumulado por Año</h3>
+                            <p style="font-size:10.5px;color:#94A3B8;font-weight:500;margin-top:3px;">Evolución del alcance acumulado por año de vigencia</p>
                         </div>
-                        <div class="flex bg-slate-100 dark:bg-slate-700/50 p-0.5 rounded-lg border border-slate-200 dark:border-slate-600 self-end sm:self-auto shrink-0">
-                            <button id="btn-anual-longitud" class="px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider rounded transition-all bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm" onclick="setPlanAnualMetric('longitud')">
-                                Longitud (km)
-                            </button>
-                            <button id="btn-anual-area" class="px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider rounded transition-all text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" onclick="setPlanAnualMetric('area')">
-                                Área (m²)
-                            </button>
+                        <div class="metric-pill-toggle shrink-0" style="transform:scale(0.9);transform-origin:right center;">
+                            <button id="btn-anual-longitud" class="metric-pill-btn active" onclick="setPlanAnualMetric('longitud')">km</button>
+                            <button id="btn-anual-area" class="metric-pill-btn" onclick="setPlanAnualMetric('area')">m²</button>
                         </div>
                     </div>
-                    <div class="h-72 mt-4"><canvas id="chart-plan-anual"></canvas></div>
+                    <div style="height:288px;margin-top:16px;"><canvas id="chart-plan-anual"></canvas></div>
                 </div>
             </div>
 
-            <!-- Panel de Cumplimiento -->
-            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-premium border border-slate-200 dark:border-slate-700 overflow-hidden">
-                <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-                    <h2 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest"><i class="fa-solid fa-list-check mr-2 text-institutional-primary"></i> Panel de Indicadores Estratégicos</h2>
+            <!-- PANEL DE INDICADORES ESTRATÉGICOS (Seguimiento de Metas Premium) -->
+            <div class="bg-white rounded-2xl overflow-hidden" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
+                <div class="flex justify-between items-center" style="padding:18px 24px;border-bottom:1.5px solid #E2E8F0;background:#F8FAFC;">
+                    <h2 style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:8px;">
+                        <i class="fa-solid fa-list-check" style="color:#0F766E;"></i> Panel de Indicadores Estratégicos
+                    </h2>
                 </div>
                 <div class="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" id="plan-indicadores-container">
                     <!-- Los indicadores se generarán aquí mediante JS -->
                 </div>
             </div>
 
-            <!-- Panel de Diagnóstico - Valores de INDICADOR -->
-            <details id="plan-debug-panel" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl overflow-hidden">
-                <summary class="p-4 cursor-pointer text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest flex items-center gap-2 select-none">
+            <!-- Panel de Diagnóstico -->
+            <details id="plan-debug-panel" class="rounded-xl overflow-hidden" style="background:#FFFBEB;border:1.5px solid rgba(245,158,11,0.3);">
+                <summary style="padding:14px 18px;cursor:pointer;font-size:11px;font-weight:800;color:#92400E;text-transform:uppercase;letter-spacing:0.08em;display:flex;align-items:center;gap:8px;user-select:none;">
                     <i class="fa-solid fa-bug"></i> Diagnóstico: Valores de INDICADOR en los datos
-                    <span class="text-[9px] font-normal text-amber-600 ml-1">(haz clic para expandir)</span>
+                    <span style="font-size:9px;font-weight:400;color:#D97706;margin-left:4px;">(haz clic para expandir)</span>
                 </summary>
-                <div class="p-4 pt-0">
-                    <p class="text-[10px] text-amber-700 dark:text-amber-400 mb-2 font-medium">Estos son los valores únicos del campo <strong>INDICADOR</strong> leídos desde el Google Sheet. Si un valor no coincide con los indicadores del panel superior, el matching falla.</p>
+                <div style="padding:0 18px 16px;">
+                    <p style="font-size:10px;color:#92400E;margin-bottom:8px;font-weight:500;">Estos son los valores únicos del campo <strong>INDICADOR</strong> leídos desde los datos. Si un valor no coincide con los indicadores del panel superior, el matching falla.</p>
                     <div id="plan-debug-indicadores" class="flex flex-wrap gap-2"></div>
                 </div>
             </details>
 
         </div>
-    </main>
+        <!-- Fin tab-plan -->
+
+                    </div>
+                    <!-- Fin main-content -->
+
+                    </main>
+                </div>
+            </div>
+        </div>
+        <!-- Fin app-layout -->
 
     <!-- MODAL DE DETALLE PREMIUM -->
     <div id="modal-detalle" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center p-4 sm:p-6 no-print">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-7xl max-h-[96vh] overflow-hidden flex flex-col transform transition-all relative">
-            
-            <!-- Banda de color de estado -->
-            <div id="modal-state-band" class="modal-header-state-bar bg-slate-400"></div>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[96vh] overflow-hidden flex flex-col transform transition-all relative" style="border:1.5px solid #E2E8F0;">
 
-            <div class="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-white dark:bg-slate-800 z-10 shrink-0">
+            <!-- Banda de color de estado -->
+            <div id="modal-state-band" class="modal-header-state-bar" style="background:#94A3B8;"></div>
+
+            <div class="p-5 sm:p-6 flex justify-between items-center bg-white shrink-0 z-10" style="border-bottom:1.5px solid #E2E8F0;">
                 <div>
                     <div class="flex items-center gap-3 mb-1">
                         <span id="modal-badge" class="badge-estado badge-default">Estado</span>
-                        <h2 class="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight" id="modal-title">Convenio</h2>
+                        <h2 style="font-size:20px;font-weight:800;color:#0F172A;letter-spacing:-0.02em;" id="modal-title">Convenio</h2>
                     </div>
-                    <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase tracking-widest" id="modal-subtitle">Municipio - Año</p>
+                    <p style="font-size:10px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.1em;" id="modal-subtitle">Municipio — Año</p>
                 </div>
-                <div class="flex items-center gap-2 sm:gap-4">
-                    <a id="btn-open-source-pdf" href="#" target="_blank" class="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white px-3 sm:px-4 py-2 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wide transition-all shadow-sm border border-red-100 hover:border-red-600 flex items-center gap-2">
-                        <i class="fa-solid fa-file-pdf text-sm sm:text-base"></i> <span class="hidden sm:inline">Ver Convenio</span>
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <a id="btn-open-source-pdf" href="#" target="_blank" style="background:#FEF2F2;color:#DC2626;padding:7px 14px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;display:flex;align-items:center;gap:6px;border:1.5px solid rgba(239,68,68,0.2);text-decoration:none;transition:all 0.2s;">
+                        <i class="fa-solid fa-file-pdf"></i> <span class="hidden sm:inline">Ver Convenio</span>
                     </a>
                     <button id="btn-export-pdf" class="btn-pdf">
                         <i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Generar Ficha</span>
                     </button>
-                    <div class="w-px h-8 bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
-                    <button id="btn-close-modal" class="text-slate-400 dark:text-slate-500 hover:text-institutional-primary bg-slate-100 dark:bg-slate-800 hover:bg-institutional-pale rounded-full w-10 h-10 flex items-center justify-center transition-colors shrink-0">
-                        <i class="fa-solid fa-xmark text-lg"></i>
+                    <div class="w-px h-8 hidden sm:block" style="background:#E2E8F0;"></div>
+                    <button id="btn-close-modal" style="width:36px;height:36px;border-radius:99px;display:flex;align-items:center;justify-content:center;background:#F8FAFC;border:1.5px solid #E2E8F0;color:#94A3B8;cursor:pointer;transition:all 0.2s;" class="shrink-0">
+                        <i class="fa-solid fa-xmark" style="font-size:16px;"></i>
                     </button>
                 </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar bg-slate-50 dark:bg-slate-800/50/50">
+            <div class="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar" style="background:#F8FAFC;">
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    
+
                     <!-- COLUMNA IZQUIERDA: DATOS -->
                     <div class="lg:col-span-5 space-y-5">
-                        
+
                         <!-- Progreso -->
                         <div class="grid grid-cols-2 gap-4">
-                            <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <div class="bg-white p-4 rounded-xl" style="border:1.5px solid #E2E8F0;">
                                 <div class="flex justify-between items-end mb-2">
-                                    <span class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Físico</span>
-                                    <span id="mod-txt-fisico" class="text-lg font-black text-institutional-light">0%</span>
+                                    <span style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;">Físico</span>
+                                    <span id="mod-txt-fisico" style="font-size:17px;font-weight:900;color:#0F766E;">0%</span>
                                 </div>
-                                <div class="progress-track progress-track-lg"><div id="mod-bar-fisico" class="progress-fisico"></div></div>
+                                <div class="progress-track progress-track-lg"><div id="mod-bar-fisico" class="progress-fisico" style="width:0%"></div></div>
                             </div>
-                            <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <div class="bg-white p-4 rounded-xl" style="border:1.5px solid #E2E8F0;">
                                 <div class="flex justify-between items-end mb-2">
-                                    <span class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Financiero</span>
-                                    <span id="mod-txt-financiero" class="text-lg font-black text-institutional-accent">0%</span>
+                                    <span style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;">Financiero</span>
+                                    <span id="mod-txt-financiero" style="font-size:17px;font-weight:900;color:#3B82F6;">0%</span>
                                 </div>
-                                <div class="progress-track progress-track-lg"><div id="mod-bar-financiero" class="progress-financiero"></div></div>
+                                <div class="progress-track progress-track-lg"><div id="mod-bar-financiero" class="progress-financiero" style="width:0%"></div></div>
                             </div>
                         </div>
-                        
+
                         <!-- Técnico -->
-                        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
-                            <h5 class="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                <span class="w-6 h-6 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 dark:text-slate-500"><i class="fa-solid fa-helmet-safety"></i></span>
+                        <div class="bg-white rounded-xl p-5" style="border:1.5px solid #E2E8F0;">
+                            <h5 style="font-size:10px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                                <span style="width:22px;height:22px;border-radius:6px;background:#F8FAFC;display:flex;align-items:center;justify-content:center;color:#64748B;border:1px solid #E2E8F0;"><i class="fa-solid fa-helmet-safety" style="font-size:10px;"></i></span>
                                 Datos Técnicos
                             </h5>
                             <div class="space-y-4">
-                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Objeto del Convenio</span><p id="mod-objeto" class="text-slate-700 dark:text-slate-200 font-medium text-[11px] leading-relaxed break-words whitespace-normal bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50"></p></div>
+                                <div>
+                                    <span style="display:block;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Objeto del Convenio</span>
+                                    <p id="mod-objeto" style="color:#0F172A;font-weight:500;font-size:11px;line-height:1.6;word-break:break-words;background:#F8FAFC;padding:12px;border-radius:10px;border:1px solid #E2E8F0;"></p>
+                                </div>
                                 <div class="grid grid-cols-2 gap-3">
-                                    <div class="col-span-2"><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Vía Priorizada</span><div id="mod-via" class="text-slate-800 dark:text-slate-100 font-bold text-[11px] leading-tight break-words whitespace-normal"></div></div>
-                                    <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Alcance Contratado</span><div id="mod-alcance" class="text-institutional-primary font-bold text-xs"></div></div>
-                                    <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Ejecución Real</span><div id="mod-ejecutado-areas" class="text-institutional-accent font-bold text-xs"></div></div>
+                                    <div class="col-span-2">
+                                        <span style="display:block;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Vía Priorizada</span>
+                                        <div id="mod-via" style="color:#0F172A;font-weight:700;font-size:11px;line-height:1.4;word-break:break-words;"></div>
+                                    </div>
+                                    <div>
+                                        <span style="display:block;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Alcance Contratado</span>
+                                        <div id="mod-alcance" style="color:#0F766E;font-weight:800;font-size:12px;"></div>
+                                    </div>
+                                    <div>
+                                        <span style="display:block;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Ejecución Real</span>
+                                        <div id="mod-ejecutado-areas" style="color:#3B82F6;font-weight:800;font-size:12px;"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Financiero -->
-                        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
-                            <h5 class="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                <span class="w-6 h-6 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 dark:text-slate-500"><i class="fa-solid fa-coins"></i></span>
+                        <div class="bg-white rounded-xl p-5" style="border:1.5px solid #E2E8F0;">
+                            <h5 style="font-size:10px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                                <span style="width:22px;height:22px;border-radius:6px;background:#F8FAFC;display:flex;align-items:center;justify-content:center;color:#64748B;border:1px solid #E2E8F0;"><i class="fa-solid fa-coins" style="font-size:10px;"></i></span>
                                 Finanzas
                             </h5>
                             <div class="space-y-3">
-                                <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-700/50 pb-2"><span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase">Valor Total (Adiciones)</span><span id="mod-valor-total" class="text-slate-900 dark:text-white font-black text-sm"></span></div>
-                                <div class="flex justify-between items-center"><span class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Aporte Departamento</span><span id="mod-aporte-depto" class="text-slate-700 dark:text-slate-200 font-bold text-xs"></span></div>
-                                <div class="flex justify-between items-center"><span class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Aporte Municipio</span><span id="mod-aporte-mun" class="text-slate-700 dark:text-slate-200 font-bold text-xs"></span></div>
-                                <div class="flex justify-between items-center"><span class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Adición Departamento</span><span id="mod-adicion-depto" class="text-slate-700 dark:text-slate-200 font-bold text-xs"></span></div>
-                                <div class="flex justify-between items-center"><span class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Adición Municipio</span><span id="mod-adicion-mun" class="text-slate-700 dark:text-slate-200 font-bold text-xs"></span></div>
-                                <div class="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
-                                    <div class="bg-blue-50/50 p-2 rounded-lg border border-blue-100 text-center cursor-help" title="Este valor corresponde al traslado de recursos a la cuenta del IDEA"><span class="block text-[8px] font-bold text-institutional-accent uppercase mb-0.5">Total Desembolsado</span><span id="mod-desembolsado-full" class="text-institutional-accent font-black text-xs block"></span></div>
-                                    <div class="bg-emerald-50/50 p-2 rounded-lg border border-emerald-100 text-center"><span class="block text-[8px] font-bold text-institutional-light uppercase mb-0.5">Total Autorizado Depto.</span><span id="mod-autorizado-full" class="text-institutional-light font-black text-xs block"></span></div>
+                                <div class="flex justify-between items-center pb-2" style="border-bottom:1px solid #F1F5F9;">
+                                    <span style="font-size:10px;font-weight:600;color:#94A3B8;text-transform:uppercase;">Valor Total (Adiciones)</span>
+                                    <span id="mod-valor-total" style="font-weight:900;font-size:14px;color:#0F172A;"></span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Aporte Departamento</span>
+                                    <span id="mod-aporte-depto" style="font-weight:700;font-size:12px;color:#0F172A;"></span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Aporte Municipio</span>
+                                    <span id="mod-aporte-mun" style="font-weight:700;font-size:12px;color:#0F172A;"></span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Adición Departamento</span>
+                                    <span id="mod-adicion-depto" style="font-weight:700;font-size:12px;color:#0F172A;"></span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Adición Municipio</span>
+                                    <span id="mod-adicion-mun" style="font-weight:700;font-size:12px;color:#0F172A;"></span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3 pt-3" style="border-top:1px solid #F1F5F9;">
+                                    <div class="p-2 rounded-lg text-center cursor-help" style="background:#EFF6FF;border:1px solid rgba(59,130,246,0.2);" title="Traslado de recursos a la cuenta del IDEA">
+                                        <span style="display:block;font-size:8px;font-weight:700;color:#3B82F6;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Total Desembolsado</span>
+                                        <span id="mod-desembolsado-full" style="color:#3B82F6;font-weight:900;font-size:12px;display:block;"></span>
+                                    </div>
+                                    <div class="p-2 rounded-lg text-center" style="background:#F0FDFA;border:1px solid rgba(20,184,166,0.2);">
+                                        <span style="display:block;font-size:8px;font-weight:700;color:#0F766E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Total Autorizado Depto.</span>
+                                        <span id="mod-autorizado-full" style="color:#0F766E;font-weight:900;font-size:12px;display:block;"></span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Tiempos -->
-                        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
-                            <h5 class="text-[10px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                <span class="w-6 h-6 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 dark:text-slate-500"><i class="fa-regular fa-calendar-days"></i></span>
+                        <div class="bg-white rounded-xl p-5" style="border:1.5px solid #E2E8F0;">
+                            <h5 style="font-size:10px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                                <span style="width:22px;height:22px;border-radius:6px;background:#F8FAFC;display:flex;align-items:center;justify-content:center;color:#64748B;border:1px solid #E2E8F0;"><i class="fa-regular fa-calendar-days" style="font-size:10px;"></i></span>
                                 Novedades y Plazos
                             </h5>
                             <div class="grid grid-cols-2 gap-x-4 gap-y-3">
-                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Suscripción</span><span id="mod-suscripcion" class="text-slate-700 dark:text-slate-200 font-semibold text-xs block mt-0.5"></span></div>
-                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Acta Inicio</span><span id="mod-inicio" class="text-slate-700 dark:text-slate-200 font-semibold text-xs block mt-0.5"></span></div>
-                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Plazo Inicial</span><span id="mod-plazo-inicial" class="text-slate-700 dark:text-slate-200 font-semibold text-xs block mt-0.5"></span></div>
-                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Plazo Total</span><span id="mod-plazo-total" class="text-slate-700 dark:text-slate-200 font-semibold text-xs block mt-0.5"></span></div>
-                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Terminación Original</span><span id="mod-terminacion" class="text-slate-700 dark:text-slate-200 font-semibold text-xs block mt-0.5"></span></div>
-                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Prórrogas</span><span id="mod-prorrogas" class="text-slate-700 dark:text-slate-200 text-xs block mt-0.5"></span></div>
-                                <div><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Suspensiones</span><span id="mod-suspensiones" class="text-slate-700 dark:text-slate-200 text-xs block mt-0.5"></span></div>
-                                <div class="col-span-2 bg-amber-50 p-2 rounded border border-amber-100 mt-1"><span class="block text-[9px] font-bold text-amber-700 uppercase text-center">Nueva Fecha Terminación</span><span id="mod-nueva-terminacion" class="text-amber-800 font-black text-sm block mt-0.5 text-center"></span></div>
+                                <div><span style="display:block;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;">Suscripción</span><span id="mod-suscripcion" style="color:#0F172A;font-weight:600;font-size:12px;display:block;margin-top:2px;"></span></div>
+                                <div><span style="display:block;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;">Acta Inicio</span><span id="mod-inicio" style="color:#0F172A;font-weight:600;font-size:12px;display:block;margin-top:2px;"></span></div>
+                                <div><span style="display:block;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;">Plazo Inicial</span><span id="mod-plazo-inicial" style="color:#0F172A;font-weight:600;font-size:12px;display:block;margin-top:2px;"></span></div>
+                                <div><span style="display:block;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;">Plazo Total</span><span id="mod-plazo-total" style="color:#0F172A;font-weight:600;font-size:12px;display:block;margin-top:2px;"></span></div>
+                                <div><span style="display:block;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;">Terminación Original</span><span id="mod-terminacion" style="color:#0F172A;font-weight:600;font-size:12px;display:block;margin-top:2px;"></span></div>
+                                <div><span style="display:block;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;">Prórrogas</span><span id="mod-prorrogas" style="color:#0F172A;font-size:12px;display:block;margin-top:2px;"></span></div>
+                                <div><span style="display:block;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;">Suspensiones</span><span id="mod-suspensiones" style="color:#0F172A;font-size:12px;display:block;margin-top:2px;"></span></div>
+                                <div class="col-span-2 mt-1 p-2 rounded-xl text-center" style="background:#FFFBEB;border:1.5px solid rgba(245,158,11,0.2);">
+                                    <span style="display:block;font-size:9px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.06em;">Nueva Fecha Terminación</span>
+                                    <span id="mod-nueva-terminacion" style="color:#92400E;font-weight:900;font-size:15px;display:block;margin-top:2px;"></span>
+                                </div>
                             </div>
-                            <div class="mt-4"><span class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Observaciones Técnicas</span><div id="mod-observaciones" class="text-slate-700 dark:text-slate-200 text-xs font-medium leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50 max-h-24 overflow-y-auto custom-scrollbar"></div></div>
+                            <div class="mt-4">
+                                <span style="display:block;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Observaciones Técnicas</span>
+                                <div id="mod-observaciones" class="custom-scrollbar" style="color:#0F172A;font-size:11px;font-weight:500;line-height:1.6;background:#F8FAFC;padding:12px;border-radius:10px;border:1px solid #E2E8F0;max-height:96px;overflow-y:auto;"></div>
+                            </div>
                         </div>
 
                     </div>
 
                     <!-- COLUMNA DERECHA: MAPA Y FOTOS -->
                     <div class="lg:col-span-7 flex flex-col gap-6">
-                        
+
                         <!-- Mapa -->
-                        <div class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm h-[350px] relative flex flex-col">
-                            <div class="p-3 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50/80 z-20 shrink-0">
-                                <h5 class="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest"><i class="fa-solid fa-map-location-dot mr-1.5 text-institutional-primary"></i> Visor Geográfico</h5>
+                        <div class="bg-white rounded-xl overflow-hidden flex flex-col" style="border:1.5px solid #E2E8F0;height:350px;position:relative;">
+                            <div class="flex justify-between items-center shrink-0 z-20" style="padding:12px 16px;border-bottom:1.5px solid #E2E8F0;background:#F8FAFC;">
+                                <h5 style="font-size:10px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.1em;display:flex;align-items:center;gap:6px;">
+                                    <i class="fa-solid fa-map-location-dot" style="color:#0F766E;"></i> Visor Geográfico
+                                </h5>
                             </div>
                             <div class="flex-1 relative flex flex-row">
-                                <div id="map-sidebar" class="w-1/3 min-w-[200px] bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 hidden flex-col z-20 h-full overflow-hidden shadow-md">
-                                    <div class="p-2 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 text-center"><span class="text-[9px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase">Tramos Extraídos</span></div>
+                                <div id="map-sidebar" class="w-1/3 min-w-[200px] bg-white border-r flex-col z-20 h-full overflow-hidden shadow-md hidden" style="border-color:#E2E8F0;">
+                                    <div class="p-2 border-b text-center" style="background:#F8FAFC;border-color:#E2E8F0;">
+                                        <span style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Tramos Extraídos</span>
+                                    </div>
                                     <div id="map-feature-list" class="flex-1 overflow-y-auto p-1.5 space-y-1 custom-scrollbar"></div>
-                                    <div id="map-feature-details" class="hidden flex-col border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-2.5">
-                                        <h6 class="font-bold text-slate-700 dark:text-slate-200 text-[9px] uppercase mb-2 truncate" id="coord-name">--</h6>
-                                        <div class="mb-1.5"><span class="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase block">Inicio</span>
-                                            <div class="flex gap-1"><input type="text" id="coord-start" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-1 text-[9px] font-mono" readonly><button onclick="copyCoord('coord-start', this)" class="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-institutional-primary hover:text-white p-1 rounded transition"><i class="fa-regular fa-copy"></i></button></div>
+                                    <div id="map-feature-details" class="hidden flex-col border-t p-2.5" style="background:#F8FAFC;border-color:#E2E8F0;">
+                                        <h6 style="font-weight:700;color:#0F172A;font-size:9px;text-transform:uppercase;margin-bottom:8px;" id="coord-name" class="truncate">--</h6>
+                                        <div class="mb-1.5">
+                                            <span style="font-size:8px;font-weight:700;color:#94A3B8;text-transform:uppercase;display:block;margin-bottom:2px;">Inicio</span>
+                                            <div class="flex gap-1"><input type="text" id="coord-start" class="w-full border rounded px-1.5 py-1 font-mono" style="font-size:9px;background:white;border-color:#E2E8F0;" readonly><button onclick="copyCoord('coord-start', this)" class="rounded transition" style="background:#F1F5F9;color:#64748B;padding:4px 6px;border:none;cursor:pointer;"><i class="fa-regular fa-copy text-xs"></i></button></div>
                                         </div>
-                                        <div><span class="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase block">Fin</span>
-                                            <div class="flex gap-1"><input type="text" id="coord-end" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-1 text-[9px] font-mono" readonly><button onclick="copyCoord('coord-end', this)" class="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-institutional-primary hover:text-white p-1 rounded transition"><i class="fa-regular fa-copy"></i></button></div>
+                                        <div>
+                                            <span style="font-size:8px;font-weight:700;color:#94A3B8;text-transform:uppercase;display:block;margin-bottom:2px;">Fin</span>
+                                            <div class="flex gap-1"><input type="text" id="coord-end" class="w-full border rounded px-1.5 py-1 font-mono" style="font-size:9px;background:white;border-color:#E2E8F0;" readonly><button onclick="copyCoord('coord-end', this)" class="rounded transition" style="background:#F1F5F9;color:#64748B;padding:4px 6px;border:none;cursor:pointer;"><i class="fa-regular fa-copy text-xs"></i></button></div>
                                         </div>
                                     </div>
                                 </div>
-                                <div id="map" class="flex-1 relative z-0 h-full bg-slate-100 dark:bg-slate-800"></div>
-                                <div id="map-overlay" class="absolute inset-0 bg-slate-100 dark:bg-slate-800/90 flex items-center justify-center z-30 transition-opacity backdrop-blur-sm"><span id="map-msg" class="text-slate-500 dark:text-slate-400 dark:text-slate-500 font-semibold text-xs"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Cargando trazado...</span></div>
+                                <div id="map" class="flex-1 relative z-0 h-full" style="background:#F1F5F9;"></div>
+                                <div id="map-overlay" class="absolute inset-0 flex items-center justify-center z-30 backdrop-blur-sm transition-opacity" style="background:rgba(248,250,252,0.85);">
+                                    <span id="map-msg" style="color:#94A3B8;font-weight:600;font-size:12px;display:flex;align-items:center;gap:6px;">
+                                        <i class="fa-solid fa-spinner fa-spin" style="color:#0F766E;"></i>Cargando trazado...
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                        
-                        <!-- Galería -->
-                        <div class="bg-slate-900 rounded-xl p-5 shadow-lg flex-1 flex flex-col relative overflow-hidden">
-                            <div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/50 pointer-events-none"></div>
-                            <h4 class="text-[10px] font-black text-white uppercase tracking-widest mb-4 border-b border-white/10 pb-2 relative z-10 flex justify-between items-center">
-                                <span><i class="fa-solid fa-camera mr-1.5 opacity-70"></i> Registro Fotográfico</span>
+
+                        <!-- Galería fotográfica premium -->
+                        <div class="flex-1 flex flex-col relative overflow-hidden rounded-xl" style="background:#0F172A;">
+                            <div style="position:absolute;inset:0;background:linear-gradient(to bottom, transparent, rgba(0,0,0,0.4));pointer-events:none;z-index:0;"></div>
+                            <h4 style="font-size:10px;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.1);padding:18px 18px 14px;position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;">
+                                <span><i class="fa-solid fa-camera" style="opacity:0.6;margin-right:6px;"></i> Registro Fotográfico</span>
                             </h4>
-                            <div id="mod-galeria" class="flex flex-col gap-4 relative z-10 overflow-y-auto custom-scrollbar pr-1 flex-1 content-start">
+                            <div id="mod-galeria" class="flex flex-col gap-4 relative z-10 overflow-y-auto custom-scrollbar flex-1 content-start" style="padding:0 18px 18px;">
                                 <div>
-                                    <h5 class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">Antes</h5>
+                                    <h5 style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:4px;">Antes</h5>
                                     <div id="mod-galeria-antes" class="grid grid-cols-3 gap-3"></div>
                                 </div>
                                 <div>
-                                    <h5 class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">Después</h5>
+                                    <h5 style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:4px;">Después</h5>
                                     <div id="mod-galeria-despues" class="grid grid-cols-3 gap-3"></div>
                                 </div>
                             </div>
-                            <div id="mod-galeria-empty" class="hidden flex-1 flex flex-col items-center justify-center py-8 text-white/40 text-xs relative z-10">
-                                <i class="fa-regular fa-images text-3xl mb-2 opacity-50"></i>
-                                No se encontraron fotografías anexas
+                            <div id="mod-galeria-empty" class="hidden flex-1 flex flex-col items-center justify-center py-8 relative z-10" style="color:rgba(255,255,255,0.3);">
+                                <i class="fa-regular fa-images" style="font-size:32px;margin-bottom:8px;opacity:0.4;"></i>
+                                <span style="font-size:11px;font-weight:500;">No se encontraron fotografías anexas</span>
                             </div>
                         </div>
 
@@ -1154,28 +1194,145 @@
         </div>
     </div>
 
-
-
     <!-- LIGHTBOX GALERÍA -->
-    <div id="modal-lightbox" class="fixed inset-0 bg-slate-950/95 z-[60] hidden flex items-center justify-center select-none backdrop-blur-md no-print">
-        <button id="btn-close-lightbox" class="absolute top-6 right-6 sm:right-8 text-white/50 hover:text-white bg-white dark:bg-slate-800/10 hover:bg-white dark:bg-slate-800/20 rounded-full w-12 h-12 flex items-center justify-center transition-all z-10"><i class="fa-solid fa-xmark text-2xl"></i></button>
-        <button id="btn-prev-img" class="absolute left-4 sm:left-10 top-1/2 transform -translate-y-1/2 text-white hover:text-institutional-light text-3xl bg-black/40 hover:bg-black/70 w-14 h-14 rounded-full flex items-center justify-center z-10 hidden transition-all backdrop-blur-sm"><i class="fa-solid fa-chevron-left"></i></button>
+    <div id="modal-lightbox" class="fixed inset-0 z-[60] hidden flex items-center justify-center select-none backdrop-blur-md no-print" style="background:rgba(15,23,42,0.96);">
+        <button id="btn-close-lightbox" class="absolute top-6 right-6 sm:right-8 flex items-center justify-center transition-all z-10" style="background:rgba(255,255,255,0.1);border:none;color:rgba(255,255,255,0.7);width:48px;height:48px;border-radius:99px;cursor:pointer;font-size:20px;">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <button id="btn-prev-img" class="absolute left-4 sm:left-10 top-1/2 hidden items-center justify-center z-10 transition-all" style="transform:translateY(-50%);color:white;font-size:28px;background:rgba(0,0,0,0.4);width:56px;height:56px;border-radius:99px;border:none;cursor:pointer;">
+            <i class="fa-solid fa-chevron-left"></i>
+        </button>
         <div class="relative w-full max-w-6xl flex justify-center items-center h-full max-h-[90vh] p-4 flex-col">
-            <img id="lightbox-img" src="" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl transition-opacity duration-300">
-            <div id="lightbox-counter" class="mt-5 text-white/80 text-xs font-bold tracking-widest bg-black/50 px-4 py-1.5 rounded-full backdrop-blur-sm"></div>
+            <img id="lightbox-img" src="" class="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl transition-opacity duration-300">
+            <div id="lightbox-counter" class="mt-5" style="color:rgba(255,255,255,0.8);font-size:11px;font-weight:700;letter-spacing:0.1em;background:rgba(0,0,0,0.5);padding:5px 16px;border-radius:99px;backdrop-filter:blur(8px);"></div>
         </div>
-        <button id="btn-next-img" class="absolute right-4 sm:right-10 top-1/2 transform -translate-y-1/2 text-white hover:text-institutional-light text-3xl bg-black/40 hover:bg-black/70 w-14 h-14 rounded-full flex items-center justify-center z-10 hidden transition-all backdrop-blur-sm"><i class="fa-solid fa-chevron-right"></i></button>
+        <button id="btn-next-img" class="absolute right-4 sm:right-10 top-1/2 hidden items-center justify-center z-10 transition-all" style="transform:translateY(-50%);color:white;font-size:28px;background:rgba(0,0,0,0.4);width:56px;height:56px;border-radius:99px;border:none;cursor:pointer;">
+            <i class="fa-solid fa-chevron-right"></i>
+        </button>
     </div>
 
     <!-- TOAST NOTIFICATION -->
-    <div id="toast-notification" class="fixed bottom-6 right-6 bg-emerald-600 text-white px-5 py-3.5 rounded-xl shadow-2xl shadow-emerald-900/20 transform translate-y-20 opacity-0 transition-all duration-300 z-[70] flex items-center gap-3 border border-emerald-500/50 no-print">
-        <i class="fa-solid fa-circle-check text-xl text-emerald-200"></i>
+    <div id="toast-notification" class="fixed bottom-6 right-6 flex items-center gap-3 no-print" style="background:linear-gradient(135deg,#0F766E,#14B8A6);color:white;padding:14px 20px;border-radius:14px;box-shadow:0 8px 24px rgba(15,118,110,0.35);transform:translateY(80px);opacity:0;transition:all 0.3s;z-index:70;border:1px solid rgba(255,255,255,0.15);">
+        <i class="fa-solid fa-circle-check" style="font-size:18px;color:rgba(255,255,255,0.85);"></i>
         <div>
-            <h4 class="text-xs font-black uppercase tracking-wider">Ficha Descargada</h4>
-            <p class="text-[10px] text-emerald-100 font-medium">El archivo PDF se generó exitosamente.</p>
+            <h4 style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;">Ficha Descargada</h4>
+            <p style="font-size:10px;color:rgba(255,255,255,0.8);font-weight:500;margin-top:1px;">El archivo PDF se generó exitosamente.</p>
         </div>
     </div>
 
     <script src="script.js"></script>
+
+    <!-- Script adicional para las nuevas funcionalidades de UI -->
+    <script>
+    // ===== ACTUALIZACIONES POPUP =====
+    (function(){
+        const btnUpdates = document.getElementById('btn-updates');
+        const dropdown = document.getElementById('updates-dropdown');
+        let isOpen = false;
+
+        if(btnUpdates && dropdown){
+            btnUpdates.addEventListener('click', (e) => {
+                e.stopPropagation();
+                isOpen = !isOpen;
+                dropdown.classList.toggle('hidden', !isOpen);
+            });
+            document.addEventListener('click', () => {
+                if(isOpen){ isOpen = false; dropdown.classList.add('hidden'); }
+            });
+            dropdown.addEventListener('click', (e) => e.stopPropagation());
+        }
+
+        // Exponer función para poblar el panel de actualizaciones desde script.js
+        window.populateUpdatesPanel = function(data) {
+            const list = document.getElementById('updates-list');
+            const subtitle = document.getElementById('updates-subtitle');
+            const badge = document.getElementById('updates-badge');
+            if(!list) return;
+
+            if(!data || data.length === 0){
+                list.innerHTML = `<div class="update-item" style="text-align:center;padding:24px 20px;">
+                    <i class="fa-solid fa-check-circle" style="font-size:24px;color:#22C55E;margin-bottom:8px;display:block;"></i>
+                    <p style="font-size:11px;color:#94A3B8;font-weight:500;">Sin cambios detectados en esta carga</p>
+                </div>`;
+                if(badge) badge.classList.add('hidden');
+                return;
+            }
+
+            if(subtitle) subtitle.textContent = `${data.length} cambio${data.length > 1 ? 's' : ''} detectado${data.length > 1 ? 's' : ''}`;
+            if(badge){ badge.classList.remove('hidden'); }
+
+            list.innerHTML = data.map(item => `
+                <div class="update-item">
+                    <div class="update-item-header">
+                        <span class="update-convenio"><i class="fa-solid fa-hashtag" style="font-size:8px;margin-right:2px;"></i>${item.convenio || 'N/A'}</span>
+                        <span class="update-time">${item.fecha || ''}</span>
+                    </div>
+                    ${item.supervisor ? `<div class="update-field" style="font-size:9.5px;color:#94A3B8;margin-bottom:4px;"><i class="fa-solid fa-user" style="margin-right:4px;"></i>${item.supervisor}</div>` : ''}
+                    <div class="update-field"><strong style="color:#0F172A;font-weight:700;">${item.campo || 'Campo modificado'}</strong></div>
+                    <div class="update-values">
+                        <span class="update-value-old">${item.valorAnterior || 'N/A'}</span>
+                        <i class="fa-solid fa-arrow-right update-arrow"></i>
+                        <span class="update-value-new">${item.valorNuevo || 'N/A'}</span>
+                    </div>
+                </div>
+            `).join('');
+        };
+    })();
+
+    // ===== NOTIFICATIONS DROPDOWN =====
+    (function(){
+        const btn = document.getElementById('btn-nav-alerts');
+        const dd = document.getElementById('nav-alerts-dropdown');
+        let open = false;
+        if(btn && dd){
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                open = !open;
+                dd.classList.toggle('hidden', !open);
+            });
+            document.addEventListener('click', () => {
+                if(open){ open=false; dd.classList.add('hidden'); }
+            });
+            dd.addEventListener('click', (e) => e.stopPropagation());
+        }
+    })();
+
+    // ===== METRIC PILL TOGGLE: actualiza estilos activos =====
+    window.updatePillToggle = function(btnActiveId, btnInactiveId) {
+        const active = document.getElementById(btnActiveId);
+        const inactive = document.getElementById(btnInactiveId);
+        if(active) active.classList.add('active');
+        if(inactive) inactive.classList.remove('active');
+    };
+
+    // Override setMapMetric y setPlanMetric para actualizar pills
+    const _origSetMapMetric = window.setMapMetric;
+    window.setMapMetric = function(metric) {
+        if(typeof _origSetMapMetric === 'function') _origSetMapMetric(metric);
+        if(metric === 'contratado'){
+            updatePillToggle('btn-map-metric-contratado', 'btn-map-metric-ejecutado');
+        } else {
+            updatePillToggle('btn-map-metric-ejecutado', 'btn-map-metric-contratado');
+        }
+    };
+    const _origSetPlanMetric = window.setPlanMetric;
+    window.setPlanMetric = function(metric) {
+        if(typeof _origSetPlanMetric === 'function') _origSetPlanMetric(metric);
+        if(metric === 'contratado'){
+            updatePillToggle('btn-plan-metric-contratado', 'btn-plan-metric-ejecutado');
+        } else {
+            updatePillToggle('btn-plan-metric-ejecutado', 'btn-plan-metric-contratado');
+        }
+    };
+    const _origSetPlanAnualMetric = window.setPlanAnualMetric;
+    window.setPlanAnualMetric = function(metric) {
+        if(typeof _origSetPlanAnualMetric === 'function') _origSetPlanAnualMetric(metric);
+        if(metric === 'longitud'){
+            updatePillToggle('btn-anual-longitud', 'btn-anual-area');
+        } else {
+            updatePillToggle('btn-anual-area', 'btn-anual-longitud');
+        }
+    };
+    </script>
 </body>
 </html>
