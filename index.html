@@ -103,12 +103,12 @@
                 </nav>
             </div>
 
-            <!-- Botón de carga en la parte inferior -->
+            <!-- Botón de Iniciar Sesión en la parte inferior -->
             <div class="sidebar-bottom">
-                <label for="file-upload" class="sidebar-upload-btn">
-                    <i class="fa-solid fa-cloud-arrow-up"></i>
-                    Cargar Excel
-                </label>
+                <button type="button" id="btn-login-trigger" class="sidebar-upload-btn outline-none focus:outline-none" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    Iniciar Sesión
+                </button>
                 <input type="file" id="file-upload" accept=".xlsx, .xls, .csv" class="hidden" />
             </div>
         </aside>
@@ -880,7 +880,56 @@
             </div>
 
             <!-- INDICADORES EJECUTIVOS DEL PLAN — Solo metas (sin Inversión y sin Municipios según spec) -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- SECCIÓN PREMIUM: AVANCE PROMEDIO GLOBAL -->
+            <div class="plan-promedio-section">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="status-pulse-dot"></span>
+                            <p style="font-size:10px;font-weight:800;color:#0F766E;text-transform:uppercase;letter-spacing:0.08em;margin:0;">Avance Promedio Global del Plan de Desarrollo por Antioquia Firme 2024-2027</p>
+                        </div>
+                        <p style="font-size:12px;color:#64748B;font-weight:500;margin-top:4px;">Progreso promedio acumulado de cumplimiento físico frente a las metas programadas</p>
+                    </div>
+                    <div class="flex items-baseline gap-1 bg-teal-50 px-4 py-2 rounded-xl border border-teal-100">
+                        <span style="font-size:32px;font-weight:900;color:#0F766E;line-height:1;letter-spacing:-0.03em;" id="kpi-plan-promedio">0%</span>
+                        <span style="font-size:11px;font-weight:700;color:#0F766E;text-transform:uppercase;letter-spacing:0.02em;">ejecutado</span>
+                    </div>
+                </div>
+
+                <!-- Barra de progreso premium horizontal -->
+                <div class="relative mt-4">
+                    <div class="plan-promedio-track">
+                        <div id="kpi-plan-promedio-bar" class="plan-promedio-fill" style="width: 0%;"></div>
+                    </div>
+                    
+                    <!-- Hitos / Marcadores -->
+                    <div class="flex justify-between mt-2.5 px-1 text-[10px] font-bold text-slate-400 select-none">
+                        <span class="plan-promedio-marker">
+                            <span id="plan-marker-0" class="plan-promedio-dot"></span>
+                            0%
+                        </span>
+                        <span class="plan-promedio-marker">
+                            <span id="plan-marker-25" class="plan-promedio-dot"></span>
+                            25%
+                        </span>
+                        <span class="plan-promedio-marker">
+                            <span id="plan-marker-50" class="plan-promedio-dot"></span>
+                            50%
+                        </span>
+                        <span class="plan-promedio-marker">
+                            <span id="plan-marker-75" class="plan-promedio-dot"></span>
+                            75%
+                        </span>
+                        <span class="plan-promedio-marker">
+                            <span id="plan-marker-100" class="plan-promedio-dot"></span>
+                            100%
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DISTRIBUCIÓN DE METAS -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="plan-kpi-card cumplidas">
                     <p style="font-size:9px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Metas Cumplidas (&gt;80%)</p>
                     <h3 style="font-size:28px;font-weight:900;color:#15803D;letter-spacing:-0.03em;line-height:1;" id="kpi-plan-cumplidas">0</h3>
@@ -903,14 +952,6 @@
                     <div style="display:flex;align-items:center;gap:4px;margin-top:6px;">
                         <i class="fa-solid fa-circle-exclamation" style="color:#EF4444;font-size:11px;"></i>
                         <span style="font-size:10px;font-weight:600;color:#991B1B;">Requieren atención</span>
-                    </div>
-                </div>
-                <div class="plan-kpi-card promedio">
-                    <p style="font-size:9px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Avance Promedio</p>
-                    <h3 style="font-size:28px;font-weight:900;color:#0F172A;letter-spacing:-0.03em;line-height:1;" id="kpi-plan-promedio">0%</h3>
-                    <div style="display:flex;align-items:center;gap:4px;margin-top:6px;">
-                        <i class="fa-solid fa-chart-line" style="color:#64748B;font-size:11px;"></i>
-                        <span style="font-size:10px;font-weight:600;color:#64748B;">Global del plan</span>
                     </div>
                 </div>
             </div>
@@ -936,9 +977,17 @@
                             <h3 style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;">Avance Acumulado por Año</h3>
                             <p style="font-size:10.5px;color:#94A3B8;font-weight:500;margin-top:3px;">Evolución del alcance acumulado por año de vigencia</p>
                         </div>
-                        <div class="metric-pill-toggle shrink-0" style="transform:scale(0.9);transform-origin:right center;">
-                            <button id="btn-anual-longitud" class="metric-pill-btn active" onclick="setPlanAnualMetric('longitud')">km</button>
-                            <button id="btn-anual-area" class="metric-pill-btn" onclick="setPlanAnualMetric('area')">m²</button>
+                        <div class="shrink-0">
+                            <select id="select-anual-indicador" onchange="setPlanAnualFilter(this.value)" class="bg-white border border-slate-200 text-slate-700 text-[10.5px] font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-teal-500 shadow-sm" style="max-width: 250px;">
+                                <option value="todos-km">Todos los Indicadores en km</option>
+                                <option value="todos-m2">Todos los Indicadores en m²</option>
+                                <option value="AEROPUERTOS O AERÓDROMOS MEJORADOS Y EN OPERACIÓN">Aeropuertos o Aeródromos (und)</option>
+                                <option value="MUELLES O EMBARCADEROS MEJORADOS">Muelles o Embarcaderos (und)</option>
+                                <option value="VÍAS TERCIARIAS MEJORADAS. (RVT)">Vías Terciarias (km)</option>
+                                <option value="ESPACIO PUBLICO">Espacio Público (m²)</option>
+                                <option value="CABLES AÉREOS SOSTENIBLES CONSTRUIDOS Y OPERANDO">Cables Aéreos (und)</option>
+                                <option value="VÍA URBANA MEJORADA. (RVU)">Vía Urbana (km)</option>
+                            </select>
                         </div>
                     </div>
                     <div style="height:288px;margin-top:16px;"><canvas id="chart-plan-anual"></canvas></div>
@@ -1211,6 +1260,48 @@
         </button>
     </div>
 
+    <!-- MODAL DE INICIAR SESIÓN (EXPERIMENTAL Y VISUAL) -->
+    <div id="modal-login" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm" style="background: rgba(15, 23, 42, 0.4);">
+        <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden" style="border: 1.5px solid #E2E8F0; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15); animation: modal-fade-in 0.3s ease;">
+            
+            <!-- Header con Logo de Antioquia o banner de color -->
+            <div style="background: linear-gradient(135deg, #0F766E, #14B8A6); padding: 24px 20px; text-align: center; position: relative;">
+                <button type="button" id="btn-close-login" style="position: absolute; top: 12px; right: 12px; background: transparent; border: none; color: rgba(255,255,255,0.7); font-size: 14px; cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.7)'">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div style="width: 44px; height: 44px; border-radius: 99px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; border: 1.5px solid rgba(255,255,255,0.4);">
+                    <i class="fa-solid fa-lock text-white" style="font-size: 16px; color: white;"></i>
+                </div>
+                <h3 style="font-size: 13px; font-weight: 800; color: white; text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">Gobernación de Antioquia</h3>
+                <p style="font-size: 10px; color: rgba(255,255,255,0.85); font-weight: 500; margin: 2px 0 0;">Acceso Interno a Convenios DIAT</p>
+            </div>
+
+            <!-- Formulario de login -->
+            <form id="login-form" style="padding: 24px 20px; margin: 0;" onsubmit="event.preventDefault();">
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 9.5px; font-weight: 800; color: #0F766E; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Usuario / Correo</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <i class="fa-solid fa-user" style="position: absolute; left: 12px; color: #94A3B8; font-size: 11px;"></i>
+                        <input type="text" placeholder="ejemplo@antioquia.gov.co" style="width: 100%; font-size: 11.5px; padding: 10px 12px 10px 32px; border: 1.5px solid #E2E8F0; border-radius: 10px; font-weight: 500; color: #0F172A; transition: border-color 0.2s; outline: none;" onfocus="this.style.borderColor='#0F766E'" onblur="this.style.borderColor='#E2E8F0'">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-size: 9.5px; font-weight: 800; color: #0F766E; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Contraseña</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <i class="fa-solid fa-key" style="position: absolute; left: 12px; color: #94A3B8; font-size: 11px;"></i>
+                        <input type="password" placeholder="••••••••" style="width: 100%; font-size: 11.5px; padding: 10px 12px 10px 32px; border: 1.5px solid #E2E8F0; border-radius: 10px; font-weight: 500; color: #0F172A; transition: border-color 0.2s; outline: none;" onfocus="this.style.borderColor='#0F766E'" onblur="this.style.borderColor='#E2E8F0'">
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-login-submit" style="width: 100%; background: linear-gradient(135deg, #0F766E, #14B8A6); color: white; border: none; padding: 12px 16px; border-radius: 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(15, 118, 110, 0.2);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(15, 118, 110, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(15, 118, 110, 0.2)';">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    Ingresar
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- TOAST NOTIFICATION -->
     <div id="toast-notification" class="fixed bottom-6 right-6 flex items-center gap-3 no-print" style="background:linear-gradient(135deg,#0F766E,#14B8A6);color:white;padding:14px 20px;border-radius:14px;box-shadow:0 8px 24px rgba(15,118,110,0.35);transform:translateY(80px);opacity:0;transition:all 0.3s;z-index:70;border:1px solid rgba(255,255,255,0.15);">
         <i class="fa-solid fa-circle-check" style="font-size:18px;color:rgba(255,255,255,0.85);"></i>
@@ -1327,12 +1418,43 @@
     const _origSetPlanAnualMetric = window.setPlanAnualMetric;
     window.setPlanAnualMetric = function(metric) {
         if(typeof _origSetPlanAnualMetric === 'function') _origSetPlanAnualMetric(metric);
-        if(metric === 'longitud'){
-            updatePillToggle('btn-anual-longitud', 'btn-anual-area');
-        } else {
-            updatePillToggle('btn-anual-area', 'btn-anual-longitud');
-        }
+        const val = metric === 'longitud' ? 'todos-km' : 'todos-m2';
+        const selectEl = document.getElementById('select-anual-indicador');
+        if (selectEl) selectEl.value = val;
     };
+
+    // ===== MODAL LOGIN TOGGLE (EXPERIMENTAL) =====
+    (function(){
+        const trigger = document.getElementById('btn-login-trigger');
+        const modal = document.getElementById('modal-login');
+        const closeBtn = document.getElementById('btn-close-login');
+        const form = document.getElementById('login-form');
+
+        if(trigger && modal){
+            trigger.addEventListener('click', () => {
+                modal.classList.remove('hidden');
+            });
+        }
+        if(closeBtn && modal){
+            closeBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+        }
+        if(form && modal){
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                modal.classList.add('hidden');
+            });
+        }
+        // Cerrar al hacer clic en el fondo oscuro
+        if(modal){
+            modal.addEventListener('click', (e) => {
+                if(e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+        }
+    })();
     </script>
 </body>
 </html>

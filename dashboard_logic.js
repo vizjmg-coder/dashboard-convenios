@@ -324,9 +324,25 @@ function renderPlanTab() {
 
         const vig = String(row['VIGENCIA'] || '').trim();
         if (avancePorAnio[vig] !== undefined) {
-            avancePorAnio[vig] += cfg.tipo === 'und' ? 1 : cant;
+            if (planAnualFilter === 'todos-km') {
+                if (cfg.tipo === 'km') avancePorAnio[vig] += cant;
+            } else if (planAnualFilter === 'todos-m2') {
+                if (cfg.tipo === 'm2') avancePorAnio[vig] += cant;
+            } else {
+                if (ind === planAnualFilter) avancePorAnio[vig] += cant;
+            }
         }
     });
+
+    // Calculate projection for 2027 if it has no actual data
+    if (!avancePorAnio["2027"] || avancePorAnio["2027"] === 0) {
+        const val24 = avancePorAnio["2024"] || 0;
+        const val25 = avancePorAnio["2025"] || 0;
+        const val26 = avancePorAnio["2026"] || 0;
+        const countNonZero = (val24 > 0 ? 1 : 0) + (val25 > 0 ? 1 : 0) + (val26 > 0 ? 1 : 0);
+        const avgVal = countNonZero > 0 ? (val24 + val25 + val26) / countNonZero : 0;
+        avancePorAnio["2027"] = parseFloat(avgVal.toFixed(2));
+    }
 
     const container = document.getElementById('plan-indicadores-container');
     container.innerHTML = '';
@@ -402,6 +418,21 @@ function renderPlanTab() {
     document.getElementById('kpi-plan-riesgo').textContent = riesgo;
     const promedio = countCumplimiento > 0 ? (sumCumplimiento / countCumplimiento).toFixed(1) : '0.0';
     document.getElementById('kpi-plan-promedio').textContent = promedio + '%';
+    const promBar = document.getElementById('kpi-plan-promedio-bar');
+    if (promBar) promBar.style.width = promedio + '%';
+
+    // Dynamic progress marker coloring
+    const valProm = parseFloat(promedio);
+    const m0 = document.getElementById('plan-marker-0');
+    const m25 = document.getElementById('plan-marker-25');
+    const m50 = document.getElementById('plan-marker-50');
+    const m75 = document.getElementById('plan-marker-75');
+    const m100 = document.getElementById('plan-marker-100');
+    if (m0) m0.classList.toggle('active', valProm >= 0);
+    if (m25) m25.classList.toggle('active', valProm >= 25);
+    if (m50) m50.classList.toggle('active', valProm >= 50);
+    if (m75) m75.classList.toggle('active', valProm >= 75);
+    if (m100) m100.classList.toggle('active', valProm >= 100);
     document.getElementById('kpi-plan-inv').textContent = formatCurrency(inversionTotal);
     document.getElementById('kpi-plan-mun').textContent = munis.size;
 
@@ -426,19 +457,38 @@ function renderPlanTab() {
 
     // Gráfico: Avance Acumulado por Año
     if (charts['plan-anual']) charts['plan-anual'].destroy();
+
+    const years = Object.keys(avancePorAnio);
+    const yearlyRaw = Object.values(avancePorAnio);
+    const yearlyAccumulated = [];
+    let accum = 0;
+    for (let idx = 0; idx < yearlyRaw.length; idx++) {
+        accum += yearlyRaw[idx];
+        yearlyAccumulated.push(parseFloat(accum.toFixed(2)));
+    }
+
+    const yearsLabels = years.map(y => y === "2027" ? "2027 (Proyección)" : y);
+
     charts['plan-anual'] = new Chart(document.getElementById('chart-plan-anual'), {
         type: 'line',
         data: {
-            labels: Object.keys(avancePorAnio),
+            labels: yearsLabels,
             datasets: [{
                 label: 'Acumulado (km / und / m²)',
-                data: Object.values(avancePorAnio).map(v => parseFloat(v.toFixed(2))),
+                data: yearlyAccumulated,
                 borderColor: '#2d6a9f',
                 backgroundColor: 'rgba(45,106,159,0.08)',
                 fill: true,
                 tension: 0.4,
-                pointRadius: 5,
-                pointBackgroundColor: '#2d6a9f'
+                pointRadius: (ctx) => ctx.dataIndex === 3 ? 6 : 5,
+                pointHoverRadius: (ctx) => ctx.dataIndex === 3 ? 8 : 7,
+                pointBackgroundColor: (ctx) => ctx.dataIndex === 3 ? '#14B8A6' : '#2d6a9f',
+                pointBorderColor: (ctx) => ctx.dataIndex === 3 ? '#0F766E' : '#ffffff',
+                pointBorderWidth: 2,
+                borderWidth: 3,
+                segment: {
+                    borderDash: (ctx) => ctx.p0DataIndex >= 2 ? [6, 6] : undefined
+                }
             }]
         },
         options: {

@@ -9,6 +9,7 @@ let currentChartMode = 'top'; // 'top' o 'municipio'
 let currentAlertFilter = 'all';
 let planMetric = 'contratado';
 let planAnualMetric = 'longitud';
+let planAnualFilter = 'todos-km';
 let mapMetric = 'contratado';
 
 // Variables Mini-Mapa (Leaflet — ficha técnica modal y resumen)
@@ -4122,24 +4123,28 @@ window.setPlanMetric = function(val) {
     renderPlanTab();
 };
 
-window.setPlanAnualMetric = function(val) {
-    planAnualMetric = val;
-    const btnLongitud = document.getElementById('btn-anual-longitud');
-    const btnArea = document.getElementById('btn-anual-area');
-    if (btnLongitud && btnArea) {
-        if (val === 'longitud') {
-            btnLongitud.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
-            btnLongitud.classList.remove('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
-            btnArea.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
-            btnArea.classList.add('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
-        } else {
-            btnArea.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
-            btnArea.classList.remove('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
-            btnLongitud.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-white', 'shadow-sm');
-            btnLongitud.classList.add('text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200');
-        }
+window.setPlanAnualFilter = function(val) {
+    planAnualFilter = val;
+    // Map metric type for backward compatibility
+    if (val === 'todos-m2' || val === 'ESPACIO PUBLICO') {
+        planAnualMetric = 'area';
+    } else {
+        planAnualMetric = 'longitud';
     }
+
+    // Keep UI selectors synced
+    const selectEl = document.getElementById('select-anual-indicador');
+    if (selectEl) selectEl.value = val;
+
     renderPlanTab();
+};
+
+window.setPlanAnualMetric = function(val) {
+    if (val === 'longitud') {
+        window.setPlanAnualFilter('todos-km');
+    } else {
+        window.setPlanAnualFilter('todos-m2');
+    }
 };
 
 function renderPlanTab() {
@@ -4209,13 +4214,25 @@ function renderPlanTab() {
 
         const vig = String(row['VIGENCIA'] || '').trim();
         if (avancePorAnio[vig] !== undefined) {
-            if (planAnualMetric === 'longitud' && cfg.tipo === 'km') {
-                avancePorAnio[vig] += cant;
-            } else if (planAnualMetric === 'area' && cfg.tipo === 'm2') {
-                avancePorAnio[vig] += cant;
+            if (planAnualFilter === 'todos-km') {
+                if (cfg.tipo === 'km') avancePorAnio[vig] += cant;
+            } else if (planAnualFilter === 'todos-m2') {
+                if (cfg.tipo === 'm2') avancePorAnio[vig] += cant;
+            } else {
+                if (ind === planAnualFilter) avancePorAnio[vig] += cant;
             }
         }
     });
+
+    // Calculate projection for 2027 if it has no actual data
+    if (!avancePorAnio["2027"] || avancePorAnio["2027"] === 0) {
+        const val24 = avancePorAnio["2024"] || 0;
+        const val25 = avancePorAnio["2025"] || 0;
+        const val26 = avancePorAnio["2026"] || 0;
+        const countNonZero = (val24 > 0 ? 1 : 0) + (val25 > 0 ? 1 : 0) + (val26 > 0 ? 1 : 0);
+        const avgVal = countNonZero > 0 ? (val24 + val25 + val26) / countNonZero : 0;
+        avancePorAnio["2027"] = parseFloat(avgVal.toFixed(2));
+    }
 
     const container = document.getElementById('plan-indicadores-container');
     container.innerHTML = '';
@@ -4318,6 +4335,21 @@ function renderPlanTab() {
     document.getElementById('kpi-plan-riesgo').textContent = riesgo;
     const promedio = countCumplimiento > 0 ? (sumCumplimiento / countCumplimiento).toFixed(1) : '0.0';
     document.getElementById('kpi-plan-promedio').textContent = promedio + '%';
+    const promBar = document.getElementById('kpi-plan-promedio-bar');
+    if (promBar) promBar.style.width = promedio + '%';
+
+    // Dynamic progress marker coloring
+    const valProm = parseFloat(promedio);
+    const m0 = document.getElementById('plan-marker-0');
+    const m25 = document.getElementById('plan-marker-25');
+    const m50 = document.getElementById('plan-marker-50');
+    const m75 = document.getElementById('plan-marker-75');
+    const m100 = document.getElementById('plan-marker-100');
+    if (m0) m0.classList.toggle('active', valProm >= 0);
+    if (m25) m25.classList.toggle('active', valProm >= 25);
+    if (m50) m50.classList.toggle('active', valProm >= 50);
+    if (m75) m75.classList.toggle('active', valProm >= 75);
+    if (m100) m100.classList.toggle('active', valProm >= 100);
     document.getElementById('kpi-plan-inv').textContent = formatCurrency(inversionTotal);
     document.getElementById('kpi-plan-mun').textContent = munis.size;
 
@@ -4402,24 +4434,54 @@ function renderPlanTab() {
         yearlyAccumulated.push(parseFloat(accum.toFixed(2)));
     }
 
+    let labelAnualMetric = '';
+    let unitAnual = '';
+    let mainColor = '#0F766E'; // Default institutional teal
+
+    if (planAnualFilter === 'todos-km') {
+        labelAnualMetric = 'Longitud Acumulada (km)';
+        unitAnual = 'km';
+        mainColor = '#0F766E';
+    } else if (planAnualFilter === 'todos-m2') {
+        labelAnualMetric = 'Área Acumulada (m²)';
+        unitAnual = 'm²';
+        mainColor = '#14B8A6';
+    } else {
+        const cfg = indicadoresEstrategicos[planAnualFilter];
+        unitAnual = cfg ? cfg.unit : 'und';
+        labelAnualMetric = `${planAnualFilter} (${unitAnual})`;
+        if (cfg && cfg.tipo === 'km') {
+            mainColor = '#0F766E';
+        } else if (cfg && cfg.tipo === 'm2') {
+            mainColor = '#14B8A6';
+        } else {
+            mainColor = '#6366F1'; // Indigo for units
+        }
+    }
+
     const canvasAnual = document.getElementById('chart-plan-anual');
     const ctxAnual = canvasAnual.getContext('2d');
     
+    // Hex to RGBA helpers for gradients
+    let startGrad = 'rgba(15, 118, 110, 0.35)'; // Teal
+    let endGrad = 'rgba(15, 118, 110, 0.0)';
+    if (mainColor === '#14B8A6') {
+        startGrad = 'rgba(20, 184, 166, 0.35)';
+    } else if (mainColor === '#6366F1') {
+        startGrad = 'rgba(99, 102, 241, 0.35)';
+    }
+
     const gradient = ctxAnual.createLinearGradient(0, 0, 0, 250);
-    const mainColor = planAnualMetric === 'longitud' ? '#10b981' : '#2563eb';
-    const startGrad = planAnualMetric === 'longitud' ? 'rgba(16, 185, 129, 0.35)' : 'rgba(37, 99, 235, 0.35)';
-    const endGrad = planAnualMetric === 'longitud' ? 'rgba(16, 185, 129, 0.0)' : 'rgba(37, 99, 235, 0.0)';
-    
     gradient.addColorStop(0, startGrad);
     gradient.addColorStop(1, endGrad);
 
-    const labelAnualMetric = planAnualMetric === 'longitud' ? 'Longitud Acumulada (km)' : 'Área Acumulada (m²)';
-    const unitAnual = planAnualMetric === 'longitud' ? 'km' : 'm²';
+    // Label last year as projection
+    const yearsLabels = years.map(y => y === "2027" ? "2027 (Proyección)" : y);
 
     charts['plan-anual'] = new Chart(canvasAnual, {
         type: 'line',
         data: {
-            labels: years,
+            labels: yearsLabels,
             datasets: [{
                 label: labelAnualMetric,
                 data: yearlyAccumulated,
@@ -4427,12 +4489,15 @@ function renderPlanTab() {
                 backgroundColor: gradient,
                 fill: true,
                 tension: 0.4,
-                pointRadius: 5,
-                pointHoverRadius: 7,
-                pointBackgroundColor: mainColor,
-                pointBorderColor: '#ffffff',
+                pointRadius: (ctx) => ctx.dataIndex === 3 ? 6 : 5,
+                pointHoverRadius: (ctx) => ctx.dataIndex === 3 ? 8 : 7,
+                pointBackgroundColor: (ctx) => ctx.dataIndex === 3 ? '#14B8A6' : mainColor,
+                pointBorderColor: (ctx) => ctx.dataIndex === 3 ? '#0F766E' : '#ffffff',
                 pointBorderWidth: 2,
-                borderWidth: 3
+                borderWidth: 3,
+                segment: {
+                    borderDash: (ctx) => ctx.p0DataIndex >= 2 ? [6, 6] : undefined
+                }
             }]
         },
         options: {
@@ -4452,7 +4517,7 @@ function renderPlanTab() {
                     bodyFont: {size: 13, weight: 'bold', family: 'Inter'},
                     callbacks: {
                         label: function(context) {
-                            const valFmt = planAnualMetric === 'area' ? formatNumber(Math.round(context.raw)) : context.raw;
+                            const valFmt = unitAnual === 'm²' ? formatNumber(Math.round(context.raw)) : context.raw;
                             return ` ${context.dataset.label}: ${valFmt} ${unitAnual}`;
                         }
                     }
@@ -4466,7 +4531,7 @@ function renderPlanTab() {
                         color: textColor,
                         font: { size: 9, family: 'Inter' },
                         callback: function(value) {
-                            return planAnualMetric === 'area' ? formatNumber(value) + ' m²' : value + ' km';
+                            return unitAnual === 'm²' ? formatNumber(value) + ' m²' : (unitAnual === 'km' ? value + ' km' : value + ' und');
                         }
                     }
                 },
