@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -11,13 +11,16 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { inter: ['Inter', 'sans-serif'] },
+                    fontFamily: { 
+                        poppins: ['Poppins', 'sans-serif'],
+                        inter: ['Poppins', 'sans-serif']
+                    },
                     colors: {
                         institutional: {
-                            primary: '#0F766E',
-                            light: '#14B8A6',
-                            pale: 'rgba(15, 118, 110, 0.08)',
-                            accent: '#3B82F6'
+                            primary: '#0B5640',
+                            light: '#018D38',
+                            pale: 'rgba(11, 86, 64, 0.08)',
+                            accent: '#3561AB'
                         }
                     },
                     gridTemplateColumns: {
@@ -27,7 +30,7 @@
             }
         }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/2.2.1/chartjs-plugin-annotation.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -42,12 +45,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="font-inter antialiased overflow-hidden" style="background-color:#F8FAFC;color:#0F172A;">
+<body class="font-poppins antialiased overflow-hidden" style="background-color:#F8FAFC;color:#1E293B;">
 
     <!-- INDICADOR DE CARGA -->
     <div id="dashboard-loader" class="fixed inset-0 flex flex-col items-center justify-center z-[200]" style="background:#F8FAFC;">
         <div style="display:flex;flex-direction:column;align-items:center;gap:20px;">
-            <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#0F766E,#14B8A6);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(15,118,110,0.3);">
+            <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#0B5640,#018D38);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(11, 86, 64,0.3);">
                 <i class="fa-solid fa-map-location-dot" style="color:white;font-size:22px;"></i>
             </div>
             <div style="text-align:center;">
@@ -55,7 +58,7 @@
                 <p style="font-size:11px;font-weight:500;color:#94A3B8;">Cargando datos territoriales...</p>
             </div>
             <div style="width:180px;height:3px;background:#E2E8F0;border-radius:99px;overflow:hidden;">
-                <div style="width:60%;height:100%;background:linear-gradient(90deg,#0F766E,#14B8A6);border-radius:99px;animation:shimmer 1.5s ease-in-out infinite;background-size:200% auto;"></div>
+                <div style="width:60%;height:100%;background:linear-gradient(90deg,#0B5640,#018D38);border-radius:99px;animation:shimmer 1.5s ease-in-out infinite;background-size:200% auto;"></div>
             </div>
         </div>
     </div>
@@ -133,7 +136,7 @@
                 <div class="flex items-center gap-2 sm:gap-3">
                     <!-- Fecha de corte -->
                     <div class="header-date-badge hidden md:flex">
-                        <i class="fa-regular fa-calendar-check" style="color:#0F766E;"></i>
+                        <i class="fa-regular fa-calendar-check" style="color:#0B5640;"></i>
                         Corte: <span id="fecha-actualizacion" class="ml-1 font-bold" style="color:#0F172A;">Cargando...</span>
                     </div>
 
@@ -251,7 +254,7 @@
                 <!-- KPI Total Convenios -->
                 <div class="kpi-card kpi-total">
                     <div class="flex items-start justify-between mb-3">
-                        <div class="kpi-icon" style="background:#F1F5F9;color:#64748B;">
+                        <div class="kpi-icon" style="background:rgba(100, 116, 139, 0.08);color:#64748B;">
                             <i class="fa-solid fa-layer-group"></i>
                         </div>
                         <span class="kpi-trend neutral">
@@ -265,10 +268,10 @@
                 <!-- KPI En Ejecución -->
                 <div class="kpi-card kpi-ejecucion">
                     <div class="flex items-start justify-between mb-3">
-                        <div class="kpi-icon" style="background:#EFF6FF;color:#3B82F6;">
+                        <div class="kpi-icon" style="background:rgba(1, 141, 56, 0.08);color:#018D38;">
                             <i class="fa-solid fa-person-digging"></i>
                         </div>
-                        <span class="kpi-trend" style="color:#3B82F6;">
+                        <span class="kpi-trend" style="color:#018D38;">
                             <i class="fa-solid fa-circle-play"></i> Activo
                         </span>
                     </div>
@@ -279,10 +282,10 @@
                 <!-- KPI Por Liquidar -->
                 <div class="kpi-card kpi-por-liquidar">
                     <div class="flex items-start justify-between mb-3">
-                        <div class="kpi-icon" style="background:#FFFBEB;color:#F59E0B;">
+                        <div class="kpi-icon" style="background:rgba(242, 142, 24, 0.08);color:#F28E18;">
                             <i class="fa-solid fa-file-signature"></i>
                         </div>
-                        <span class="kpi-trend down">
+                        <span class="kpi-trend" style="color:#F28E18;">
                             <i class="fa-solid fa-circle-exclamation"></i> Pendiente
                         </span>
                     </div>
@@ -293,10 +296,10 @@
                 <!-- KPI Inversión Total -->
                 <div class="kpi-card kpi-inversion">
                     <div class="flex items-start justify-between mb-3">
-                        <div class="kpi-icon" style="background:#F5F3FF;color:#7C3AED;">
+                        <div class="kpi-icon" style="background:rgba(139, 74, 151, 0.08);color:#8B4A97;">
                             <i class="fa-solid fa-sack-dollar"></i>
                         </div>
-                        <span class="kpi-trend up">
+                        <span class="kpi-trend" style="color:#8B4A97;">
                             <i class="fa-solid fa-arrow-trend-up"></i> Total
                         </span>
                     </div>
@@ -307,10 +310,10 @@
                 <!-- KPI Desembolsado -->
                 <div class="kpi-card kpi-desembolsado">
                     <div class="flex items-start justify-between mb-3">
-                        <div class="kpi-icon" style="background:#EFF6FF;color:#3B82F6;">
+                        <div class="kpi-icon" style="background:rgba(53, 97, 171, 0.08);color:#3561AB;">
                             <i class="fa-solid fa-money-bill-transfer"></i>
                         </div>
-                        <span class="kpi-trend" style="color:#3B82F6;">
+                        <span class="kpi-trend" style="color:#3561AB;">
                             <i class="fa-solid fa-circle-check"></i> IDEA
                         </span>
                     </div>
@@ -321,10 +324,10 @@
                 <!-- KPI Autorizado -->
                 <div class="kpi-card kpi-autorizado">
                     <div class="flex items-start justify-between mb-3">
-                        <div class="kpi-icon" style="background:#F0FDF4;color:#22C55E;">
+                        <div class="kpi-icon" style="background:rgba(11, 86, 64, 0.08);color:#0B5640;">
                             <i class="fa-solid fa-file-invoice-dollar"></i>
                         </div>
-                        <span class="kpi-trend up">
+                        <span class="kpi-trend" style="color:#0B5640;">
                             <i class="fa-solid fa-circle-check"></i> Depto.
                         </span>
                     </div>
@@ -338,7 +341,7 @@
                 <div class="bg-white overflow-hidden flex flex-col lg:flex-row" style="border-radius:20px;border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
                     <div class="p-8 lg:w-5/12 flex flex-col justify-center relative z-10">
                         <span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:#94A3B8;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-                            <i class="fa-solid fa-bolt" style="color:#F59E0B;"></i> Vista Detallada Rápida
+                            <i class="fa-solid fa-bolt" style="color:#F28E18;"></i> Vista Detallada Rápida
                         </span>
                         <div class="flex justify-between items-start w-full gap-3">
                             <h2 style="font-size:32px;font-weight:900;color:#0F172A;letter-spacing:-0.02em;" id="summary-num">--</h2>
@@ -346,9 +349,9 @@
                                 <i class="fa-solid fa-folder-open"></i> Ficha Técnica
                             </button>
                         </div>
-                        <p style="color:#0F766E;font-size:13px;font-weight:600;margin-top:8px;margin-bottom:20px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+                        <p style="color:#0B5640;font-size:13px;font-weight:600;margin-top:8px;margin-bottom:20px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
                             <span><i class="fa-solid fa-location-dot mr-1.5"></i><span id="summary-municipio">MUNICIPIO</span></span>
-                            <span id="summary-ejecutor-container" class="hidden" style="font-size:11px;background:rgba(15,118,110,0.08);color:#0F766E;padding:2px 10px;border-radius:99px;border:1px solid rgba(15,118,110,0.2);">
+                            <span id="summary-ejecutor-container" class="hidden" style="font-size:11px;background:rgba(11, 86, 64,0.08);color:#0B5640;padding:2px 10px;border-radius:99px;border:1px solid rgba(11, 86, 64,0.2);">
                                 <i class="fa-solid fa-building-user mr-1"></i><span id="summary-ejecutor">EJECUTOR</span>
                             </span>
                         </p>
@@ -369,7 +372,7 @@
                             <div class="relative w-32 h-32 flex items-center justify-center shrink-0">
                                 <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                                     <circle cx="50" cy="50" r="40" stroke="#E2E8F0" stroke-width="8" fill="none" />
-                                    <circle id="gauge-fisico" cx="50" cy="50" r="40" stroke="#0F766E" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
+                                    <circle id="gauge-fisico" cx="50" cy="50" r="40" stroke="#0B5640" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
                                 </svg>
                                 <div class="absolute inset-0 flex flex-col items-center justify-center">
                                     <span id="summary-fisico-txt" style="font-size:22px;font-weight:900;color:#0F172A;line-height:1;">0%</span>
@@ -379,7 +382,7 @@
                             <div class="relative w-32 h-32 flex items-center justify-center shrink-0">
                                 <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                                     <circle cx="50" cy="50" r="40" stroke="#E2E8F0" stroke-width="8" fill="none" />
-                                    <circle id="gauge-financiero" cx="50" cy="50" r="40" stroke="#3B82F6" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
+                                    <circle id="gauge-financiero" cx="50" cy="50" r="40" stroke="#3561AB" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
                                 </svg>
                                 <div class="absolute inset-0 flex flex-col items-center justify-center">
                                     <span id="summary-financiero-txt" style="font-size:22px;font-weight:900;color:#0F172A;line-height:1;">0%</span>
@@ -401,7 +404,7 @@
                         <div id="summary-map" class="absolute inset-0 w-full h-full z-0"></div>
                         <div id="summary-map-overlay" class="absolute inset-0 flex items-center justify-center z-10 backdrop-blur-sm transition-opacity duration-300" style="background:rgba(248,250,252,0.85);">
                             <span id="summary-map-msg" style="font-size:12px;font-weight:600;color:#94A3B8;display:flex;align-items:center;gap:6px;">
-                                <i class="fa-solid fa-satellite-dish fa-fade" style="color:#14B8A6;"></i>Ubicando trazado...
+                                <i class="fa-solid fa-satellite-dish fa-fade" style="color:#018D38;"></i>Ubicando trazado...
                             </span>
                         </div>
                     </div>
@@ -433,7 +436,7 @@
                     <div class="flex justify-between items-start mb-4 pb-3" style="border-bottom:1px solid #E2E8F0;">
                         <div>
                             <h3 class="chart-title" style="display:flex;align-items:center;gap:6px;">
-                                <i class="fa-solid fa-ruler-combined" style="color:#3B82F6;"></i> Ejecución Física
+                                <i class="fa-solid fa-ruler-combined" style="color:#3561AB;"></i> Ejecución Física
                             </h3>
                             <p class="chart-subtitle">Volumen total de obra</p>
                         </div>
@@ -443,9 +446,9 @@
                             <canvas id="chart-ejecucion"></canvas>
                         </div>
                         <div class="grid grid-cols-2 gap-3 mt-auto shrink-0">
-                            <div style="background:#F0FDFA;padding:14px;border-radius:14px;border:1.5px solid rgba(20,184,166,0.2);text-align:center;">
+                            <div style="background:#F0FDFA;padding:14px;border-radius:14px;border:1.5px solid rgba(1, 141, 56,0.2);text-align:center;">
                                 <p style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Long. Ejecutada</p>
-                                <p id="tot-lon-eje-text" style="font-size:17px;font-weight:800;color:#0F766E;line-height:1;">0.00 km</p>
+                                <p id="tot-lon-eje-text" style="font-size:17px;font-weight:800;color:#0B5640;line-height:1;">0.00 km</p>
                                 <p style="font-size:10px;color:#94A3B8;font-weight:500;margin-top:3px;">de <span id="tot-lon-con-text">0.00 km</span></p>
                             </div>
                             <div style="background:#F8FAFC;padding:14px;border-radius:14px;border:1.5px solid #E2E8F0;text-align:center;">
@@ -462,12 +465,12 @@
                     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-3 pb-3" style="border-bottom:1px solid #E2E8F0;">
                         <div>
                             <h3 class="chart-title" style="display:flex;align-items:center;gap:6px;">
-                                <i class="fa-solid fa-shield-halved" style="color:#F59E0B;"></i> Centro de Alertas
+                                <i class="fa-solid fa-shield-halved" style="color:#F28E18;"></i> Centro de Alertas
                             </h3>
                             <p class="chart-subtitle">Panel proactivo de riesgos detectados</p>
                         </div>
                         <div style="font-size:10px;font-weight:700;color:#64748B;background:#F8FAFC;padding:5px 12px;border-radius:99px;border:1.5px solid #E2E8F0;white-space:nowrap;align-self:flex-start;">
-                            <span id="alerts-count" style="color:#EF4444;font-weight:800;">0</span> Alertas
+                            <span id="alerts-count" style="color:#A90F09;font-weight:800;">0</span> Alertas
                         </div>
                     </div>
 
@@ -487,7 +490,7 @@
             <div id="timeline-container" class="hidden no-print">
                 <div class="bg-white rounded-2xl p-6 sm:p-8" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
                     <h3 style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:32px;display:flex;align-items:center;gap:8px;">
-                        <i class="fa-solid fa-scale-balanced" style="color:#0F766E;"></i> Línea de Tiempo del Proceso Legal
+                        <i class="fa-solid fa-scale-balanced" style="color:#0B5640;"></i> Línea de Tiempo del Proceso Legal
                     </h3>
                     <div class="overflow-x-auto pb-6 custom-scrollbar">
                         <div class="min-w-[1200px] relative pt-12">
@@ -519,7 +522,7 @@
                                 </div>
                             </div>
                             <div class="absolute top-[84px] left-[5%] right-[5%] h-0.5 border-t border-dashed" style="background:transparent;border-color:#E2E8F0;z-index:0;"></div>
-                            <div id="tl-progress-line" class="absolute top-[84px] left-[5%] h-1 z-0 transition-all duration-1000" style="width:0%;background:linear-gradient(90deg,#0F766E,#14B8A6);box-shadow:0 0 8px rgba(15,118,110,0.4);border-radius:99px;"></div>
+                            <div id="tl-progress-line" class="absolute top-[84px] left-[5%] h-1 z-0 transition-all duration-1000" style="width:0%;background:linear-gradient(90deg,#0B5640,#018D38);box-shadow:0 0 8px rgba(11, 86, 64,0.4);border-radius:99px;"></div>
                             <div class="grid grid-cols-10 w-full relative z-10 pt-6">
                                 <div class="flex flex-col items-center text-center px-1 tl-node" id="node-1">
                                     <div class="w-12 h-12 rounded-full bg-slate-100 border-4 border-white flex items-center justify-center text-slate-400 shadow-sm transition-all icon-box"><i class="fa-solid fa-flag"></i></div>
@@ -590,14 +593,14 @@
                         <h4 style="font-size:11px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;">Resultado Financiero — Obligaciones Identificadas</h4>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div class="bg-white p-4 rounded-xl flex gap-3 items-center" style="border:1.5px solid #E2E8F0;">
-                                <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style="background:#F0FDF4;color:#22C55E;"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style="background:#F0FDF4;color:#018D38;"><i class="fa-solid fa-money-bill-trend-up"></i></div>
                                 <div>
                                     <p style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;">Rend. Financieros</p>
                                     <p style="font-size:14px;font-weight:800;color:#0F172A;margin-top:2px;" id="tl-fin-rendimientos">$0</p>
                                 </div>
                             </div>
                             <div class="bg-white p-4 rounded-xl flex gap-3 items-center" style="border:1.5px solid #E2E8F0;">
-                                <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style="background:#FFFBEB;color:#F59E0B;"><i class="fa-solid fa-coins"></i></div>
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style="background:#FFFBEB;color:#F28E18;"><i class="fa-solid fa-coins"></i></div>
                                 <div>
                                     <p style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;">Rec. No Ejecutados</p>
                                     <p style="font-size:14px;font-weight:800;color:#0F172A;margin-top:2px;" id="tl-fin-recursos">$0</p>
@@ -615,7 +618,7 @@
                                 <div>
                                     <p style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;">Fecha Cierre</p>
                                     <p style="font-size:14px;font-weight:800;color:#0F172A;margin-top:2px;" id="tl-fin-fecha">--</p>
-                                    <p style="font-size:8px;font-weight:700;color:#22C55E;text-transform:uppercase;margin-top:2px;" class="hidden" id="tl-fin-estado">Expediente Cerrado <i class="fa-solid fa-check ml-1"></i></p>
+                                    <p style="font-size:8px;font-weight:700;color:#018D38;text-transform:uppercase;margin-top:2px;" class="hidden" id="tl-fin-estado">Expediente Cerrado <i class="fa-solid fa-check ml-1"></i></p>
                                 </div>
                             </div>
                         </div>
@@ -626,13 +629,13 @@
             <!-- DIRECTORIO DE CONVENIOS -->
             <section class="table-section">
                 <div class="p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style="border-bottom:1.5px solid #E2E8F0;background:white;position:relative;overflow:hidden;">
-                    <div style="position:absolute;top:0;left:0;width:3px;height:100%;background:linear-gradient(180deg,#0F766E,#14B8A6);"></div>
+                    <div style="position:absolute;top:0;left:0;width:3px;height:100%;background:linear-gradient(180deg,#0B5640,#018D38);"></div>
                     <div style="padding-left:12px;">
                         <h2 style="font-size:18px;font-weight:800;color:#0F172A;letter-spacing:-0.01em;">Directorio de Convenios</h2>
                         <p style="font-size:11px;color:#94A3B8;font-weight:500;margin-top:2px;">Listado detallado con indicadores de progreso</p>
                     </div>
                     <button id="btn-export" class="btn-export">
-                        <i class="fa-solid fa-file-csv" style="color:#0F766E;"></i> Exportar CSV
+                        <i class="fa-solid fa-file-csv" style="color:#0B5640;"></i> Exportar CSV
                     </button>
                 </div>
                 <div class="overflow-x-auto table-container-scroll" style="max-height:560px;background:white;">
@@ -697,7 +700,7 @@
             <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="kpi-card kpi-total">
                     <div class="flex items-start justify-between mb-3">
-                        <div class="kpi-icon" style="background:#F8FAFC;color:#64748B;"><i class="fa-solid fa-location-dot"></i></div>
+                        <div class="kpi-icon" style="background:rgba(100, 116, 139, 0.08);color:#64748B;"><i class="fa-solid fa-location-dot"></i></div>
                         <span class="kpi-trend neutral" style="font-size:9px;">Territorial</span>
                     </div>
                     <span class="kpi-label">Municipios Impactados</span>
@@ -705,24 +708,24 @@
                 </div>
                 <div class="kpi-card kpi-ejecucion">
                     <div class="flex items-start justify-between mb-3">
-                        <div class="kpi-icon" style="background:#EFF6FF;color:#3B82F6;"><i class="fa-solid fa-draw-polygon"></i></div>
-                        <span class="kpi-trend" style="color:#3B82F6;font-size:9px;">Cobertura</span>
+                        <div class="kpi-icon" style="background:rgba(1, 141, 56, 0.08);color:#018D38;"><i class="fa-solid fa-draw-polygon"></i></div>
+                        <span class="kpi-trend" style="color:#018D38;font-size:9px;">Cobertura</span>
                     </div>
                     <span class="kpi-label">Subregiones</span>
                     <h3 class="kpi-value" id="kpi-map-sub">0</h3>
                 </div>
                 <div class="kpi-card kpi-autorizado">
                     <div class="flex items-start justify-between mb-3">
-                        <div class="kpi-icon" style="background:#F0FDFA;color:#14B8A6;"><i class="fa-solid fa-route"></i></div>
-                        <span class="kpi-trend up" style="font-size:9px;">km</span>
+                        <div class="kpi-icon" style="background:rgba(11, 86, 64, 0.08);color:#0B5640;"><i class="fa-solid fa-route"></i></div>
+                        <span class="kpi-trend up" style="color:#0B5640;font-size:9px;">km</span>
                     </div>
                     <span class="kpi-label">Km Intervenidos</span>
                     <h3 class="kpi-value" id="kpi-map-km">0</h3>
                 </div>
                 <div class="kpi-card kpi-desembolsado">
                     <div class="flex items-start justify-between mb-3">
-                        <div class="kpi-icon" style="background:#EFF6FF;color:#3B82F6;"><i class="fa-solid fa-person-digging"></i></div>
-                        <span class="kpi-trend" style="color:#3B82F6;font-size:9px;">Activos</span>
+                        <div class="kpi-icon" style="background:rgba(53, 97, 171, 0.08);color:#3561AB;"><i class="fa-solid fa-person-digging"></i></div>
+                        <span class="kpi-trend" style="color:#3561AB;font-size:9px;">Activos</span>
                     </div>
                     <span class="kpi-label">En Ejecución</span>
                     <h3 class="kpi-value" id="kpi-map-activos">0</h3>
@@ -736,7 +739,7 @@
             <div class="bg-white flex flex-col overflow-hidden relative" style="border:1.5px solid #E2E8F0;border-radius:20px;box-shadow:0 8px 24px rgba(15,23,42,0.06);height:700px;">
                 <div class="flex justify-between items-center shrink-0 z-10" style="padding:16px 20px;border-bottom:1.5px solid #E2E8F0;background:#F8FAFC;">
                     <h2 style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:8px;">
-                        <i class="fa-solid fa-map" style="color:#0F766E;"></i> Mapa Interactivo de Antioquia
+                        <i class="fa-solid fa-map" style="color:#0B5640;"></i> Mapa Interactivo de Antioquia
                     </h2>
                     <span id="main-map-loading" class="hidden" style="font-size:11px;font-weight:700;color:#64748B;">
                         <i class="fa-solid fa-spinner fa-spin mr-1"></i> Sincronizando KMLs...
@@ -821,7 +824,7 @@
             <div class="bg-white p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
                 <div>
                     <h3 style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:8px;">
-                        <i class="fa-solid fa-sliders" style="color:#0F766E;"></i> Base de Medición de Gráficos
+                        <i class="fa-solid fa-sliders" style="color:#0B5640;"></i> Base de Medición de Gráficos
                     </h3>
                     <p style="font-size:10.5px;color:#94A3B8;font-weight:500;margin-top:3px;">Define si los gráficos muestran el alcance contratado o el avance ejecutado</p>
                 </div>
@@ -865,7 +868,7 @@
             <div class="bg-white p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
                 <div>
                     <h3 style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:8px;">
-                        <i class="fa-solid fa-sliders" style="color:#0F766E;"></i> Base de Medición del Plan
+                        <i class="fa-solid fa-sliders" style="color:#0B5640;"></i> Base de Medición del Plan
                     </h3>
                     <p style="font-size:10.5px;color:#94A3B8;font-weight:500;margin-top:3px;">Define si el progreso se calcula sobre la longitud/área contratada o la ejecutada</p>
                 </div>
@@ -886,13 +889,13 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <span class="status-pulse-dot"></span>
-                            <p style="font-size:10px;font-weight:800;color:#0F766E;text-transform:uppercase;letter-spacing:0.08em;margin:0;">Avance Promedio Global del Plan de Desarrollo por Antioquia Firme 2024-2027</p>
+                            <p style="font-size:10px;font-weight:800;color:#0B5640;text-transform:uppercase;letter-spacing:0.08em;margin:0;">Avance Promedio Global del Plan de Desarrollo por Antioquia Firme 2024-2027</p>
                         </div>
                         <p style="font-size:12px;color:#64748B;font-weight:500;margin-top:4px;">Progreso promedio acumulado de cumplimiento físico frente a las metas programadas</p>
                     </div>
                     <div class="flex items-baseline gap-1 bg-teal-50 px-4 py-2 rounded-xl border border-teal-100">
-                        <span style="font-size:32px;font-weight:900;color:#0F766E;line-height:1;letter-spacing:-0.03em;" id="kpi-plan-promedio">0%</span>
-                        <span style="font-size:11px;font-weight:700;color:#0F766E;text-transform:uppercase;letter-spacing:0.02em;">ejecutado</span>
+                        <span style="font-size:32px;font-weight:900;color:#0B5640;line-height:1;letter-spacing:-0.03em;" id="kpi-plan-promedio">0%</span>
+                        <span style="font-size:11px;font-weight:700;color:#0B5640;text-transform:uppercase;letter-spacing:0.02em;">ejecutado</span>
                     </div>
                 </div>
 
@@ -931,27 +934,27 @@
             <!-- DISTRIBUCIÓN DE METAS -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="plan-kpi-card cumplidas">
-                    <p style="font-size:9px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Metas Cumplidas (&gt;80%)</p>
-                    <h3 style="font-size:28px;font-weight:900;color:#15803D;letter-spacing:-0.03em;line-height:1;" id="kpi-plan-cumplidas">0</h3>
+                    <p style="font-size:9px;font-weight:700;color:#018D38;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Metas Cumplidas (&gt;80%)</p>
+                    <h3 style="font-size:28px;font-weight:900;color:#018D38;letter-spacing:-0.03em;line-height:1;" id="kpi-plan-cumplidas">0</h3>
                     <div style="display:flex;align-items:center;gap:4px;margin-top:6px;">
-                        <i class="fa-solid fa-circle-check" style="color:#22C55E;font-size:11px;"></i>
-                        <span style="font-size:10px;font-weight:600;color:#166534;">Indicadores completados</span>
+                        <i class="fa-solid fa-circle-check" style="color:#018D38;font-size:11px;"></i>
+                        <span style="font-size:10px;font-weight:600;color:#64748B;">Indicadores completados</span>
                     </div>
                 </div>
                 <div class="plan-kpi-card proceso">
-                    <p style="font-size:9px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Metas en Proceso (50-80%)</p>
-                    <h3 style="font-size:28px;font-weight:900;color:#D97706;letter-spacing:-0.03em;line-height:1;" id="kpi-plan-proceso">0</h3>
+                    <p style="font-size:9px;font-weight:700;color:#F28E18;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Metas en Proceso (50-80%)</p>
+                    <h3 style="font-size:28px;font-weight:900;color:#F28E18;letter-spacing:-0.03em;line-height:1;" id="kpi-plan-proceso">0</h3>
                     <div style="display:flex;align-items:center;gap:4px;margin-top:6px;">
-                        <i class="fa-solid fa-circle-half-stroke" style="color:#F59E0B;font-size:11px;"></i>
-                        <span style="font-size:10px;font-weight:600;color:#92400E;">En progreso</span>
+                        <i class="fa-solid fa-circle-half-stroke" style="color:#F28E18;font-size:11px;"></i>
+                        <span style="font-size:10px;font-weight:600;color:#64748B;">En progreso</span>
                     </div>
                 </div>
                 <div class="plan-kpi-card riesgo">
-                    <p style="font-size:9px;font-weight:700;color:#991B1B;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Metas en Riesgo (&lt;50%)</p>
-                    <h3 style="font-size:28px;font-weight:900;color:#DC2626;letter-spacing:-0.03em;line-height:1;" id="kpi-plan-riesgo">0</h3>
+                    <p style="font-size:9px;font-weight:700;color:#A90F09;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Metas en Riesgo (&lt;50%)</p>
+                    <h3 style="font-size:28px;font-weight:900;color:#A90F09;letter-spacing:-0.03em;line-height:1;" id="kpi-plan-riesgo">0</h3>
                     <div style="display:flex;align-items:center;gap:4px;margin-top:6px;">
-                        <i class="fa-solid fa-circle-exclamation" style="color:#EF4444;font-size:11px;"></i>
-                        <span style="font-size:10px;font-weight:600;color:#991B1B;">Requieren atención</span>
+                        <i class="fa-solid fa-circle-exclamation" style="color:#A90F09;font-size:11px;"></i>
+                        <span style="font-size:10px;font-weight:600;color:#64748B;">Requieren atención</span>
                     </div>
                 </div>
             </div>
@@ -998,7 +1001,7 @@
             <div class="bg-white rounded-2xl overflow-hidden" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
                 <div class="flex justify-between items-center" style="padding:18px 24px;border-bottom:1.5px solid #E2E8F0;background:#F8FAFC;">
                     <h2 style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:8px;">
-                        <i class="fa-solid fa-list-check" style="color:#0F766E;"></i> Panel de Indicadores Estratégicos
+                        <i class="fa-solid fa-list-check" style="color:#0B5640;"></i> Panel de Indicadores Estratégicos
                     </h2>
                 </div>
                 <div class="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" id="plan-indicadores-container">
@@ -1070,14 +1073,14 @@
                             <div class="bg-white p-4 rounded-xl" style="border:1.5px solid #E2E8F0;">
                                 <div class="flex justify-between items-end mb-2">
                                     <span style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;">Físico</span>
-                                    <span id="mod-txt-fisico" style="font-size:17px;font-weight:900;color:#0F766E;">0%</span>
+                                    <span id="mod-txt-fisico" style="font-size:17px;font-weight:900;color:#0B5640;">0%</span>
                                 </div>
                                 <div class="progress-track progress-track-lg"><div id="mod-bar-fisico" class="progress-fisico" style="width:0%"></div></div>
                             </div>
                             <div class="bg-white p-4 rounded-xl" style="border:1.5px solid #E2E8F0;">
                                 <div class="flex justify-between items-end mb-2">
                                     <span style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;">Financiero</span>
-                                    <span id="mod-txt-financiero" style="font-size:17px;font-weight:900;color:#3B82F6;">0%</span>
+                                    <span id="mod-txt-financiero" style="font-size:17px;font-weight:900;color:#3561AB;">0%</span>
                                 </div>
                                 <div class="progress-track progress-track-lg"><div id="mod-bar-financiero" class="progress-financiero" style="width:0%"></div></div>
                             </div>
@@ -1101,11 +1104,11 @@
                                     </div>
                                     <div>
                                         <span style="display:block;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Alcance Contratado</span>
-                                        <div id="mod-alcance" style="color:#0F766E;font-weight:800;font-size:12px;"></div>
+                                        <div id="mod-alcance" style="color:#0B5640;font-weight:800;font-size:12px;"></div>
                                     </div>
                                     <div>
                                         <span style="display:block;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Ejecución Real</span>
-                                        <div id="mod-ejecutado-areas" style="color:#3B82F6;font-weight:800;font-size:12px;"></div>
+                                        <div id="mod-ejecutado-areas" style="color:#3561AB;font-weight:800;font-size:12px;"></div>
                                     </div>
                                 </div>
                             </div>
@@ -1140,12 +1143,12 @@
                                 </div>
                                 <div class="grid grid-cols-2 gap-3 pt-3" style="border-top:1px solid #F1F5F9;">
                                     <div class="p-2 rounded-lg text-center cursor-help" style="background:#EFF6FF;border:1px solid rgba(59,130,246,0.2);" title="Traslado de recursos a la cuenta del IDEA">
-                                        <span style="display:block;font-size:8px;font-weight:700;color:#3B82F6;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Total Desembolsado</span>
-                                        <span id="mod-desembolsado-full" style="color:#3B82F6;font-weight:900;font-size:12px;display:block;"></span>
+                                        <span style="display:block;font-size:8px;font-weight:700;color:#3561AB;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Total Desembolsado</span>
+                                        <span id="mod-desembolsado-full" style="color:#3561AB;font-weight:900;font-size:12px;display:block;"></span>
                                     </div>
-                                    <div class="p-2 rounded-lg text-center" style="background:#F0FDFA;border:1px solid rgba(20,184,166,0.2);">
-                                        <span style="display:block;font-size:8px;font-weight:700;color:#0F766E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Total Autorizado Depto.</span>
-                                        <span id="mod-autorizado-full" style="color:#0F766E;font-weight:900;font-size:12px;display:block;"></span>
+                                    <div class="p-2 rounded-lg text-center" style="background:#F0FDFA;border:1px solid rgba(1, 141, 56,0.2);">
+                                        <span style="display:block;font-size:8px;font-weight:700;color:#0B5640;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Total Autorizado Depto.</span>
+                                        <span id="mod-autorizado-full" style="color:#0B5640;font-weight:900;font-size:12px;display:block;"></span>
                                     </div>
                                 </div>
                             </div>
@@ -1185,7 +1188,7 @@
                         <div class="bg-white rounded-xl overflow-hidden flex flex-col" style="border:1.5px solid #E2E8F0;height:350px;position:relative;">
                             <div class="flex justify-between items-center shrink-0 z-20" style="padding:12px 16px;border-bottom:1.5px solid #E2E8F0;background:#F8FAFC;">
                                 <h5 style="font-size:10px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.1em;display:flex;align-items:center;gap:6px;">
-                                    <i class="fa-solid fa-map-location-dot" style="color:#0F766E;"></i> Visor Geográfico
+                                    <i class="fa-solid fa-map-location-dot" style="color:#0B5640;"></i> Visor Geográfico
                                 </h5>
                             </div>
                             <div class="flex-1 relative flex flex-row">
@@ -1209,7 +1212,7 @@
                                 <div id="map" class="flex-1 relative z-0 h-full" style="background:#F1F5F9;"></div>
                                 <div id="map-overlay" class="absolute inset-0 flex items-center justify-center z-30 backdrop-blur-sm transition-opacity" style="background:rgba(248,250,252,0.85);">
                                     <span id="map-msg" style="color:#94A3B8;font-weight:600;font-size:12px;display:flex;align-items:center;gap:6px;">
-                                        <i class="fa-solid fa-spinner fa-spin" style="color:#0F766E;"></i>Cargando trazado...
+                                        <i class="fa-solid fa-spinner fa-spin" style="color:#0B5640;"></i>Cargando trazado...
                                     </span>
                                 </div>
                             </div>
@@ -1265,7 +1268,7 @@
         <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden" style="border: 1.5px solid #E2E8F0; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15); animation: modal-fade-in 0.3s ease;">
             
             <!-- Header con Logo de Antioquia o banner de color -->
-            <div style="background: linear-gradient(135deg, #0F766E, #14B8A6); padding: 24px 20px; text-align: center; position: relative;">
+            <div style="background: linear-gradient(135deg, #0B5640, #018D38); padding: 24px 20px; text-align: center; position: relative;">
                 <button type="button" id="btn-close-login" style="position: absolute; top: 12px; right: 12px; background: transparent; border: none; color: rgba(255,255,255,0.7); font-size: 14px; cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.7)'">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
@@ -1279,22 +1282,22 @@
             <!-- Formulario de login -->
             <form id="login-form" style="padding: 24px 20px; margin: 0;" onsubmit="event.preventDefault();">
                 <div style="margin-bottom: 16px;">
-                    <label style="display: block; font-size: 9.5px; font-weight: 800; color: #0F766E; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Usuario / Correo</label>
+                    <label style="display: block; font-size: 9.5px; font-weight: 800; color: #0B5640; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Usuario / Correo</label>
                     <div style="position: relative; display: flex; align-items: center;">
                         <i class="fa-solid fa-user" style="position: absolute; left: 12px; color: #94A3B8; font-size: 11px;"></i>
-                        <input type="text" placeholder="ejemplo@antioquia.gov.co" style="width: 100%; font-size: 11.5px; padding: 10px 12px 10px 32px; border: 1.5px solid #E2E8F0; border-radius: 10px; font-weight: 500; color: #0F172A; transition: border-color 0.2s; outline: none;" onfocus="this.style.borderColor='#0F766E'" onblur="this.style.borderColor='#E2E8F0'">
+                        <input type="text" placeholder="ejemplo@antioquia.gov.co" style="width: 100%; font-size: 11.5px; padding: 10px 12px 10px 32px; border: 1.5px solid #E2E8F0; border-radius: 10px; font-weight: 500; color: #0F172A; transition: border-color 0.2s; outline: none;" onfocus="this.style.borderColor='#0B5640'" onblur="this.style.borderColor='#E2E8F0'">
                     </div>
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; font-size: 9.5px; font-weight: 800; color: #0F766E; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Contraseña</label>
+                    <label style="display: block; font-size: 9.5px; font-weight: 800; color: #0B5640; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Contraseña</label>
                     <div style="position: relative; display: flex; align-items: center;">
                         <i class="fa-solid fa-key" style="position: absolute; left: 12px; color: #94A3B8; font-size: 11px;"></i>
-                        <input type="password" placeholder="••••••••" style="width: 100%; font-size: 11.5px; padding: 10px 12px 10px 32px; border: 1.5px solid #E2E8F0; border-radius: 10px; font-weight: 500; color: #0F172A; transition: border-color 0.2s; outline: none;" onfocus="this.style.borderColor='#0F766E'" onblur="this.style.borderColor='#E2E8F0'">
+                        <input type="password" placeholder="••••••••" style="width: 100%; font-size: 11.5px; padding: 10px 12px 10px 32px; border: 1.5px solid #E2E8F0; border-radius: 10px; font-weight: 500; color: #0F172A; transition: border-color 0.2s; outline: none;" onfocus="this.style.borderColor='#0B5640'" onblur="this.style.borderColor='#E2E8F0'">
                     </div>
                 </div>
 
-                <button type="submit" id="btn-login-submit" style="width: 100%; background: linear-gradient(135deg, #0F766E, #14B8A6); color: white; border: none; padding: 12px 16px; border-radius: 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(15, 118, 110, 0.2);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(15, 118, 110, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(15, 118, 110, 0.2)';">
+                <button type="submit" id="btn-login-submit" style="width: 100%; background: linear-gradient(135deg, #0B5640, #018D38); color: white; border: none; padding: 12px 16px; border-radius: 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(11, 86, 64, 0.2);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(11, 86, 64, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(11, 86, 64, 0.2)';">
                     <i class="fa-solid fa-right-to-bracket"></i>
                     Ingresar
                 </button>
@@ -1303,7 +1306,7 @@
     </div>
 
     <!-- TOAST NOTIFICATION -->
-    <div id="toast-notification" class="fixed bottom-6 right-6 flex items-center gap-3 no-print" style="background:linear-gradient(135deg,#0F766E,#14B8A6);color:white;padding:14px 20px;border-radius:14px;box-shadow:0 8px 24px rgba(15,118,110,0.35);transform:translateY(80px);opacity:0;transition:all 0.3s;z-index:70;border:1px solid rgba(255,255,255,0.15);">
+    <div id="toast-notification" class="fixed bottom-6 right-6 flex items-center gap-3 no-print" style="background:linear-gradient(135deg,#0B5640,#018D38);color:white;padding:14px 20px;border-radius:14px;box-shadow:0 8px 24px rgba(11, 86, 64,0.35);transform:translateY(80px);opacity:0;transition:all 0.3s;z-index:70;border:1px solid rgba(255,255,255,0.15);">
         <i class="fa-solid fa-circle-check" style="font-size:18px;color:rgba(255,255,255,0.85);"></i>
         <div>
             <h4 style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;">Ficha Descargada</h4>
@@ -1342,7 +1345,7 @@
 
             if(!data || data.length === 0){
                 list.innerHTML = `<div class="update-item" style="text-align:center;padding:24px 20px;">
-                    <i class="fa-solid fa-check-circle" style="font-size:24px;color:#22C55E;margin-bottom:8px;display:block;"></i>
+                    <i class="fa-solid fa-check-circle" style="font-size:24px;color:#018D38;margin-bottom:8px;display:block;"></i>
                     <p style="font-size:11px;color:#94A3B8;font-weight:500;">Sin cambios detectados en esta carga</p>
                 </div>`;
                 if(badge) badge.classList.add('hidden');
@@ -1458,3 +1461,4 @@
     </script>
 </body>
 </html>
+

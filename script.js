@@ -1,4 +1,4 @@
-// Variables Globales
+﻿// Variables Globales
 let rawData = [];
 let filteredData = [];
 let charts = {};
@@ -82,32 +82,32 @@ function getSystemState(estado) {
     
     if (est.includes('ejecutado')) return {
         badgeClass: 'badge-ejecutado',
-        hex: '#10b981', 
+        hex: '#3561AB', 
         label: 'Ejecutado'
     };
     if (est.includes('ejecucion')) return {
         badgeClass: 'badge-ejecucion',
-        hex: '#2563eb', 
+        hex: '#018D38', 
         label: 'En Ejecución'
     };
     if (est.includes('proximo') || est.includes('finalizar')) return {
         badgeClass: 'badge-proximo',
-        hex: '#d97706', 
+        hex: '#F28E18', 
         label: 'Próximo a finalizar'
     };
     if (est.includes('suspendido') || est.includes('riesgo medio') || est.includes('medio')) return {
         badgeClass: 'badge-suspendido',
-        hex: '#d97706', 
+        hex: '#8B4A97', 
         label: 'Suspendido'
     };
     if (est.includes('por liquidar') || est.includes('riesgo alto') || est.includes('alto') || est.includes('riesgo')) return {
         badgeClass: 'badge-por-liquidar',
-        hex: '#f97316', 
+        hex: '#F28E18', 
         label: 'Por Liquidar'
     };
     if (est.includes('liquidado')) return {
         badgeClass: 'badge-liquidado',
-        hex: '#10b981', 
+        hex: '#3561AB', 
         label: 'Liquidado'
     };
     
@@ -481,9 +481,9 @@ async function generateAntioquiaMapBase64(municipalityName, row) {
                 const isTarget = normMuniName(mName) === targetNorm;
                 if (isTarget) {
                     return {
-                        fillColor: '#0F766E', // Institutional teal primary
+                        fillColor: '#0B5640', // Institutional teal primary
                         fillOpacity: 0.7,
-                        color: '#0F766E',
+                        color: '#0B5640',
                         weight: 2
                     };
                 }
@@ -520,14 +520,14 @@ async function generateAntioquiaMapBase64(municipalityName, row) {
         if(r.ok) {
             const d = await r.json();
             traceLayer = L.geoJSON(d, {
-                style: { color: '#ef4444', weight: 4, opacity: 0.9 },
-                pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 4, fillColor: "#ef4444", color: "#fff", weight: 1.5, fillOpacity: 0.9 })
+                style: { color: '#A90F09', weight: 4, opacity: 0.9 },
+                pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 4, fillColor: "#A90F09", color: "#fff", weight: 1.5, fillOpacity: 0.9 })
             }).addTo(tempMap);
         } else if (typeof omnivore !== 'undefined') {
             traceLayer = await new Promise(res => {
                 const customLayer = L.geoJSON(null, {
-                    style: { color: '#ef4444', weight: 4, opacity: 0.9 },
-                    pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 4, fillColor: "#ef4444", color: "#fff", weight: 1.5, fillOpacity: 0.9 })
+                    style: { color: '#A90F09', weight: 4, opacity: 0.9 },
+                    pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 4, fillColor: "#A90F09", color: "#fff", weight: 1.5, fillOpacity: 0.9 })
                 });
                 const k = omnivore.kml(`./assets/mapas/${num}.kml`, null, customLayer).on('ready', () => {
                     k.addTo(tempMap);
@@ -608,9 +608,9 @@ function createSectionHeader(title, pageBreak = null) {
         layout: {
             hLineWidth: (i) => i === 1 ? 2 : 0,
             vLineWidth: () => 0,
-            hLineColor: () => '#14B8A6' // Teal accent line
+            hLineColor: () => '#018D38' // Teal accent line
         },
-        fillColor: '#0F766E', // Institutional Teal Primary
+        fillColor: '#0B5640', // Institutional Teal Primary
         margin: [0, 8, 0, 10]
     };
     if (pageBreak) {
@@ -660,7 +660,7 @@ async function generateProfessionalPDF(row) {
         const sysState = getSystemState(row['ESTADO CONVENIO']);
 
         // ===== 2. ESTILOS REUTILIZABLES DE CELDAS =====
-        const thCell = (text) => ({ text, fontSize: 8.5, bold: true, color: '#ffffff', fillColor: '#0F766E', margin: [6, 4, 6, 4] });
+        const thCell = (text) => ({ text, fontSize: 8.5, bold: true, color: '#ffffff', fillColor: '#0B5640', margin: [6, 4, 6, 4] });
         const tdCell = (text, opts = {}) => ({ text: String(text ?? '-'), fontSize: 8.5, color: '#334155', margin: [6, 3.5, 6, 3.5], ...opts });
         const tdRight = (text, opts = {}) => tdCell(text, { alignment: 'right', ...opts });
 
@@ -930,7 +930,7 @@ async function generateProfessionalPDF(row) {
                         fontSize: 7,
                         bold: true,
                         color: '#ffffff',
-                        fillColor: '#0F766E',
+                        fillColor: '#0B5640',
                         alignment: 'center',
                         margin: [0, 10, 0, 10]
                     }]]
@@ -969,7 +969,7 @@ async function generateProfessionalPDF(row) {
                         {
                             stack: [
                                 { text: 'FICHA TÉCNICA DE SEGUIMIENTO', fontSize: 14.5, bold: true, color: '#0f172a', letterSpacing: 0.5 },
-                                { text: 'Secretaría de Infraestructura · Gobernación de Antioquia', fontSize: 8.5, color: '#0F766E', bold: true, margin: [0, 2, 0, 0] }
+                                { text: 'Secretaría de Infraestructura · Gobernación de Antioquia', fontSize: 8.5, color: '#0B5640', bold: true, margin: [0, 2, 0, 0] }
                             ],
                             margin: [0, 5, 0, 0],
                             width: '*'
@@ -977,7 +977,7 @@ async function generateProfessionalPDF(row) {
                         {
                             stack: [
                                 { text: 'CONVENIO N°', fontSize: 7.5, color: '#64748b', alignment: 'right' },
-                                { text: String(row['CONVENIO']), fontSize: 15, bold: true, color: '#0F766E', alignment: 'right' }
+                                { text: String(row['CONVENIO']), fontSize: 15, bold: true, color: '#0B5640', alignment: 'right' }
                             ],
                             margin: [0, 4, 0, 0],
                             width: 'auto'
@@ -985,7 +985,7 @@ async function generateProfessionalPDF(row) {
                     ],
                     margin: [0, 0, 0, 6]
                 },
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#14B8A6' }], margin: [0, 0, 0, 12] },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#018D38' }], margin: [0, 0, 0, 12] },
 
                 createSectionHeader('1. IDENTIFICACIÓN DEL PROYECTO'),
                 {
@@ -1013,8 +1013,8 @@ async function generateProfessionalPDF(row) {
                                 widths: ['*'],
                                 body: [[{
                                     stack: [
-                                        { text: 'AVANCE FÍSICO REAL', fontSize: 7.5, bold: true, color: '#0F766E', alignment: 'center', margin: [0, 4, 0, 2] },
-                                        { text: `${(row['FISICO_NORM'] || 0).toFixed(1)}%`, fontSize: 24, bold: true, color: '#0F766E', alignment: 'center', margin: [0, 0, 0, 4] }
+                                        { text: 'AVANCE FÍSICO REAL', fontSize: 7.5, bold: true, color: '#0B5640', alignment: 'center', margin: [0, 4, 0, 2] },
+                                        { text: `${(row['FISICO_NORM'] || 0).toFixed(1)}%`, fontSize: 24, bold: true, color: '#0B5640', alignment: 'center', margin: [0, 0, 0, 4] }
                                     ]
                                 }]]
                             },
@@ -1026,8 +1026,8 @@ async function generateProfessionalPDF(row) {
                                 widths: ['*'],
                                 body: [[{
                                     stack: [
-                                        { text: 'AVANCE FINANCIERO EJECUTADO', fontSize: 7.5, bold: true, color: '#2563eb', alignment: 'center', margin: [0, 4, 0, 2] },
-                                        { text: `${(row['FINANCIERO_NORM'] || 0).toFixed(1)}%`, fontSize: 24, bold: true, color: '#2563eb', alignment: 'center', margin: [0, 0, 0, 4] }
+                                        { text: 'AVANCE FINANCIERO EJECUTADO', fontSize: 7.5, bold: true, color: '#3561AB', alignment: 'center', margin: [0, 4, 0, 2] },
+                                        { text: `${(row['FINANCIERO_NORM'] || 0).toFixed(1)}%`, fontSize: 24, bold: true, color: '#3561AB', alignment: 'center', margin: [0, 0, 0, 4] }
                                     ]
                                 }]]
                             },
@@ -1181,8 +1181,8 @@ async function generateProfessionalPDF(row) {
                             [tdCell('Aporte Municipio'), tdRight(formatCurrency(row['APORTE MUNICIPIO']))],
                             [tdCell('Adición Departamento'), tdRight(formatCurrency(row['ADICIONES RECURSOS DEPARTAMENTO']))],
                             [tdCell('Adición Municipio'), tdRight(formatCurrency(row['ADICIONES RECURSOS MUNICIPIO']))],
-                            [tdCell('Total Desembolsado (Traslado IDEA)', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), { bold: true, color: '#2563eb' })],
-                            [tdCell('Total Autorizado Departamento', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO']), { bold: true, color: '#0F766E' })]
+                            [tdCell('Total Desembolsado (Traslado IDEA)', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), { bold: true, color: '#3561AB' })],
+                            [tdCell('Total Autorizado Departamento', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO']), { bold: true, color: '#0B5640' })]
                         ]
                     },
                     layout: 'lightHorizontalLines',
@@ -1200,7 +1200,7 @@ async function generateProfessionalPDF(row) {
                             [tdCell('Fecha de Terminación Original'), tdRight(getVal(['FECHA DE TERMINAC'], true) || '-')],
                             [tdCell('Prórrogas Contractuales'), tdRight((getVal(['PRÓRROGA', 'PR"RROGA']) || 0) + ' meses')],
                             [tdCell('Suspensiones Temporales'), tdRight((getVal(['SUSPENSIÓN', 'SUSPENSI"N']) || 0) + ' meses')],
-                            [tdCell('Nueva Fecha de Terminación Estimada', { bold: true }), tdRight(getVal(['NUEVA FECHA DE TERMINAC'], true) || 'Sin cambios', { bold: true, color: '#14B8A6' })]
+                            [tdCell('Nueva Fecha de Terminación Estimada', { bold: true }), tdRight(getVal(['NUEVA FECHA DE TERMINAC'], true) || 'Sin cambios', { bold: true, color: '#018D38' })]
                         ]
                     },
                     layout: zebraLayout,
@@ -1218,13 +1218,13 @@ async function generateProfessionalPDF(row) {
                     fontSize: 10,
                     bold: true,
                     color: '#ffffff',
-                    fillColor: '#0F766E',
+                    fillColor: '#0B5640',
                     margin: [0, 8, 0, 10]
                 },
                 subHeader: {
                     fontSize: 9,
                     bold: true,
-                    color: '#0F766E',
+                    color: '#0B5640',
                     margin: [0, 6, 0, 4]
                 },
                 fieldLabel: {
@@ -2080,17 +2080,17 @@ function renderAlerts() {
     if (finalAlerts.length === 0) {
         feed.innerHTML = `
             <div style="padding:24px;text-align:center;">
-                <i class="fa-solid fa-shield-check" style="font-size:28px;color:#22C55E;opacity:0.5;display:block;margin-bottom:8px;"></i>
+                <i class="fa-solid fa-shield-check" style="font-size:28px;color:#018D38;opacity:0.5;display:block;margin-bottom:8px;"></i>
                 <p style="font-size:11px;font-weight:600;color:#94A3B8;">No se detectaron riesgos en la selección actual.</p>
             </div>`;
         return;
     }
 
     const alertTypeMap = {
-        proximos:    { borderColor: '#F59E0B', iconColor: '#F59E0B', bg: '#FFFBEB' },
-        competencia: { borderColor: '#EF4444', iconColor: '#EF4444', bg: '#FEF2F2' },
-        vencido:     { borderColor: '#7C3AED', iconColor: '#7C3AED', bg: '#F5F3FF' },
-        desfase:     { borderColor: '#3B82F6', iconColor: '#3B82F6', bg: '#EFF6FF' }
+        proximos:    { borderColor: '#F28E18', iconColor: '#F28E18', bg: '#FFFFFF' },
+        competencia: { borderColor: '#A90F09', iconColor: '#A90F09', bg: '#FFFFFF' },
+        vencido:     { borderColor: '#A90F09', iconColor: '#A90F09', bg: '#FFFFFF' },
+        desfase:     { borderColor: '#3561AB', iconColor: '#3561AB', bg: '#FFFFFF' }
     };
 
     feed.innerHTML = finalAlerts.map(a => {
@@ -2149,7 +2149,7 @@ function updateCharts() {
                 const width = chart.width, height = chart.height, ctx = chart.ctx;
                 ctx.restore();
                 const fontSize = (height / 114).toFixed(2);
-                ctx.font = `900 ${fontSize}em Inter`;
+                ctx.font = `900 ${fontSize}em Poppins`;
                 ctx.textBaseline = "middle";
                 ctx.fillStyle = isDark ? "#f8fafc" : "#0f172a";
                 const text = totalCount.toString();
@@ -2157,7 +2157,7 @@ function updateCharts() {
                 const textY = height / 2;
                 ctx.fillText(text, textX, textY);
                 
-                ctx.font = `700 ${(height / 250).toFixed(2)}em Inter`;
+                ctx.font = `700 ${(height / 250).toFixed(2)}em Poppins`;
                 ctx.fillStyle = isDark ? "#64748b" : "#94a3b8";
                 const text2 = "TOTAL";
                 const text2X = Math.round((width - ctx.measureText(text2).width) / 2);
@@ -2196,8 +2196,8 @@ function updateCharts() {
                         borderWidth: 1,
                         padding: 12,
                         cornerRadius: 8,
-                        titleFont: {size: 11, family: 'Inter'},
-                        bodyFont: {size: 13, weight: 'bold', family: 'Inter'},
+                        titleFont: {size: 11, family: 'Poppins'},
+                        bodyFont: {size: 13, weight: 'bold', family: 'Poppins'},
                         callbacks: { label: (c) => ` ${c.label}: ${c.raw} convenios` }
                     } 
                 } 
@@ -2212,7 +2212,7 @@ function updateCharts() {
                 const pct = totalCount > 0 ? Math.round((stat.count / totalCount) * 100) : 0;
                 return `
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:10px;transition:all 0.15s;cursor:pointer;border:1.5px solid #E2E8F0;" 
-                    onmouseover="this.style.background='rgba(15,118,110,0.05)';this.style.borderColor='rgba(15,118,110,0.2)';" 
+                    onmouseover="this.style.background='rgba(11, 86, 64,0.05)';this.style.borderColor='rgba(11, 86, 64,0.2)';" 
                     onmouseout="this.style.background='transparent';this.style.borderColor='#E2E8F0';"
                     onclick="const f=document.getElementById('filter-estado');if(f){f.value=f.value==='${label}' ?'' :'${label}';applyFilters();}">
                     <div style="display:flex;align-items:center;gap:10px;">
@@ -2251,13 +2251,13 @@ function updateCharts() {
                 labels: ['Longitud (m)'],
                 datasets: [
                     { label: 'Contratado', data: [tLonCon], backgroundColor: '#94a3b8', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 },
-                    { label: 'Ejecutado', data: [tLonEje], backgroundColor: '#10b981', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 }
+                    { label: 'Ejecutado', data: [tLonEje], backgroundColor: '#018D38', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 }
                 ]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: { 
-                    legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: {size: 10, family: 'Inter'}, color: textColor } }, 
+                    legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: {size: 10, family: 'Poppins'}, color: textColor } }, 
                     tooltip: {
                         backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                         titleColor: isDark ? '#f8fafc' : '#0f172a',
@@ -2266,14 +2266,14 @@ function updateCharts() {
                         borderWidth: 1,
                         padding: 12,
                         cornerRadius: 8,
-                        titleFont: {size: 11, family: 'Inter'},
-                        bodyFont: {size: 13, weight: 'bold', family: 'Inter'},
+                        titleFont: {size: 11, family: 'Poppins'},
+                        bodyFont: {size: 13, weight: 'bold', family: 'Poppins'},
                         callbacks: { label: (c) => ` ${c.dataset.label}: ${formatNumber(c.raw)} m` }
                     } 
                 },
                 scales: {
-                    x: { grid: { display: false }, ticks: { color: textColor, font: {family: 'Inter', weight: 'bold', size: 10} } },
-                    y: { border: { display: false }, grid: { color: gridColor }, beginAtZero: true, ticks: { color: textColor, font: {family: 'Inter', size: 10}, maxTicksLimit: 6, callback: (v) => formatNumber(v) } }
+                    x: { grid: { display: false }, ticks: { color: textColor, font: {family: 'Poppins', weight: 'bold', size: 10} } },
+                    y: { border: { display: false }, grid: { color: gridColor }, beginAtZero: true, ticks: { color: textColor, font: {family: 'Poppins', size: 10}, maxTicksLimit: 6, callback: (v) => formatNumber(v) } }
                 },
                 animation: { duration: 800, easing: 'easeOutQuart' }
             }
@@ -2302,8 +2302,8 @@ async function renderMap(row, mapId, overlayId, msgId, inst, cb) {
     let ok = false, b = null;
     currentExtractedFeatures = []; 
     
-    const tramoStyle = { color: '#ef4444', weight: 5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' };
-    const highlightStyle = { color: '#10b981', weight: 8, opacity: 1, lineCap: 'round', lineJoin: 'round' };
+    const tramoStyle = { color: '#A90F09', weight: 5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' };
+    const highlightStyle = { color: '#018D38', weight: 8, opacity: 1, lineCap: 'round', lineJoin: 'round' };
 
     const onEachFeat = (feature, layer) => {
         let name = feature.properties ? (feature.properties.name || feature.properties.Name || feature.properties.NAME) : null;
@@ -2324,7 +2324,7 @@ async function renderMap(row, mapId, overlayId, msgId, inst, cb) {
             const d = await r.json();
             const l = L.geoJSON(d, { 
                 style: tramoStyle, 
-                pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 6, fillColor: "#ef4444", color: "#fff", weight: 2, fillOpacity: 0.8 }),
+                pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 6, fillColor: "#A90F09", color: "#fff", weight: 2, fillOpacity: 0.8 }),
                 onEachFeature: onEachFeat
             });
             g.addLayer(l); b = l.getBounds(); ok = true;
@@ -2335,7 +2335,7 @@ async function renderMap(row, mapId, overlayId, msgId, inst, cb) {
         ok = await new Promise(res => {
             const customLayer = L.geoJSON(null, {
                 style: tramoStyle,
-                pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 6, fillColor: "#ef4444", color: "#fff", weight: 2, fillOpacity: 0.8 }),
+                pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 6, fillColor: "#A90F09", color: "#fff", weight: 2, fillOpacity: 0.8 }),
                 onEachFeature: onEachFeat
             });
             const k = omnivore.kml(`./assets/mapas/${num}.kml`, null, customLayer).on('ready', () => { 
@@ -2935,7 +2935,7 @@ async function renderMapTab() {
                         source: 'municipios-src',
                         layout: { visibility: 'visible' },
                         paint: {
-                            'fill-color': ['case', ['boolean', ['feature-state', 'blink'], false], '#ffee55', '#2563eb'],
+                            'fill-color': ['case', ['boolean', ['feature-state', 'blink'], false], '#ffee55', '#3561AB'],
                             'fill-opacity': ['case',
                                 ['boolean', ['feature-state', 'blink'], false], 0.65,
                                 ['boolean', ['feature-state', 'hover'], false], 0.25,
@@ -3784,7 +3784,7 @@ function initMLMapSearch() {
                 }
 
                 if (item.type === 'coords') {
-                    mlSearchMarker = new maplibregl.Marker({ color: '#ef4444' })
+                    mlSearchMarker = new maplibregl.Marker({ color: '#A90F09' })
                         .setLngLat([item.lon, item.lat])
                         .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(`
                             <div class="p-3 font-sans text-xs">
@@ -4017,29 +4017,29 @@ function updateMapCharts() {
                         borderWidth: 1,
                         padding: 12,
                         cornerRadius: 8,
-                        titleFont: {size: 11, family: 'Inter'},
-                        bodyFont: {size: 13, weight: 'bold', family: 'Inter'},
+                        titleFont: {size: 11, family: 'Poppins'},
+                        bodyFont: {size: 13, weight: 'bold', family: 'Poppins'},
                         callbacks: { label: (c) => ` ${formatCb(c.raw)}` }
                     } 
                 },
                 scales: { 
                     x: { 
                         grid: { color: (type === 'bar' && (id.includes('top-mun') || id.includes('sub-inv'))) ? gridColor : 'transparent' }, 
-                        ticks: { color: textColor, font: { size: 9, family: 'Inter', weight: '500' } } 
+                        ticks: { color: textColor, font: { size: 9, family: 'Poppins', weight: '500' } } 
                     }, 
                     y: { 
                         grid: { color: (type === 'bar' && (id.includes('top-mun') || id.includes('sub-inv'))) ? 'transparent' : gridColor }, 
-                        ticks: { color: textColor, font: { size: 9, family: 'Inter', weight: '500' } } 
+                        ticks: { color: textColor, font: { size: 9, family: 'Poppins', weight: '500' } } 
                     } 
                 }
             }
         });
     };
 
-    drawChart('chart-sub-long',     'bar', sL, v => formatNumber(v) + ' m', '#10b981');
-    drawChart('chart-sub-inv',      'bar', sI, v => formatCurrency(v),       '#2563eb');
-    drawChart('chart-top-mun-long', 'bar', mL, v => formatNumber(v) + ' m', '#10b981');
-    drawChart('chart-top-mun-inv',  'bar', mI, v => formatCurrency(v),       '#2563eb');
+    drawChart('chart-sub-long',     'bar', sL, v => formatNumber(v) + ' m', '#018D38');
+    drawChart('chart-sub-inv',      'bar', sI, v => formatCurrency(v),       '#3561AB');
+    drawChart('chart-top-mun-long', 'bar', mL, v => formatNumber(v) + ' m', '#018D38');
+    drawChart('chart-top-mun-inv',  'bar', mI, v => formatCurrency(v),       '#3561AB');
 }
 
 window.setMapMetric = function(val) {
@@ -4317,11 +4317,11 @@ function renderPlanTab() {
                         </div>
                         <div>
                             <p style="font-size:8px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;">${labelMetasMetric}</p>
-                            <p style="font-size:12px;font-weight:800;color:#0F766E;">${fmtVal(e)}</p>
+                            <p style="font-size:12px;font-weight:800;color:#0B5640;">${fmtVal(e)}</p>
                         </div>
                         <div>
                             <p style="font-size:8px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;">Restante</p>
-                            <p style="font-size:12px;font-weight:800;color:#EF4444;">${fmtVal(restante)}</p>
+                            <p style="font-size:12px;font-weight:800;color:#A90F09;">${fmtVal(restante)}</p>
                         </div>
                     </div>
                     <span class="meta-meta-text">${d.convenios} convenio(s)</span>
@@ -4387,8 +4387,8 @@ function renderPlanTab() {
                     borderWidth: 1,
                     padding: 12,
                     cornerRadius: 8,
-                    titleFont: {size: 11, family: 'Inter'},
-                    bodyFont: {size: 12, family: 'Inter'},
+                    titleFont: {size: 11, family: 'Poppins'},
+                    bodyFont: {size: 12, family: 'Poppins'},
                     callbacks: {
                         label: function(context) {
                             const index = context.dataIndex;
@@ -4407,7 +4407,7 @@ function renderPlanTab() {
                     grid: { color: gridColor },
                     ticks: {
                         color: textColor,
-                        font: { size: 9, family: 'Inter' },
+                        font: { size: 9, family: 'Poppins' },
                         callback: function(value) { return value + '%'; }
                     }
                 },
@@ -4415,7 +4415,7 @@ function renderPlanTab() {
                     grid: { display: false },
                     ticks: {
                         color: textColor,
-                        font: { size: 9, weight: 'bold', family: 'Inter' }
+                        font: { size: 9, weight: 'bold', family: 'Poppins' }
                     }
                 }
             }
@@ -4436,26 +4436,26 @@ function renderPlanTab() {
 
     let labelAnualMetric = '';
     let unitAnual = '';
-    let mainColor = '#0F766E'; // Default institutional teal
+    let mainColor = '#0B5640'; // Default institutional green
 
     if (planAnualFilter === 'todos-km') {
         labelAnualMetric = 'Longitud Acumulada (km)';
         unitAnual = 'km';
-        mainColor = '#0F766E';
+        mainColor = '#0B5640';
     } else if (planAnualFilter === 'todos-m2') {
         labelAnualMetric = 'Área Acumulada (m²)';
         unitAnual = 'm²';
-        mainColor = '#14B8A6';
+        mainColor = '#018D38';
     } else {
         const cfg = indicadoresEstrategicos[planAnualFilter];
         unitAnual = cfg ? cfg.unit : 'und';
         labelAnualMetric = `${planAnualFilter} (${unitAnual})`;
         if (cfg && cfg.tipo === 'km') {
-            mainColor = '#0F766E';
+            mainColor = '#0B5640';
         } else if (cfg && cfg.tipo === 'm2') {
-            mainColor = '#14B8A6';
+            mainColor = '#018D38';
         } else {
-            mainColor = '#6366F1'; // Indigo for units
+            mainColor = '#3561AB'; // Blue for units
         }
     }
 
@@ -4463,12 +4463,12 @@ function renderPlanTab() {
     const ctxAnual = canvasAnual.getContext('2d');
     
     // Hex to RGBA helpers for gradients
-    let startGrad = 'rgba(15, 118, 110, 0.35)'; // Teal
-    let endGrad = 'rgba(15, 118, 110, 0.0)';
-    if (mainColor === '#14B8A6') {
-        startGrad = 'rgba(20, 184, 166, 0.35)';
-    } else if (mainColor === '#6366F1') {
-        startGrad = 'rgba(99, 102, 241, 0.35)';
+    let startGrad = 'rgba(11, 86, 64, 0.35)'; // Verde Oscuro
+    let endGrad = 'rgba(11, 86, 64, 0.0)';
+    if (mainColor === '#018D38') {
+        startGrad = 'rgba(1, 141, 56, 0.35)';
+    } else if (mainColor === '#3561AB') {
+        startGrad = 'rgba(53, 97, 171, 0.35)';
     }
 
     const gradient = ctxAnual.createLinearGradient(0, 0, 0, 250);
@@ -4491,8 +4491,8 @@ function renderPlanTab() {
                 tension: 0.4,
                 pointRadius: (ctx) => ctx.dataIndex === 3 ? 6 : 5,
                 pointHoverRadius: (ctx) => ctx.dataIndex === 3 ? 8 : 7,
-                pointBackgroundColor: (ctx) => ctx.dataIndex === 3 ? '#14B8A6' : mainColor,
-                pointBorderColor: (ctx) => ctx.dataIndex === 3 ? '#0F766E' : '#ffffff',
+                pointBackgroundColor: (ctx) => ctx.dataIndex === 3 ? '#018D38' : mainColor,
+                pointBorderColor: (ctx) => ctx.dataIndex === 3 ? '#0B5640' : '#ffffff',
                 pointBorderWidth: 2,
                 borderWidth: 3,
                 segment: {
@@ -4504,7 +4504,7 @@ function renderPlanTab() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'bottom', labels: { font: { size: 10, family: 'Inter' }, color: textColor } },
+                legend: { position: 'bottom', labels: { font: { size: 10, family: 'Poppins' }, color: textColor } },
                 tooltip: {
                     backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                     titleColor: isDark ? '#f8fafc' : '#0f172a',
@@ -4513,8 +4513,8 @@ function renderPlanTab() {
                     borderWidth: 1,
                     padding: 12,
                     cornerRadius: 8,
-                    titleFont: {size: 11, family: 'Inter'},
-                    bodyFont: {size: 13, weight: 'bold', family: 'Inter'},
+                    titleFont: {size: 11, family: 'Poppins'},
+                    bodyFont: {size: 13, weight: 'bold', family: 'Poppins'},
                     callbacks: {
                         label: function(context) {
                             const valFmt = unitAnual === 'm²' ? formatNumber(Math.round(context.raw)) : context.raw;
@@ -4529,7 +4529,7 @@ function renderPlanTab() {
                     grid: { color: gridColor },
                     ticks: {
                         color: textColor,
-                        font: { size: 9, family: 'Inter' },
+                        font: { size: 9, family: 'Poppins' },
                         callback: function(value) {
                             return unitAnual === 'm²' ? formatNumber(value) + ' m²' : (unitAnual === 'km' ? value + ' km' : value + ' und');
                         }
@@ -4537,9 +4537,11 @@ function renderPlanTab() {
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { color: textColor, font: { size: 9, family: 'Inter' } }
+                    ticks: { color: textColor, font: { size: 9, family: 'Poppins' } }
                 }
             }
         }
     });
 }
+
+

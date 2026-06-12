@@ -1,4 +1,4 @@
-// ====== PESTAÑA 2: MAPA TERRITORIAL ======
+﻿// ====== PESTAÑA 2: MAPA TERRITORIAL ======
 let mainMapInst = null;
 let mainMapLayerGroup = null;
 
@@ -146,10 +146,10 @@ function updateMapCharts() {
         });
     };
     
-    drawChart('chart-sub-long', 'bar', sL, v => formatNumber(v) + ' m', '#10b981');
-    drawChart('chart-sub-inv', 'bar', sI, v => formatCurrency(v), '#3b82f6');
-    drawChart('chart-top-mun-long', 'bar', mL, v => formatNumber(v) + ' m', '#10b981');
-    drawChart('chart-top-mun-inv', 'bar', mI, v => formatCurrency(v), '#3b82f6');
+    drawChart('chart-sub-long', 'bar', sL, v => formatNumber(v) + ' m', '#018D38');
+    drawChart('chart-sub-inv', 'bar', sI, v => formatCurrency(v), '#3561AB');
+    drawChart('chart-top-mun-long', 'bar', mL, v => formatNumber(v) + ' m', '#018D38');
+    drawChart('chart-top-mun-inv', 'bar', mI, v => formatCurrency(v), '#3561AB');
 }
 
 let isRenderingMap = false;
@@ -444,7 +444,7 @@ function renderPlanTab() {
             labels: chartMetasLabels,
             datasets: [
                 { label: 'Meta',      data: chartMetasTargets,  backgroundColor: 'rgba(203,213,225,0.8)', borderColor: '#94a3b8', borderWidth: 1 },
-                { label: 'Ejecutado', data: chartMetasAchieved, backgroundColor: 'rgba(15, 118, 110, 0.85)',  borderColor: '#0F766E',  borderWidth: 1 }
+                { label: 'Ejecutado', data: chartMetasAchieved, backgroundColor: 'rgba(11, 86, 64, 0.85)',  borderColor: '#0B5640',  borderWidth: 1 }
             ]
         },
         options: {
@@ -482,8 +482,8 @@ function renderPlanTab() {
                 tension: 0.4,
                 pointRadius: (ctx) => ctx.dataIndex === 3 ? 6 : 5,
                 pointHoverRadius: (ctx) => ctx.dataIndex === 3 ? 8 : 7,
-                pointBackgroundColor: (ctx) => ctx.dataIndex === 3 ? '#14B8A6' : '#2d6a9f',
-                pointBorderColor: (ctx) => ctx.dataIndex === 3 ? '#0F766E' : '#ffffff',
+                pointBackgroundColor: (ctx) => ctx.dataIndex === 3 ? '#018D38' : '#2d6a9f',
+                pointBorderColor: (ctx) => ctx.dataIndex === 3 ? '#0B5640' : '#ffffff',
                 pointBorderWidth: 2,
                 borderWidth: 3,
                 segment: {
@@ -499,3 +499,5 @@ function renderPlanTab() {
         }
     });
 }
+
+
