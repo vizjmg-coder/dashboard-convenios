@@ -1,4 +1,4 @@
-﻿// Variables Globales
+// Variables Globales
 let rawData = [];
 let filteredData = [];
 let charts = {};
@@ -588,30 +588,24 @@ async function generateAntioquiaMapBase64(municipalityName, row) {
     return mapBase64;
 }
 
-// Helper: creates a styled institutional section header with a gold bottom bar
+// Helper: creates a styled institutional section header with a vertical colored accent bar
 function createSectionHeader(title, pageBreak = null) {
     const headerObj = {
-        table: {
-            widths: ['*'],
-            body: [
-                [
-                    { 
-                        text: title, 
-                        fontSize: 9.5, 
-                        bold: true, 
-                        color: '#ffffff', 
-                        margin: [8, 5, 8, 5]
-                    }
-                ]
-            ]
-        },
-        layout: {
-            hLineWidth: (i) => i === 1 ? 2 : 0,
-            vLineWidth: () => 0,
-            hLineColor: () => '#018D38' // Teal accent line
-        },
-        fillColor: '#0B5640', // Institutional Teal Primary
-        margin: [0, 8, 0, 10]
+        columns: [
+            {
+                canvas: [{ type: 'rect', x: 0, y: 0, w: 4, h: 14, r: 2, color: '#018D38' }],
+                width: 'auto',
+                margin: [0, 2, 6, 0]
+            },
+            {
+                text: title.toUpperCase(),
+                fontSize: 11,
+                bold: true,
+                color: '#0B5640',
+                width: '*'
+            }
+        ],
+        margin: [0, 10, 0, 8]
     };
     if (pageBreak) {
         headerObj.pageBreak = pageBreak;
@@ -626,6 +620,16 @@ async function generateProfessionalPDF(row) {
     btnPdf.disabled = true;
 
     try {
+        // Configure Poppins Font using Fontsource CDN
+        pdfMake.fonts = {
+            Poppins: {
+                normal: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-400-normal.ttf',
+                bold: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-700-normal.ttf',
+                italics: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-400-italic.ttf',
+                bolditalics: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-700-italic.ttf'
+            }
+        };
+
         const getVal = (keywords, isDate = false) => {
             const normalize = str => String(str).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/["“”]/g, "");
             const normalizedKeywords = keywords.map(normalize);
@@ -640,8 +644,7 @@ async function generateProfessionalPDF(row) {
             return val;
         };
 
-        // ===== 1. CAPTURA ASÍNCRONA DE RECURSOS =====
-        // Official Escudo of Antioquia loaded from local assets
+        // ===== 1. ASYNCHRONOUS CAPTURE OF LOGOS & MAPS =====
         const logoBase64 = await getBase64ImageFromURL('./assets/escudo_antioquia.png').catch(() => null);
         const mapBase64 = await getBase64FromHtmlElement('map');
         const antioquiaMapBase64 = await generateAntioquiaMapBase64(row['MUNICIPIO'], row).catch(() => null);
@@ -649,7 +652,6 @@ async function generateProfessionalPDF(row) {
         const antesImgs = document.querySelectorAll('#mod-galeria-antes img');
         const despuesImgs = document.querySelectorAll('#mod-galeria-despues img');
         
-        // Fetch and crop/resize gallery images using getOptimizedBase64Image
         const antesBase64 = await Promise.all(Array.from(antesImgs).map(img => getOptimizedBase64Image(img.src).catch(() => null)));
         const despuesBase64 = await Promise.all(Array.from(despuesImgs).map(img => getOptimizedBase64Image(img.src).catch(() => null)));
         
@@ -659,220 +661,241 @@ async function generateProfessionalPDF(row) {
 
         const sysState = getSystemState(row['ESTADO CONVENIO']);
 
-        // ===== 2. ESTILOS REUTILIZABLES DE CELDAS =====
-        const thCell = (text) => ({ text, fontSize: 8.5, bold: true, color: '#ffffff', fillColor: '#0B5640', margin: [6, 4, 6, 4] });
-        const tdCell = (text, opts = {}) => ({ text: String(text ?? '-'), fontSize: 8.5, color: '#334155', margin: [6, 3.5, 6, 3.5], ...opts });
+        // ===== 2. LAYOUT & TEXT CELL BUILDERS =====
+        const thCell = (text) => ({ text, fontSize: 8.5, bold: true, color: '#ffffff', fillColor: '#0B5640', margin: [6, 5, 6, 5] });
+        const tdCell = (text, opts = {}) => ({ text: String(text ?? '-'), fontSize: 8.5, color: '#1E293B', margin: [6, 4, 6, 4], ...opts });
         const tdRight = (text, opts = {}) => tdCell(text, { alignment: 'right', ...opts });
 
         const zebraLayout = {
             fillColor: function (rowIndex, node, columnIndex) {
-                return (rowIndex > 0 && rowIndex % 2 === 0) ? '#f8fafc' : null;
+                return (rowIndex > 0 && rowIndex % 2 === 0) ? '#F8FAFC' : null;
             },
-            hLineColor: function (i, node) { return '#e2e8f0'; },
-            vLineColor: function (i, node) { return '#e2e8f0'; },
+            hLineColor: function (i, node) { return '#E2E8F0'; },
+            vLineColor: function (i, node) { return '#E2E8F0'; },
             hLineWidth: function (i, node) { return (i === 0 || i === node.table.body.length) ? 0 : 0.5; },
             vLineWidth: function (i, node) { return 0; }
         };
 
-        // ===== 3. TABLA DE TRAMOS GEOGRÁFICOS =====
-        let geoRows = [];
-        if (currentExtractedFeatures && currentExtractedFeatures.length > 0) {
-            geoRows = currentExtractedFeatures.map(feat => {
-                const c = getCoords(feat.layer) || { start: 'N/A', end: 'N/A' };
-                return [tdCell(feat.name), tdRight(c.start), tdRight(c.end)];
-            });
-        } else {
-            const la = parseFloat(row['LATITUD']), lo = parseFloat(row['LONGITUD']);
-            if (!isNaN(la) && !isNaN(lo) && la !== 0) {
-                geoRows = [[tdCell('Punto de Referencia Único (Coordenadas Centrales)'), tdRight(`${la.toFixed(6)}, ${lo.toFixed(6)}`), tdRight(`${la.toFixed(6)}, ${lo.toFixed(6)}`)]];
-            } else {
-                geoRows = [[{ text: 'No hay datos geográficos disponibles para este convenio.', colSpan: 3, alignment: 'center', italics: true, fontSize: 8.5, color: '#94a3b8', margin: [6, 6, 6, 6] }, {}, {}]];
+        // ===== 3. COMPONENT GENERATION (KPI, PROGRESS, GRID, TIMELINE) =====
+        const kpiCard = (title, value, accentColor) => ({
+            table: {
+                widths: ['*'],
+                body: [[
+                    {
+                        stack: [
+                            { text: title.toUpperCase(), fontSize: 6.5, bold: true, color: '#64748B', letterSpacing: 0.5, margin: [0, 0, 0, 4] },
+                            { text: value, fontSize: 11.5, bold: true, color: '#1E293B' }
+                        ],
+                        margin: [8, 6, 8, 6]
+                    }
+                ]]
+            },
+            layout: {
+                hLineWidth: () => 0.5,
+                vLineWidth: (i) => i === 0 ? 3 : 0.5,
+                hLineColor: () => '#E2E8F0',
+                vLineColor: (i) => i === 0 ? accentColor : '#E2E8F0',
+                fillColor: () => '#FFFFFF'
+            }
+        });
+
+        const largeKpiCard = (title, value, accentColor) => ({
+            table: {
+                widths: ['*'],
+                body: [[
+                    {
+                        stack: [
+                            { text: title.toUpperCase(), fontSize: 7, bold: true, color: '#64748B', letterSpacing: 0.5, margin: [0, 0, 0, 3] },
+                            { text: value, fontSize: 13, bold: true, color: '#1E293B' }
+                        ],
+                        margin: [10, 8, 10, 8]
+                    }
+                ]]
+            },
+            layout: {
+                hLineWidth: () => 0.5,
+                vLineWidth: (i) => i === 0 ? 4 : 0.5,
+                hLineColor: () => '#E2E8F0',
+                vLineColor: (i) => i === 0 ? accentColor : '#E2E8F0',
+                fillColor: () => '#FFFFFF'
+            },
+            margin: [0, 0, 0, 6]
+        });
+
+        const progressBar = (pct, color, width = 210, height = 5) => {
+            return {
+                canvas: [
+                    { type: 'rect', x: 0, y: 0, w: width, h: height, r: height / 2, color: '#F1F5F9' },
+                    { type: 'rect', x: 0, y: 0, w: Math.max(0, Math.min(width, (pct / 100) * width)), h: height, r: height / 2, color: color }
+                ],
+                margin: [0, 5, 0, 5]
+            };
+        };
+
+        const progressCard = (title, pct, color, isLarge = false) => {
+            const width = isLarge ? 220 : 210;
+            const height = isLarge ? 8 : 5;
+            const labelSize = isLarge ? 8.5 : 7.5;
+            const pctSize = isLarge ? 14 : 11;
+            return {
+                table: {
+                    widths: ['*'],
+                    body: [[
+                        {
+                            stack: [
+                                {
+                                    columns: [
+                                        { text: title.toUpperCase(), fontSize: labelSize, bold: true, color: '#64748B', width: '*' },
+                                        { text: `${(pct || 0).toFixed(1)}%`, fontSize: pctSize, bold: true, color: color, width: 'auto' }
+                                    ],
+                                    margin: [0, 0, 0, 4]
+                                },
+                                progressBar(pct, color, width, height)
+                            ],
+                            margin: isLarge ? [12, 10, 12, 10] : [10, 8, 10, 8]
+                        }
+                    ]]
+                },
+                layout: {
+                    hLineWidth: () => 0.5,
+                    vLineWidth: (i) => i === 0 ? 3 : 0.5,
+                    hLineColor: () => '#E2E8F0',
+                    vLineColor: (i) => i === 0 ? color : '#E2E8F0',
+                    fillColor: () => '#FFFFFF'
+                }
+            };
+        };
+
+        const infoGridCard = (label, value) => ({
+            table: {
+                widths: ['*'],
+                body: [[
+                    {
+                        stack: [
+                            { text: label.toUpperCase(), fontSize: 6.5, bold: true, color: '#64748B', letterSpacing: 0.5, margin: [0, 0, 0, 2] },
+                            { text: String(value ?? '-'), fontSize: 9, bold: true, color: '#1E293B' }
+                        ],
+                        margin: [8, 6, 8, 6]
+                    }
+                ]]
+            },
+            layout: {
+                hLineWidth: () => 0.5,
+                vLineWidth: () => 0.5,
+                hLineColor: () => '#E2E8F0',
+                vLineColor: () => '#E2E8F0',
+                fillColor: () => '#FFFFFF'
+            }
+        });
+
+        const highlightedInfoGridCard = (label, value, accentColor = '#018D38', bgColor = '#F0FDFA') => ({
+            table: {
+                widths: ['*'],
+                body: [[
+                    {
+                        stack: [
+                            { text: label.toUpperCase(), fontSize: 6.5, bold: true, color: accentColor, letterSpacing: 0.5, margin: [0, 0, 0, 2] },
+                            { text: String(value ?? '-'), fontSize: 9.5, bold: true, color: '#1E293B' }
+                        ],
+                        margin: [8, 6, 8, 6]
+                    }
+                ]]
+            },
+            layout: {
+                hLineWidth: () => 0.5,
+                vLineWidth: (i) => i === 0 ? 3 : 0.5,
+                hLineColor: () => '#E2E8F0',
+                vLineColor: (i) => i === 0 ? accentColor : '#E2E8F0',
+                fillColor: () => bgColor
+            }
+        });
+
+        const timelineMilestone = (title, date, completed) => ({
+            stack: [
+                {
+                    canvas: [
+                        { type: 'rect', x: 0, y: 0, w: 100, h: 4, r: 2, color: completed ? '#018D38' : '#E2E8F0' },
+                        { type: 'circle', cx: 50, cy: 2, r: 5, color: completed ? '#0B5640' : '#64748B' }
+                    ],
+                    margin: [0, 0, 0, 4]
+                },
+                { text: title.toUpperCase(), fontSize: 6.5, bold: true, color: '#64748B', alignment: 'center' },
+                { text: date || '-', fontSize: 8, bold: true, color: '#1E293B', alignment: 'center', margin: [0, 2, 0, 0] }
+            ]
+        });
+
+        const alertCard = (title, desc, color) => ({
+            table: {
+                widths: ['*'],
+                body: [[
+                    {
+                        stack: [
+                            { text: title.toUpperCase(), fontSize: 7, bold: true, color: color, letterSpacing: 0.5, margin: [0, 0, 0, 2] },
+                            { text: desc, fontSize: 8, color: '#475569' }
+                        ],
+                        margin: [8, 6, 8, 6]
+                    }
+                ]]
+            },
+            layout: {
+                hLineWidth: () => 0.5,
+                vLineWidth: (i) => i === 0 ? 3 : 0.5,
+                hLineColor: () => '#E2E8F0',
+                vLineColor: (i) => i === 0 ? color : '#E2E8F0',
+                fillColor: () => '#FFFFFF'
+            },
+            margin: [0, 2, 0, 4]
+        });
+
+        // ===== 4. COMPILE ALERTS DYNAMICALLY =====
+        const alertsList = [];
+        const today = new Date();
+        const estStr = String(row['ESTADO CONVENIO'] || '').toLowerCase();
+        const isLiquidado = estStr.includes('liquidado') || estStr.includes('resciliado');
+
+        if (!isLiquidado) {
+            const fisico = row['FISICO_NORM'] || 0;
+            const financiero = row['FINANCIERO_NORM'] || 0;
+            const desembolsado = row['VALOR TOTAL DESEMBOLSADO'] || 0;
+            const suspMeses = row['PRORROGA (MESES)'] || row['SUSPENSION(MESES)'] || 0;
+            const tieneFotos = String(row['TIENE_FOTOS'] || 'SI').toUpperCase();
+            
+            let termStr = row['NUEVA FECHA DE TERMINACION'] || row['FECHA DE TERMINACION'];
+            let termDate = parseCOPDate(termStr);
+
+            if (termDate && termDate >= today) {
+                const msLeft = termDate.getTime() - today.getTime();
+                const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+                if (daysLeft <= 30) {
+                    alertsList.push({ title: 'Próximo a Terminar', desc: `Faltan ${daysLeft} días para la terminación (${termStr}).`, color: '#F28E18' });
+                }
+            }
+            if (termDate && termDate < today) {
+                const msPassed = today.getTime() - termDate.getTime();
+                const monthsPassed = msPassed / (1000 * 60 * 60 * 24 * 30.43);
+                if (monthsPassed >= 24) {
+                    alertsList.push({ title: 'Riesgo: Pérdida de Competencia', desc: `Vencido hace ${monthsPassed.toFixed(1)} meses. Límite legal de competencia de 30 meses en riesgo extremo.`, color: '#A90F09' });
+                } else {
+                    alertsList.push({ title: 'Vencido sin liquidar', desc: `El convenio finalizó el ${termStr} y sigue en estado abierto.`, color: '#A90F09' });
+                }
+            }
+            if (financiero > fisico + 15) {
+                alertsList.push({ title: 'Desfase Financiero Crítico', desc: `Avance financiero (${financiero.toFixed(1)}%) supera al físico (${fisico.toFixed(1)}%) por más de 15%.`, color: '#3561AB' });
+            }
+            if (tieneFotos === 'NO') {
+                alertsList.push({ title: 'Sin Evidencia Fotográfica', desc: `El convenio no registra fotografías cargadas en el sistema.`, color: '#A90F09' });
+            }
+            if (estStr.includes('suspendido') && suspMeses >= 3) {
+                alertsList.push({ title: 'Suspensión Prolongada', desc: `Acumula ${suspMeses} meses de suspensión.`, color: '#F28E18' });
+            }
+            if (estStr.includes('ejecución') && desembolsado === 0) {
+                alertsList.push({ title: 'Cero Desembolsos en Ejecución', desc: `Convenio en ejecución pero no hay desembolsos registrados.`, color: '#F28E18' });
             }
         }
 
-        // ===== 4. GALERÍA DE FOTOS DINÁMICA (Multi-página) =====
-        const photoContent = [];
-        if (hasPhotos) {
-            const createPhotoPlaceholder = (stage) => ({
-                table: {
-                    widths: ['*'],
-                    body: [[{
-                        stack: [
-                            { text: 'REGISTRO FOTOGRÁFICO', alignment: 'center', fontSize: 8, bold: true, color: '#94a3b8', margin: [0, 42, 0, 0] },
-                            { text: `NO DISPONIBLE (${stage.toUpperCase()})`, alignment: 'center', fontSize: 7, color: '#94a3b8', margin: [0, 2, 0, 42] }
-                        ]
-                    }]]
-                },
-                layout: {
-                    hLineWidth: () => 1,
-                    vLineWidth: () => 1,
-                    hLineColor: () => '#cbd5e1',
-                    vLineColor: () => '#cbd5e1',
-                    hLineDash: () => ({ length: 4, space: 4 }),
-                    vLineDash: () => ({ length: 4, space: 4 })
-                },
-                fillColor: '#f8fafc',
-                margin: [0, 4, 0, 10]
-            });
-
-            if (validAntes.length === 0 && validDespues.length > 0) {
-                // Chunk into pages of 4 photos (2x2 grid)
-                const itemsPerPage = 4;
-                for (let i = 0; i < validDespues.length; i += itemsPerPage) {
-                    const chunk = validDespues.slice(i, i + itemsPerPage);
-                    const pageIndex = Math.floor(i / itemsPerPage);
-                    
-                    if (pageIndex === 0) {
-                        photoContent.push(createSectionHeader('4. REGISTRO FOTOGRÁFICO DE OBRA', 'before'));
-                        photoContent.push({ text: 'Registro Fotográfico (Después de la Intervención)', style: 'subHeader' });
-                    } else {
-                        photoContent.push(createSectionHeader('4. REGISTRO FOTOGRÁFICO DE OBRA (CONTINUACIÓN)', 'before'));
-                        photoContent.push({ text: 'Registro Fotográfico (Después de la Intervención - Continuación)', style: 'subHeader' });
-                    }
-
-                    const chunkRows = [];
-                    for (let j = 0; j < chunk.length; j += 2) {
-                        const imgIndexLeft = i + j;
-                        const left = {
-                            stack: [
-                                { text: `REGISTRO DESPUÉS - IMAGEN ${imgIndexLeft + 1}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
-                                { image: chunk[j], width: 235, height: 176, alignment: 'center', margin: [0, 0, 0, 10] }
-                            ],
-                            margin: [0, 4, 6, 4]
-                        };
-                        const right = chunk[j + 1] ? {
-                            stack: [
-                                { text: `REGISTRO DESPUÉS - IMAGEN ${imgIndexLeft + 2}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
-                                { image: chunk[j + 1], width: 235, height: 176, alignment: 'center', margin: [0, 0, 0, 10] }
-                            ],
-                            margin: [6, 4, 0, 4]
-                        } : { text: '', margin: [6, 4, 0, 4] };
-                        chunkRows.push([left, right]);
-                    }
-                    photoContent.push({ table: { widths: ['*', '*'], body: chunkRows }, layout: 'noBorders', margin: [0, 4, 0, 0] });
-                }
-            } else if (validDespues.length === 0 && validAntes.length > 0) {
-                // Chunk into pages of 4 photos (2x2 grid)
-                const itemsPerPage = 4;
-                for (let i = 0; i < validAntes.length; i += itemsPerPage) {
-                    const chunk = validAntes.slice(i, i + itemsPerPage);
-                    const pageIndex = Math.floor(i / itemsPerPage);
-                    
-                    if (pageIndex === 0) {
-                        photoContent.push(createSectionHeader('4. REGISTRO FOTOGRÁFICO DE OBRA', 'before'));
-                        photoContent.push({ text: 'Registro Fotográfico (Antes de la Intervención)', style: 'subHeader' });
-                    } else {
-                        photoContent.push(createSectionHeader('4. REGISTRO FOTOGRÁFICO DE OBRA (CONTINUACIÓN)', 'before'));
-                        photoContent.push({ text: 'Registro Fotográfico (Antes de la Intervención - Continuación)', style: 'subHeader' });
-                    }
-
-                    const chunkRows = [];
-                    for (let j = 0; j < chunk.length; j += 2) {
-                        const imgIndexLeft = i + j;
-                        const left = {
-                            stack: [
-                                { text: `REGISTRO ANTES - IMAGEN ${imgIndexLeft + 1}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
-                                { image: chunk[j], width: 235, height: 176, alignment: 'center', margin: [0, 0, 0, 10] }
-                            ],
-                            margin: [0, 4, 6, 4]
-                        };
-                        const right = chunk[j + 1] ? {
-                            stack: [
-                                { text: `REGISTRO ANTES - IMAGEN ${imgIndexLeft + 2}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
-                                { image: chunk[j + 1], width: 235, height: 176, alignment: 'center', margin: [0, 0, 0, 10] }
-                            ],
-                            margin: [6, 4, 0, 4]
-                        } : { text: '', margin: [6, 4, 0, 4] };
-                        chunkRows.push([left, right]);
-                    }
-                    photoContent.push({ table: { widths: ['*', '*'], body: chunkRows }, layout: 'noBorders', margin: [0, 4, 0, 0] });
-                }
-            } else {
-                // Both present: Comparative display (Antes vs Después side-by-side)
-                // Chunk into pages of 3 comparison rows
-                const maxPhotos = Math.max(validAntes.length, validDespues.length);
-                const itemsPerPage = 3;
-                for (let i = 0; i < maxPhotos; i += itemsPerPage) {
-                    const pageIndex = Math.floor(i / itemsPerPage);
-                    
-                    if (pageIndex === 0) {
-                        photoContent.push(createSectionHeader('4. REGISTRO FOTOGRÁFICO DE OBRA', 'before'));
-                        photoContent.push({ text: 'Registro Fotográfico Comparativo (Antes vs Después)', style: 'subHeader' });
-                    } else {
-                        photoContent.push(createSectionHeader('4. REGISTRO FOTOGRÁFICO DE OBRA (CONTINUACIÓN)', 'before'));
-                        photoContent.push({ text: 'Registro Fotográfico Comparativo (Antes vs Después - Continuación)', style: 'subHeader' });
-                    }
-
-                    const chunkRows = [];
-                    const limit = Math.min(i + itemsPerPage, maxPhotos);
-                    for (let k = i; k < limit; k++) {
-                        const left = validAntes[k] 
-                            ? {
-                                stack: [
-                                    { text: `REGISTRO ANTES - IMAGEN ${k + 1}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
-                                    { image: validAntes[k], width: 235, height: 176, alignment: 'center', margin: [0, 0, 0, 10] }
-                                ],
-                                margin: [0, 4, 6, 4]
-                            }
-                            : {
-                                stack: [
-                                    { text: `REGISTRO ANTES - IMAGEN ${k + 1}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
-                                    createPhotoPlaceholder('Antes')
-                                ],
-                                margin: [0, 4, 6, 4]
-                            };
-                        
-                        const right = validDespues[k] 
-                            ? {
-                                stack: [
-                                    { text: `REGISTRO DESPUÉS - IMAGEN ${k + 1}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
-                                    { image: validDespues[k], width: 235, height: 176, alignment: 'center', margin: [0, 0, 0, 10] }
-                                ],
-                                margin: [6, 4, 0, 4]
-                            }
-                            : {
-                                stack: [
-                                    { text: `REGISTRO DESPUÉS - IMAGEN ${k + 1}`, alignment: 'center', fontSize: 7.5, bold: true, margin: [0, 0, 0, 3], color: '#475569' },
-                                    createPhotoPlaceholder('Después')
-                                ],
-                                margin: [6, 4, 0, 4]
-                            };
-                        chunkRows.push([left, right]);
-                    }
-                    photoContent.push({ table: { widths: ['*', '*'], body: chunkRows }, layout: 'noBorders', margin: [0, 4, 0, 0] });
-                }
-            }
-        } else {
-            // No photos at all
-            photoContent.push(createSectionHeader('4. REGISTRO FOTOGRÁFICO DE OBRA', 'before'));
-            photoContent.push({ text: 'Registro Fotográfico Comparativo (Estandarizado)', style: 'subHeader' });
-            photoContent.push({ 
-                table: {
-                    widths: ['*'],
-                    body: [[{
-                        stack: [
-                            { text: 'REGISTRO FOTOGRÁFICO DE OBRA', alignment: 'center', fontSize: 10, bold: true, color: '#94a3b8', margin: [0, 60, 0, 0] },
-                            { text: 'NO SE DISPONE DE IMÁGENES ASOCIADAS PARA ESTE CONVENIO', alignment: 'center', fontSize: 8.5, color: '#cbd5e1', margin: [0, 4, 0, 60] }
-                        ]
-                    }]]
-                },
-                layout: {
-                    hLineWidth: () => 1,
-                    vLineWidth: () => 1,
-                    hLineColor: () => '#cbd5e1',
-                    vLineColor: () => '#cbd5e1',
-                    hLineDash: () => ({ length: 4, space: 4 }),
-                    vLineDash: () => ({ length: 4, space: 4 })
-                },
-                fillColor: '#f8fafc',
-                margin: [0, 4, 0, 10]
-            });
-        }
-
-        // ===== 5. FECHA DE GENERACIÓN =====
+        // ===== 5. GENERAL INFORMATION VALUES =====
         const generatedAt = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-        // Calculate dynamic contracted/executed labels and values (length and/or area)
         let labelContratado = 'Alcance Contratado';
         let valContratado = '';
         const rawAlcanceM = row['ALCANCE (M)'] || getVal(['ALCANCE (M)']);
@@ -919,239 +942,462 @@ async function generateProfessionalPDF(row) {
             valEjecutado = 'N/A';
         }
 
-        // Logo fallback table layout
+        // Parse duration & dates
+        let plazoInicial = 0;
+        for (let key in row) {
+            if (key.toUpperCase().trim() === 'PLAZO INICIAL' || key.toUpperCase().trim().includes('PLAZO INICIAL')) {
+                plazoInicial = parseInt(row[key]) || 0;
+                break;
+            }
+        }
+        if (!plazoInicial) {
+            plazoInicial = parseInt(row['PLAZO INICIAL'] || row['PLAZO_INICIAL'] || 0) || 0;
+        }
+        const prorrogas = parseInt(row['PRORROGA (MESES)'] || row['PRÓRROGA (MESES)'] || row['PRRROGA (MESES)'] || 0) || 0;
+        const suspensiones = parseInt(row['SUSPENSION(MESES)'] || row['SUSPENSIÓN(MESES)'] || row['SUSPENSIN(MESES)'] || 0) || 0;
+        const plazoTotal = plazoInicial + prorrogas;
+
+        const termOriginalStr = String(row['FECHA DE TERMINACION'] || row['FECHA DE TERMINACIÓN'] || row['FECHA DE TERMINACIN'] || getVal(['FECHA DE TERMINAC'], false) || '-').trim();
+        const termNuevaStr = String(row['NUEVA FECHA DE TERMINACION'] || row['NUEVA FECHA DE TERMINACIÓN'] || row['NUEVA FECHA DE TERMINACIN'] || getVal(['NUEVA FECHA DE TERMINAC'], false) || 'Sin cambios').trim();
+
         const logoElement = logoBase64 
-            ? { image: logoBase64, width: 38, margin: [0, 2, 8, 0] } 
+            ? { image: logoBase64, width: 34, margin: [0, 2, 8, 0] } 
             : {
                 table: {
-                    widths: [44],
-                    body: [[{
-                        text: 'GOB\nANT',
-                        fontSize: 7,
-                        bold: true,
-                        color: '#ffffff',
-                        fillColor: '#0B5640',
-                        alignment: 'center',
-                        margin: [0, 10, 0, 10]
-                    }]]
+                    widths: [40],
+                    body: [[{ text: 'GOB\nANT', fontSize: 7, bold: true, color: '#ffffff', fillColor: '#0B5640', alignment: 'center', margin: [0, 8, 0, 8] }]]
                 },
                 layout: 'noBorders',
-                margin: [0, 0, 10, 0]
+                margin: [0, 0, 8, 0]
               };
 
-        // ===== 6. DEFINICIÓN DEL DOCUMENTO =====
+        // ===== 6. TRAMS & GEOGRAPHIC RECORDS =====
+        let geoRows = [];
+        if (currentExtractedFeatures && currentExtractedFeatures.length > 0) {
+            geoRows = currentExtractedFeatures.map(feat => {
+                const c = getCoords(feat.layer) || { start: 'N/A', end: 'N/A' };
+                return [tdCell(feat.name), tdRight(c.start), tdRight(c.end)];
+            });
+        } else {
+            const la = parseFloat(row['LATITUD']), lo = parseFloat(row['LONGITUD']);
+            if (!isNaN(la) && !isNaN(lo) && la !== 0) {
+                geoRows = [[tdCell('Punto de Referencia Único (Coordenadas Centrales)'), tdRight(`${la.toFixed(6)}, ${lo.toFixed(6)}`), tdRight(`${la.toFixed(6)}, ${lo.toFixed(6)}`)]];
+            } else {
+                geoRows = [[{ text: 'No hay datos geográficos disponibles para este convenio.', colSpan: 3, alignment: 'center', italics: true, fontSize: 8, color: '#94a3b8', margin: [6, 6, 6, 6] }, {}, {}]];
+            }
+        }
+
+        // ===== 7. PHOTO GALLERY COMPONENT =====
+        const photoCard = (base64Img, caption) => ({
+            table: {
+                widths: ['*'],
+                body: [
+                    [{ image: base64Img, width: 210, height: 140, alignment: 'center' }],
+                    [{ text: caption.toUpperCase(), alignment: 'center', fontSize: 7, bold: true, color: '#64748B', margin: [0, 4, 0, 4] }]
+                ]
+            },
+            layout: {
+                hLineWidth: () => 0.5,
+                vLineWidth: () => 0.5,
+                hLineColor: () => '#E2E8F0',
+                vLineColor: () => '#E2E8F0',
+                fillColor: () => '#FFFFFF'
+            },
+            margin: [0, 4, 0, 8]
+        });
+
+        const createPhotoPlaceholder = (stage) => ({
+            table: {
+                widths: ['*'],
+                body: [[{
+                    stack: [
+                        { text: 'REGISTRO FOTOGRÁFICO', alignment: 'center', fontSize: 8, bold: true, color: '#94a3b8', margin: [0, 30, 0, 0] },
+                        { text: `NO DISPONIBLE (${stage.toUpperCase()})`, alignment: 'center', fontSize: 7, color: '#cbd5e1', margin: [0, 2, 0, 30] }
+                    ]
+                }]]
+            },
+            layout: {
+                hLineWidth: () => 1,
+                vLineWidth: () => 1,
+                hLineColor: () => '#cbd5e1',
+                vLineColor: () => '#cbd5e1',
+                hLineDash: () => ({ length: 4, space: 4 }),
+                vLineDash: () => ({ length: 4, space: 4 })
+            },
+            fillColor: '#F8FAFC',
+            margin: [0, 4, 0, 8]
+        });
+
+        const photoContent = [];
+        if (hasPhotos) {
+            if (validAntes.length === 0 && validDespues.length > 0) {
+                const itemsPerPage = 6;
+                for (let i = 0; i < validDespues.length; i += itemsPerPage) {
+                    const chunk = validDespues.slice(i, i + itemsPerPage);
+                    const pageIndex = Math.floor(i / itemsPerPage);
+                    photoContent.push(createSectionHeader(pageIndex === 0 ? '5. REGISTRO FOTOGRÁFICO DE OBRA' : '5. REGISTRO FOTOGRÁFICO DE OBRA (CONTINUACIÓN)', 'before'));
+                    photoContent.push({ text: 'Registro Fotográfico (Después de la Intervención)', fontSize: 9, bold: true, color: '#0B5640', margin: [0, 4, 0, 4] });
+                    const chunkRows = [];
+                    for (let j = 0; j < chunk.length; j += 2) {
+                        const imgIndexLeft = i + j;
+                        const left = photoCard(chunk[j], `Registro Después - Imagen ${imgIndexLeft + 1}`);
+                        const right = chunk[j + 1] ? photoCard(chunk[j + 1], `Registro Después - Imagen ${imgIndexLeft + 2}`) : { text: '', margin: [6, 4, 0, 4] };
+                        chunkRows.push([left, right]);
+                    }
+                    photoContent.push({ table: { widths: ['*', '*'], body: chunkRows }, layout: 'noBorders', margin: [0, 4, 0, 0] });
+                }
+            } else if (validDespues.length === 0 && validAntes.length > 0) {
+                const itemsPerPage = 6;
+                for (let i = 0; i < validAntes.length; i += itemsPerPage) {
+                    const chunk = validAntes.slice(i, i + itemsPerPage);
+                    const pageIndex = Math.floor(i / itemsPerPage);
+                    photoContent.push(createSectionHeader(pageIndex === 0 ? '5. REGISTRO FOTOGRÁFICO DE OBRA' : '5. REGISTRO FOTOGRÁFICO DE OBRA (CONTINUACIÓN)', 'before'));
+                    photoContent.push({ text: 'Registro Fotográfico (Antes de la Intervención)', fontSize: 9, bold: true, color: '#0B5640', margin: [0, 4, 0, 4] });
+                    const chunkRows = [];
+                    for (let j = 0; j < chunk.length; j += 2) {
+                        const imgIndexLeft = i + j;
+                        const left = photoCard(chunk[j], `Registro Antes - Imagen ${imgIndexLeft + 1}`);
+                        const right = chunk[j + 1] ? photoCard(chunk[j + 1], `Registro Antes - Imagen ${imgIndexLeft + 2}`) : { text: '', margin: [6, 4, 0, 4] };
+                        chunkRows.push([left, right]);
+                    }
+                    photoContent.push({ table: { widths: ['*', '*'], body: chunkRows }, layout: 'noBorders', margin: [0, 4, 0, 0] });
+                }
+            } else {
+                const maxPhotos = Math.max(validAntes.length, validDespues.length);
+                const itemsPerPage = 3; 
+                for (let i = 0; i < maxPhotos; i += itemsPerPage) {
+                    const pageIndex = Math.floor(i / itemsPerPage);
+                    photoContent.push(createSectionHeader(pageIndex === 0 ? '5. REGISTRO FOTOGRÁFICO DE OBRA' : '5. REGISTRO FOTOGRÁFICO DE OBRA (CONTINUACIÓN)', 'before'));
+                    photoContent.push({ text: 'Registro Fotográfico Comparativo (Antes vs Después)', fontSize: 9, bold: true, color: '#0B5640', margin: [0, 4, 0, 4] });
+                    const chunkRows = [];
+                    const limit = Math.min(i + itemsPerPage, maxPhotos);
+                    for (let k = i; k < limit; k++) {
+                        const left = validAntes[k] ? photoCard(validAntes[k], `Registro Antes - Imagen ${k + 1}`) : createPhotoPlaceholder('Antes');
+                        const right = validDespues[k] ? photoCard(validDespues[k], `Registro Después - Imagen ${k + 1}`) : createPhotoPlaceholder('Después');
+                        chunkRows.push([left, right]);
+                    }
+                    photoContent.push({ table: { widths: ['*', '*'], body: chunkRows }, layout: 'noBorders', margin: [0, 4, 0, 0] });
+                }
+            }
+        } else {
+            photoContent.push(createSectionHeader('5. REGISTRO FOTOGRÁFICO DE OBRA', 'before'));
+            photoContent.push({ text: 'Registro Fotográfico Comparativo (Estandarizado)', fontSize: 9, bold: true, color: '#0B5640', margin: [0, 4, 0, 4] });
+            photoContent.push({ 
+                table: {
+                    widths: ['*'],
+                    body: [[{
+                        stack: [
+                            { text: 'REGISTRO FOTOGRÁFICO DE OBRA', alignment: 'center', fontSize: 10, bold: true, color: '#94a3b8', margin: [0, 40, 0, 0] },
+                            { text: 'NO SE DISPONE DE IMÁGENES ASOCIADAS PARA ESTE CONVENIO', alignment: 'center', fontSize: 8.5, color: '#cbd5e1', margin: [0, 4, 0, 40] }
+                        ]
+                    }]]
+                },
+                layout: {
+                    hLineWidth: () => 1,
+                    vLineWidth: () => 1,
+                    hLineColor: () => '#cbd5e1',
+                    vLineColor: () => '#cbd5e1',
+                    hLineDash: () => ({ length: 4, space: 4 }),
+                    vLineDash: () => ({ length: 4, space: 4 })
+                },
+                fillColor: '#F8FAFC',
+                margin: [0, 4, 0, 10]
+            });
+        }
+
+        // ===== 8. DOCUMENT DEFINTION (LETTER VERTICAL, 20MM MARGINS) =====
         const docDefinition = {
-            pageSize: 'A4',
+            pageSize: 'LETTER',
             pageOrientation: 'portrait',
-            pageMargins: [40, 60, 40, 45],
+            pageMargins: [56.7, 56.7, 56.7, 56.7],
+
+            defaultStyle: {
+                font: 'Poppins',
+                fontSize: 10,
+                color: '#1E293B'
+            },
 
             header: (currentPage, pageCount) => ({
-                margin: [40, 18, 40, 0],
+                margin: [56.7, 18, 56.7, 0],
                 columns: [
-                    { text: `Secretaría de Infraestructura · Gobernación de Antioquia · Ficha Convenio ${row['CONVENIO']}`, fontSize: 7.5, color: '#64748b' },
-                    { text: `Página ${currentPage} de ${pageCount}`, alignment: 'right', fontSize: 7.5, color: '#64748b' }
+                    { text: `Secretaría de Infraestructura Física · Ficha Convenio ${row['CONVENIO']}`, fontSize: 7, color: '#94A3B8', font: 'Poppins' },
+                    { text: `Página ${currentPage} de ${pageCount}`, alignment: 'right', fontSize: 7, color: '#94A3B8', font: 'Poppins', bold: true }
                 ]
             }),
 
-            footer: () => ({
-                margin: [40, 8, 40, 0],
-                text: `Generado el ${generatedAt} · Ficha de Seguimiento Técnico Contractual Convenios DIAT`,
-                alignment: 'center', fontSize: 7, color: '#94a3b8'
+            footer: (currentPage, pageCount) => ({
+                margin: [56.7, 10, 56.7, 0],
+                columns: [
+                    { text: 'Gobernación de Antioquia\nSecretaría de Infraestructura Física', fontSize: 6.5, color: '#94A3B8', font: 'Poppins' },
+                    { text: 'Dirección de Infraestructura y Apoyo Territorial\nFicha de Seguimiento Técnico Contractual', fontSize: 6.5, color: '#94A3B8', alignment: 'center', font: 'Poppins' },
+                    { text: `Generado: ${generatedAt}`, fontSize: 6.5, color: '#94A3B8', alignment: 'right', font: 'Poppins' }
+                ]
             }),
 
             content: [
                 // ============================================================
-                // PÁGINA 1 – PORTADA Y RESUMEN EJECUTIVO
+                // PÁGINA 1 – INFORMACIÓN GENERAL Y OBSERVACIONES/ALERTAS
                 // ============================================================
                 {
-                    columns: [
-                        logoElement,
-                        {
-                            stack: [
-                                { text: 'FICHA TÉCNICA DE SEGUIMIENTO', fontSize: 14.5, bold: true, color: '#0f172a', letterSpacing: 0.5 },
-                                { text: 'Secretaría de Infraestructura · Gobernación de Antioquia', fontSize: 8.5, color: '#0B5640', bold: true, margin: [0, 2, 0, 0] }
-                            ],
-                            margin: [0, 5, 0, 0],
-                            width: '*'
-                        },
-                        {
-                            stack: [
-                                { text: 'CONVENIO N°', fontSize: 7.5, color: '#64748b', alignment: 'right' },
-                                { text: String(row['CONVENIO']), fontSize: 15, bold: true, color: '#0B5640', alignment: 'right' }
-                            ],
-                            margin: [0, 4, 0, 0],
-                            width: 'auto'
-                        }
-                    ],
-                    margin: [0, 0, 0, 6]
-                },
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#018D38' }], margin: [0, 0, 0, 12] },
-
-                createSectionHeader('1. IDENTIFICACIÓN DEL PROYECTO'),
-                {
                     table: {
-                        widths: ['*', 'auto', 'auto', '*'],
+                        widths: ['*'],
                         body: [
-                            [thCell('Municipio'), thCell('Vigencia'), thCell('Estado Contractual'), thCell('Clasificación')],
                             [
-                                tdCell(row['MUNICIPIO']),
-                                tdCell(row['VIGENCIA']),
-                                { text: sysState.label, fontSize: 8.5, bold: true, color: sysState.hex, margin: [6, 3.5, 6, 3.5] },
-                                tdCell(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'])
+                                {
+                                    canvas: [{ type: 'rect', x: 0, y: 0, w: 498, h: 4, r: 2, color: '#018D38' }],
+                                    margin: [-10, -10, -10, 6]
+                                }
+                            ],
+                            [
+                                {
+                                    columns: [
+                                        logoElement,
+                                        {
+                                            stack: [
+                                                { text: 'FICHA TÉCNICA DE SEGUIMIENTO', fontSize: 8.5, bold: true, color: '#64748B', letterSpacing: 0.8 },
+                                                { text: `Convenio N° ${row['CONVENIO']}`, fontSize: 16, bold: true, color: '#0B5640', margin: [0, 2, 0, 2] },
+                                                { text: `Objeto: ${row['OBJETO'] ? (row['OBJETO'].length > 120 ? row['OBJETO'].substring(0, 120) + '...' : row['OBJETO']) : 'N/A'}`, fontSize: 8.5, color: '#475569', lineHeight: 1.2 }
+                                            ],
+                                            width: '*'
+                                        },
+                                        {
+                                            stack: [
+                                                { text: 'ESTADO', fontSize: 7, bold: true, color: '#64748B', alignment: 'right' },
+                                                {
+                                                    table: {
+                                                        body: [[{ text: sysState.label.toUpperCase(), fontSize: 8, bold: true, color: '#FFFFFF', alignment: 'center', margin: [6, 3, 6, 3] }]]
+                                                    },
+                                                    layout: { defaultBorder: false, fillColor: sysState.hex },
+                                                    margin: [0, 3, 0, 4],
+                                                    alignment: 'right'
+                                                },
+                                                { text: `Corte: ${new Date().toLocaleDateString('es-CO')}`, fontSize: 7, color: '#94A3B8', alignment: 'right' }
+                                            ],
+                                            width: 'auto',
+                                            margin: [10, 0, 0, 0]
+                                        }
+                                    ],
+                                    margin: [10, 0, 10, 8]
+                                }
                             ]
                         ]
                     },
-                    layout: 'lightHorizontalLines',
-                    margin: [0, 0, 0, 12]
-                },
-
-                // KPIs Avance Físico y Financiero
-                {
-                    columns: [
-                        {
-                            table: {
-                                widths: ['*'],
-                                body: [[{
-                                    stack: [
-                                        { text: 'AVANCE FÍSICO REAL', fontSize: 7.5, bold: true, color: '#0B5640', alignment: 'center', margin: [0, 4, 0, 2] },
-                                        { text: `${(row['FISICO_NORM'] || 0).toFixed(1)}%`, fontSize: 24, bold: true, color: '#0B5640', alignment: 'center', margin: [0, 0, 0, 4] }
-                                    ]
-                                }]]
-                            },
-                            layout: { defaultBorder: false, fillColor: '#F0FDFA' },
-                            margin: [0, 0, 6, 0]
-                        },
-                        {
-                            table: {
-                                widths: ['*'],
-                                body: [[{
-                                    stack: [
-                                        { text: 'AVANCE FINANCIERO EJECUTADO', fontSize: 7.5, bold: true, color: '#3561AB', alignment: 'center', margin: [0, 4, 0, 2] },
-                                        { text: `${(row['FINANCIERO_NORM'] || 0).toFixed(1)}%`, fontSize: 24, bold: true, color: '#3561AB', alignment: 'center', margin: [0, 0, 0, 4] }
-                                    ]
-                                }]]
-                            },
-                            layout: { defaultBorder: false, fillColor: '#eff6ff' },
-                            margin: [6, 0, 0, 0]
-                        }
-                    ],
-                    margin: [0, 0, 0, 12]
-                },
-
-                createSectionHeader('RESUMEN EJECUTIVO'),
-                {
-                    table: {
-                        widths: ['28%', '72%'],
-                        body: [
-                            [{ text: 'Objeto del Convenio', style: 'fieldLabel' }, { text: row['OBJETO'] || 'Sin objeto definido.', style: 'fieldValue', alignment: 'justify' }],
-                            (String(row['CONVENIANTE EJECUTOR'] || '').toUpperCase().trim() && String(row['CONVENIANTE EJECUTOR'] || '').toUpperCase().trim() !== String(row['MUNICIPIO'] || '').toUpperCase().trim()) 
-                                ? [{ text: 'Conveniente Ejecutor', style: 'fieldLabel' }, { text: row['CONVENIANTE EJECUTOR'], style: 'fieldValue' }] 
-                                : null,
-                            [{ text: 'Vía Priorizada', style: 'fieldLabel' }, { text: row['VIA_PRIORIZADA'] || 'N/A', style: 'fieldValue' }],
-                            [{ text: labelContratado, style: 'fieldLabel' }, { text: valContratado, style: 'fieldValue' }],
-                            [{ text: labelEjecutado, style: 'fieldLabel' }, { text: valEjecutado, style: 'fieldValue' }],
-                            [{ text: 'Supervisor', style: 'fieldLabel' }, { text: row['SUPERVISOR'] || getVal(['SUPERVISOR']) || 'Sin Asignar', style: 'fieldValue' }],
-                            [{ text: 'Observaciones', style: 'fieldLabel' }, { text: row['OBSERVACIONES'] || 'Sin observaciones registradas.', style: 'fieldValue', color: '#475569', alignment: 'justify' }]
-                        ].filter(Boolean)
+                    layout: {
+                        hLineWidth: (i) => (i === 0 || i === 2) ? 0.5 : 0,
+                        vLineWidth: (i) => (i === 0 || i === 1) ? 0.5 : 0,
+                        hLineColor: () => '#E2E8F0',
+                        vLineColor: () => '#E2E8F0',
+                        fillColor: () => '#FFFFFF'
                     },
-                    layout: 'noBorders',
                     margin: [0, 0, 0, 10]
                 },
 
-                // ============================================================
-                // PÁGINA 2 – LOCALIZACIÓN DEL PROYECTO
-                // ============================================================
-                createSectionHeader('2. LOCALIZACIÓN Y GEORREFERENCIACIÓN DEL PROYECTO', 'before'),
-                
-                { text: 'Información Geográfica y Territorial', style: 'subHeader' },
+                // Progress Bars side-by-side (en la portada, un poco más grandes debajo del header)
                 {
-                    table: {
-                        widths: ['*', '*', '*', '*'],
-                        body: [
-                            [
-                                thCell('Municipio'),
-                                thCell('Subregión'),
-                                thCell(labelContratado),
-                                thCell(labelEjecutado)
-                            ],
-                            [
-                                tdCell(row['MUNICIPIO']),
-                                tdCell(getSubregion(row['MUNICIPIO'])),
-                                tdCell(valContratado),
-                                tdCell(valEjecutado)
-                            ]
-                        ]
-                    },
-                    layout: 'lightHorizontalLines',
-                    margin: [0, 0, 0, 12]
+                    columns: [
+                        { stack: [ progressCard('Avance Físico Real', row['FISICO_NORM'] || 0, '#018D38', true) ], width: '50%', margin: [0, 0, 2, 0] },
+                        { stack: [ progressCard('Avance Financiero Ejecutado', row['FINANCIERO_NORM'] || 0, '#3561AB', true) ], width: '50%', margin: [2, 0, 0, 0] }
+                    ],
+                    margin: [0, 0, 0, 10]
                 },
 
-                { text: 'Cartografía Digital Integrada', style: 'subHeader' },
+                createSectionHeader('1. Información General del Convenio'),
+                
+                // Information Grid (2 columns x 4 rows)
                 {
                     columns: [
                         {
                             stack: [
-                                { text: 'Ubicación General (Departamento)', alignment: 'center', fontSize: 7.5, bold: true, color: '#475569', margin: [0, 0, 0, 4] },
-                                antioquiaMapBase64 
-                                    ? { image: antioquiaMapBase64, width: 235, height: 188, alignment: 'center' }
-                                    : { 
-                                        table: {
-                                            widths: ['*'],
-                                            body: [[{
-                                                stack: [
-                                                    { text: 'MAPA GENERAL DE ANTIOQUIA', alignment: 'center', fontSize: 8, bold: true, color: '#94a3b8', margin: [0, 45, 0, 0] },
-                                                    { text: 'NO DISPONIBLE', alignment: 'center', fontSize: 7, color: '#cbd5e1', margin: [0, 2, 0, 45] }
-                                                ]
-                                            }]]
-                                        },
-                                        layout: {
-                                            hLineWidth: () => 1,
-                                            vLineWidth: () => 1,
-                                            hLineColor: () => '#cbd5e1',
-                                            vLineColor: () => '#cbd5e1',
-                                            hLineDash: () => ({ length: 4, space: 4 }),
-                                            vLineDash: () => ({ length: 4, space: 4 })
-                                        },
-                                        fillColor: '#f8fafc',
-                                        margin: [0, 4, 0, 10]
-                                      }
+                                infoGridCard('Municipio', row['MUNICIPIO']),
+                                { text: '', margin: [0, 2] },
+                                infoGridCard('Indicador Plan de Desarrollo', row['INDICADOR']),
+                                { text: '', margin: [0, 2] },
+                                infoGridCard('Supervisor Responsable', row['SUPERVISOR'] || 'Sin Asignar'),
+                                { text: '', margin: [0, 2] },
+                                highlightedInfoGridCard(labelContratado, valContratado, '#018D38', '#F0FDFA')
                             ],
-                            width: '50%'
+                            width: '50%',
+                            margin: [0, 0, 2, 0]
                         },
                         {
                             stack: [
-                                { text: 'Detalle del Trazado (Localización)', alignment: 'center', fontSize: 7.5, bold: true, color: '#475569', margin: [0, 0, 0, 4] },
-                                mapBase64
-                                    ? { image: mapBase64, width: 235, height: 188, alignment: 'center' }
-                                    : {
-                                        table: {
-                                            widths: ['*'],
-                                            body: [[{
-                                                stack: [
-                                                    { text: 'DETALLE DEL TRAZADO (KML)', alignment: 'center', fontSize: 8, bold: true, color: '#94a3b8', margin: [0, 45, 0, 0] },
-                                                    { text: 'NO DISPONIBLE / SIN KML', alignment: 'center', fontSize: 7, color: '#cbd5e1', margin: [0, 2, 0, 45] }
-                                                ]
-                                            }]]
-                                        },
-                                        layout: {
-                                            hLineWidth: () => 1,
-                                            vLineWidth: () => 1,
-                                            hLineColor: () => '#cbd5e1',
-                                            vLineColor: () => '#cbd5e1',
-                                            hLineDash: () => ({ length: 4, space: 4 }),
-                                            vLineDash: () => ({ length: 4, space: 4 })
-                                        },
-                                        fillColor: '#f8fafc',
-                                        margin: [0, 4, 0, 10]
-                                      }
+                                infoGridCard('Subregión', getSubregion(row['MUNICIPIO'])),
+                                { text: '', margin: [0, 2] },
+                                infoGridCard('Clasificación', row['CLASIFICACIÓN'] || row['CLASIFICACI"N']),
+                                { text: '', margin: [0, 2] },
+                                infoGridCard('Vigencia', row['VIGENCIA']),
+                                { text: '', margin: [0, 2] },
+                                highlightedInfoGridCard(labelEjecutado, valEjecutado, '#018D38', '#F0FDFA')
                             ],
-                            width: '50%'
+                            width: '50%',
+                            margin: [2, 0, 0, 0]
                         }
                     ],
-                    margin: [0, 0, 0, 12]
+                    margin: [0, 0, 0, 10]
                 },
 
-                { text: 'Tramos y Coordenadas de Referencia', style: 'subHeader' },
+                createSectionHeader('Observaciones y Alertas de Riesgo'),
+                {
+                    columns: [
+                        // Left: Supervisor Observations
+                        {
+                            stack: [
+                                {
+                                    table: {
+                                        widths: ['*'],
+                                        body: [[
+                                            {
+                                                stack: [
+                                                    { text: 'OBSERVACIONES TÉCNICAS', fontSize: 7, bold: true, color: '#018D38', letterSpacing: 0.5, margin: [0, 0, 0, 4] },
+                                                    { text: row['OBSERVACIONES'] || 'Sin observaciones registradas por el supervisor.', fontSize: 8.5, color: '#1E293B', alignment: 'justify', lineHeight: 1.3 }
+                                                ],
+                                                margin: [8, 6, 8, 6]
+                                            }
+                                        ]]
+                                    },
+                                    layout: {
+                                        hLineWidth: () => 0,
+                                        vLineWidth: (i) => i === 0 ? 3 : 0,
+                                        vLineColor: () => '#018D38',
+                                        fillColor: () => '#F8FAFC'
+                                    }
+                                }
+                            ],
+                            width: '55%',
+                            margin: [0, 0, 4, 0]
+                        },
+                        // Right: Alerts List
+                        {
+                            stack: alertsList.length === 0 
+                                ? [ alertCard('Sin Alertas Activas', 'El convenio no presenta retrasos ni advertencias contractuales.', '#018D38') ]
+                                : alertsList.map(a => alertCard(a.title, a.desc, a.color)),
+                            width: '45%',
+                            margin: [4, 0, 0, 0]
+                        }
+                    ],
+                    margin: [0, 0, 0, 0]
+                },
+
+                // ============================================================
+                // PÁGINA 2 – RESUMEN EJECUTIVO, CRONOLOGÍA Y LOCALIZACIÓN
+                // ============================================================
+                createSectionHeader('2. Resumen Ejecutivo de Inversión', 'before'),
+                
+                // Columnas de Resumen Ejecutivo: Tabla a la izquierda (58%), Dos Tarjetas Grandes a la derecha (42%)
+                {
+                    columns: [
+                        {
+                            stack: [
+                                {
+                                    table: {
+                                        widths: ['*', 'auto'],
+                                        body: [
+                                            [
+                                                { text: 'CONCEPTO DE INVERSIÓN', fontSize: 7, bold: true, color: '#64748B', fillColor: '#F8FAFC', margin: [8, 5, 8, 5] },
+                                                { text: 'VALOR COMPROMETIDO', fontSize: 7, bold: true, color: '#64748B', fillColor: '#F8FAFC', alignment: 'right', margin: [8, 5, 8, 5] }
+                                            ],
+                                            [
+                                                { text: '1. APORTE DEPARTAMENTO', fontSize: 8, color: '#475569', margin: [8, 5, 8, 5] },
+                                                { text: formatCurrency(row['APORTE DEPARTAMENTO'] || 0), fontSize: 8.5, bold: true, color: '#1E293B', alignment: 'right', margin: [8, 5, 8, 5] }
+                                            ],
+                                            [
+                                                { text: '2. APORTE MUNICIPIO', fontSize: 8, color: '#475569', margin: [8, 5, 8, 5] },
+                                                { text: formatCurrency(row['APORTE MUNICIPIO'] || 0), fontSize: 8.5, bold: true, color: '#1E293B', alignment: 'right', margin: [8, 5, 8, 5] }
+                                            ],
+                                            [
+                                                { text: '3. ADICIÓN DEPARTAMENTO', fontSize: 8, color: '#475569', margin: [8, 5, 8, 5] },
+                                                { text: formatCurrency(row['ADICION DEPARTAMENTO'] || 0), fontSize: 8.5, bold: true, color: '#1E293B', alignment: 'right', margin: [8, 5, 8, 5] }
+                                            ],
+                                            [
+                                                { text: '4. ADICIÓN MUNICIPIO', fontSize: 8, color: '#475569', margin: [8, 5, 8, 5] },
+                                                { text: formatCurrency(row['ADICION MUNICIPIO'] || 0), fontSize: 8.5, bold: true, color: '#1E293B', alignment: 'right', margin: [8, 5, 8, 5] }
+                                            ],
+                                            [
+                                                { text: 'INVERSIÓN TOTAL (DEPTO + MPIO)', fontSize: 8.5, bold: true, color: '#0B5640', fillColor: '#E6F3ED', margin: [8, 6, 8, 6] },
+                                                { text: formatCurrency(
+                                                    (row['APORTE DEPARTAMENTO'] || 0) + 
+                                                    (row['APORTE MUNICIPIO'] || 0) + 
+                                                    (row['ADICION DEPARTAMENTO'] || 0) + 
+                                                    (row['ADICION MUNICIPIO'] || 0)
+                                                  ), fontSize: 8.5, bold: true, color: '#0B5640', fillColor: '#E6F3ED', alignment: 'right', margin: [8, 6, 8, 6] }
+                                            ]
+                                        ]
+                                    },
+                                    layout: {
+                                        hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 1.5 : 0.5,
+                                        vLineWidth: () => 0,
+                                        hLineColor: (i, node) => (i === 0 || i === node.table.body.length) ? '#CBD5E1' : '#E2E8F0'
+                                    }
+                                }
+                            ],
+                            width: '58%',
+                            margin: [0, 0, 10, 0]
+                        },
+                        {
+                            stack: [
+                                largeKpiCard('TOTAL DESEMBOLSADO (IDEA)', formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), '#3561AB'),
+                                largeKpiCard('TOTAL AUTORIZADO', formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO'] || row['VALOR TOTAL AUTORIZADO']), '#8B4A97')
+                            ],
+                            width: '42%'
+                        }
+                    ],
+                    margin: [0, 0, 0, 10]
+                },
+
+                createSectionHeader('3. Cronología del Convenio'),
+
+                // Horizontal timeline
+                {
+                    columns: [
+                        { stack: [ timelineMilestone('Suscripción', getVal(['FECHA DE SUSCRIPC'], true), true) ], width: '25%' },
+                        { stack: [ timelineMilestone('Acta Inicio', getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true), getVal(['FECHA DE ACTA DE INICIO'], true) ? true : false) ], width: '25%' },
+                        { stack: [ timelineMilestone('Terminación', getVal(['NUEVA FECHA DE TERMINAC'], true) || getVal(['FECHA DE TERMINAC'], true), getVal(['FECHA DE TERMINAC'], true) ? true : false) ], width: '25%' },
+                        { stack: [ timelineMilestone('Cierre / Liq.', row['FECHA ACTA DE CIERRE DE EXPEDIENTE'] || (isLiquidado ? 'Liquidado' : 'Pendiente'), isLiquidado) ], width: '25%' }
+                    ],
+                    margin: [0, 4, 0, 4]
+                },
+
+                // Plazo inicial, plazo total, novedades y nueva fecha de terminación resaltada (4 columnas de tarjetas del mismo alto)
+                {
+                    columns: [
+                        { stack: [ infoGridCard('PLAZO INICIAL', `${plazoInicial} Meses`) ], width: '25%', margin: [0, 0, 3, 0] },
+                        { stack: [ infoGridCard('NOVEDADES ACUMULADAS', `${prorrogas} m. prórr. / ${suspensiones} m. susp.`) ], width: '25%', margin: [3, 0, 3, 0] },
+                        { stack: [ highlightedInfoGridCard('PLAZO TOTAL', `${plazoTotal} Meses`, '#0B5640', '#E6F3ED') ], width: '25%', margin: [3, 0, 3, 0] },
+                        { stack: [ highlightedInfoGridCard('NUEVA FECHA TERMINACIÓN', termNuevaStr, '#D97706', '#FEF3C7') ], width: '25%', margin: [3, 0, 0, 0] }
+                    ],
+                    margin: [0, 8, 0, 8]
+                },
+
+                createSectionHeader('4. Localización Geográfica del Proyecto'),
+                {
+                    table: {
+                        widths: ['50%', '50%'],
+                        body: [
+                            [
+                                { text: 'Ubicación General (Departamento)', alignment: 'center', fontSize: 7.5, bold: true, color: '#64748B', margin: [0, 4, 0, 4] },
+                                { text: 'Detalle del Trazado (Localización)', alignment: 'center', fontSize: 7.5, bold: true, color: '#64748B', margin: [0, 4, 0, 4] }
+                            ],
+                            [
+                                antioquiaMapBase64 
+                                    ? { image: antioquiaMapBase64, width: 220, height: 160, alignment: 'center', margin: [0, 0, 0, 4] }
+                                    : { text: 'Mapa del departamento no disponible.', alignment: 'center', fontSize: 8, margin: [0, 30], color: '#94A3B8', italics: true },
+                                mapBase64
+                                    ? { image: mapBase64, width: 220, height: 160, alignment: 'center', margin: [0, 0, 0, 4] }
+                                    : { text: 'Trazado geográfico detallado no disponible.', alignment: 'center', fontSize: 8, margin: [0, 30], color: '#94A3B8', italics: true }
+                            ]
+                        ]
+                    },
+                    layout: {
+                        hLineWidth: (i) => (i === 0 || i === 2) ? 0.5 : 0,
+                        vLineWidth: (i) => (i === 0 || i === 2) ? 0.5 : 0,
+                        hLineColor: () => '#E2E8F0',
+                        vLineColor: () => '#E2E8F0',
+                        fillColor: () => '#FFFFFF'
+                    },
+                    margin: [0, 2, 0, 6]
+                },
+
+                { text: 'Segmentos de Referencia e Inventario Geográfico', fontSize: 9, bold: true, color: '#0B5640', margin: [0, 4, 0, 4] },
                 {
                     table: {
                         headerRows: 1,
@@ -1162,53 +1408,11 @@ async function generateProfessionalPDF(row) {
                         ]
                     },
                     layout: zebraLayout,
-                    margin: [0, 0, 0, 10]
+                    margin: [0, 0, 0, 0]
                 },
 
                 // ============================================================
-                // PÁGINA 3 – DETALLE FINANCIERO Y CONTRACTUAL
-                // ============================================================
-                createSectionHeader('3. DETALLE FINANCIERO Y CONTRACTUAL', 'before'),
-
-                { text: 'Recursos Financieros del Proyecto', style: 'subHeader' },
-                {
-                    table: {
-                        widths: ['*', 'auto'],
-                        body: [
-                            [thCell('Concepto'), thCell('Valor')],
-                            [tdCell('Valor Total del Proyecto (con adiciones)'), tdRight(formatCurrency(row['VALOR TOTAL']), { bold: true })],
-                            [tdCell('Aporte Departamento'), tdRight(formatCurrency(row['APORTE DEPARTAMENTO']))],
-                            [tdCell('Aporte Municipio'), tdRight(formatCurrency(row['APORTE MUNICIPIO']))],
-                            [tdCell('Adición Departamento'), tdRight(formatCurrency(row['ADICIONES RECURSOS DEPARTAMENTO']))],
-                            [tdCell('Adición Municipio'), tdRight(formatCurrency(row['ADICIONES RECURSOS MUNICIPIO']))],
-                            [tdCell('Total Desembolsado (Traslado IDEA)', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), { bold: true, color: '#3561AB' })],
-                            [tdCell('Total Autorizado Departamento', { bold: true }), tdRight(formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO']), { bold: true, color: '#0B5640' })]
-                        ]
-                    },
-                    layout: 'lightHorizontalLines',
-                    margin: [0, 0, 0, 16]
-                },
-
-                { text: 'Tiempos, Plazos e Hitos Contractuales', style: 'subHeader' },
-                {
-                    table: {
-                        widths: ['*', 'auto'],
-                        body: [
-                            [thCell('Campo / Hito Contractual'), thCell('Fecha / Plazo')],
-                            [tdCell('Fecha de Suscripción'), tdRight(getVal(['FECHA DE SUSCRIPC'], true) || '-')],
-                            [tdCell('Fecha Acta de Inicio'), tdRight(getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || '-')],
-                            [tdCell('Fecha de Terminación Original'), tdRight(getVal(['FECHA DE TERMINAC'], true) || '-')],
-                            [tdCell('Prórrogas Contractuales'), tdRight((getVal(['PRÓRROGA', 'PR"RROGA']) || 0) + ' meses')],
-                            [tdCell('Suspensiones Temporales'), tdRight((getVal(['SUSPENSIÓN', 'SUSPENSI"N']) || 0) + ' meses')],
-                            [tdCell('Nueva Fecha de Terminación Estimada', { bold: true }), tdRight(getVal(['NUEVA FECHA DE TERMINAC'], true) || 'Sin cambios', { bold: true, color: '#018D38' })]
-                        ]
-                    },
-                    layout: zebraLayout,
-                    margin: [0, 0, 0, 10]
-                },
-
-                // ============================================================
-                // PÁGINAS DE REGISTRO FOTOGRÁFICO DE OBRA
+                // PÁGINA 3+ – REGISTRO FOTOGRÁFICO
                 // ============================================================
                 ...photoContent
             ],
@@ -1241,7 +1445,7 @@ async function generateProfessionalPDF(row) {
             }
         };
 
-        // ===== 7. DESCARGAR =====
+        // ===== 9. GENERATE AND DOWNLOAD PDF =====
         pdfMake.createPdf(docDefinition).download(`Ficha_Tecnica_Convenio_${row['CONVENIO']}.pdf`);
 
         btnPdf.innerHTML = originalText;
@@ -1770,7 +1974,7 @@ function updateKPIs() {
         const est = String(r['ESTADO CONVENIO']).toLowerCase();
         if(est.includes('ejecuci')) activos++;  // tolera ejecucin / ejecucion
         if(est.includes('por liquidar')) porLiquidar++; 
-        sumInv += r['VALOR TOTAL'] || 0;
+        sumInv += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
         sumDes += r['VALOR TOTAL DESEMBOLSADO'] || 0;
         sumAut += r['VALOR TOTAL AUTORIZADO'] || 0;
         
@@ -2114,6 +2318,12 @@ function renderAlerts() {
     }).join('');
 }
 
+window.activeFisicoMetric = 'longitud';
+window.toggleFisicoMetric = function(metric) {
+    window.activeFisicoMetric = metric;
+    updateCharts();
+};
+
 function updateCharts() {
     if (typeof Chart === 'undefined') return;
     const hoverCursor = (e, el) => { e.native.target.style.cursor = el[0] ? 'pointer' : 'default'; };
@@ -2128,8 +2338,8 @@ function updateCharts() {
             const e = String(r['ESTADO CONVENIO'] || 'Sin Estado').trim(); 
             if (!estMap[e]) estMap[e] = { count: 0, inversion: 0 };
             estMap[e].count += 1; 
-            estMap[e].inversion += (r['VALOR TOTAL'] || 0);
-            totalVal += (r['VALOR TOTAL'] || 0);
+            estMap[e].inversion += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
+            totalVal += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
         });
         
         const labelsEstado = Object.keys(estMap).sort((a, b) => estMap[b].count - estMap[a].count);
@@ -2234,24 +2444,79 @@ function updateCharts() {
     // Gráfico de Ejecución (Barras)
     const canvasEjecucion = document.getElementById('chart-ejecucion');
     if (canvasEjecucion) {
-        let tLonCon = 0, tLonEje = 0;
-        filteredData.forEach(r => {
-            tLonCon += r['ALCANCE (M)'] || 0;
-            tLonEje += r['LONGITUD EJECUTADA'] || 0;
-        });
+        window.activeFisicoMetric = window.activeFisicoMetric || 'longitud';
+        
+        let tCon = 0, tEje = 0;
+        let metricLabel = 'Longitud (m)';
+        let tooltipSuffix = ' m';
+        
+        if (window.activeFisicoMetric === 'longitud') {
+            filteredData.forEach(r => {
+                tCon += r['ALCANCE (M)'] || 0;
+                tEje += r['LONGITUD EJECUTADA'] || 0;
+            });
+            metricLabel = 'Longitud (m)';
+            tooltipSuffix = ' m';
+        } else {
+            filteredData.forEach(r => {
+                tCon += r['ALCANCE (M2)'] || 0;
+                tEje += r['AREA EJECUTADA (M2)'] || r['AREA_EJECUTADA'] || r['ÁREA EJECUTADA'] || 0;
+            });
+            metricLabel = 'Área (m²)';
+            tooltipSuffix = ' m²';
+        }
         
         const isDark = document.documentElement.classList.contains('dark');
         const textColor = isDark ? '#94a3b8' : '#64748b';
         const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.04)';
         
+        // Update highlight styling of the interactive boxes
+        const btnLon = document.getElementById('btn-metric-longitud');
+        const btnAre = document.getElementById('btn-metric-area');
+        if (window.activeFisicoMetric === 'longitud') {
+            if (btnLon) {
+                btnLon.style.background = '#F0FDFA';
+                btnLon.style.borderColor = 'rgba(1, 141, 56, 0.2)';
+                const txt = btnLon.querySelector('#tot-lon-eje-text');
+                if (txt) txt.style.color = '#0B5640';
+            }
+            if (btnAre) {
+                btnAre.style.background = '#F8FAFC';
+                btnAre.style.borderColor = '#E2E8F0';
+                const txt = btnAre.querySelector('#tot-are-eje-text');
+                if (txt) {
+                    txt.style.color = '#0F172A';
+                } else {
+                    btnAre.style.color = '#0F172A';
+                }
+            }
+        } else {
+            if (btnLon) {
+                btnLon.style.background = '#F8FAFC';
+                btnLon.style.borderColor = '#E2E8F0';
+                const txt = btnLon.querySelector('#tot-lon-eje-text');
+                if (txt) {
+                    txt.style.color = '#0F172A';
+                } else {
+                    btnLon.style.color = '#0F172A';
+                }
+            }
+            if (btnAre) {
+                btnAre.style.background = '#F0FDFA';
+                btnAre.style.borderColor = 'rgba(1, 141, 56, 0.2)';
+                const txt = btnAre.querySelector('#tot-are-eje-text');
+                if (txt) txt.style.color = '#0B5640';
+            }
+        }
+        
         if (charts['ejecucion']) charts['ejecucion'].destroy();
         charts['ejecucion'] = new Chart(canvasEjecucion, {
             type: 'bar',
             data: {
-                labels: ['Longitud (m)'],
+                labels: [metricLabel],
                 datasets: [
-                    { label: 'Contratado', data: [tLonCon], backgroundColor: '#94a3b8', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 },
-                    { label: 'Ejecutado', data: [tLonEje], backgroundColor: '#018D38', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 }
+                    { label: 'Contratado', data: [tCon], backgroundColor: '#94a3b8', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 },
+                    { label: 'Ejecutado', data: [tEje], backgroundColor: '#018D38', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 }
                 ]
             },
             options: {
@@ -2268,7 +2533,7 @@ function updateCharts() {
                         cornerRadius: 8,
                         titleFont: {size: 11, family: 'Poppins'},
                         bodyFont: {size: 13, weight: 'bold', family: 'Poppins'},
-                        callbacks: { label: (c) => ` ${c.dataset.label}: ${formatNumber(c.raw)} m` }
+                        callbacks: { label: (c) => ` ${c.dataset.label}: ${formatNumber(c.raw)}${tooltipSuffix}` }
                     } 
                 },
                 scales: {
@@ -2288,13 +2553,21 @@ async function renderMap(row, mapId, overlayId, msgId, inst, cb) {
     
     let m = inst, g = null;
     if(!m){ 
-        m = L.map(mapId, { zoomControl: false, attributionControl: false, preferCanvas: true }).setView([6.2, -75.5], 10); 
+        m = L.map(mapId, { zoomControl: false, attributionControl: false, preferCanvas: false }).setView([6.2, -75.5], 10); 
         L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 22, maxNativeZoom: 20 }).addTo(m);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { maxZoom: 22, maxNativeZoom: 19, subdomains: 'abcd' }).addTo(m);
         L.control.zoom({ position: 'bottomright' }).addTo(m);
-        g = L.layerGroup().addTo(m); cb(m, g);
+        g = L.layerGroup().addTo(m); 
+        m._currentLayerGroup = g;
+        cb(m, g);
     } else { 
-        m.eachLayer(l => { if(l instanceof L.LayerGroup) { g = l; g.clearLayers(); }}); 
+        g = m._currentLayerGroup;
+        if (g) {
+            g.clearLayers();
+        } else {
+            m.eachLayer(l => { if(l instanceof L.LayerGroup && !(l instanceof L.FeatureGroup)) { g = l; } });
+            if (g) g.clearLayers();
+        }
         m.invalidateSize(); 
     }
     
@@ -3947,7 +4220,7 @@ function updateMapKPIs() {
         kmContratados += (r['ALCANCE (M)'] || 0) / 1000;
         areaEjecutada  += (r['AREA EJECUTADA (M2)'] || 0);
         areaContratada += (r['ALCANCE (M2)'] || 0);
-        inv  += (r['VALOR TOTAL'] || 0);
+        inv  += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
     });
 
     const mKpi = document.getElementById('kpi-map-mun');
@@ -3972,7 +4245,7 @@ function updateMapCharts() {
         const s = r['SUBREGION'] || 'OTRAS';
         const m = r['MUNICIPIO'] || 'N/A';
         const l = mapMetric === 'contratado' ? (r['ALCANCE (M)'] || 0) : (r['LONGITUD EJECUTADA'] || 0);
-        const i = r['VALOR TOTAL'] || 0;
+        const i = (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
         subL[s] = (subL[s] || 0) + l;
         subI[s] = (subI[s] || 0) + i;
         munL[m] = (munL[m] || 0) + l;
@@ -4209,7 +4482,7 @@ function renderPlanTab() {
         dataInd[ind].ejecutado += cant;
         dataInd[ind].convenios++;
 
-        inversionTotal += parseNum(row['VALOR TOTAL']);
+        inversionTotal += parseNum(row['APORTE DEPARTAMENTO']) + parseNum(row['ADICION DEPARTAMENTO']);
         if (row['MUNICIPIO']) munis.add(String(row['MUNICIPIO']).trim());
 
         const vig = String(row['VIGENCIA'] || '').trim();

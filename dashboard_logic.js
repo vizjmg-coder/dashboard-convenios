@@ -1,4 +1,4 @@
-﻿// ====== PESTAÑA 2: MAPA TERRITORIAL ======
+// ====== PESTAÑA 2: MAPA TERRITORIAL ======
 let mainMapInst = null;
 let mainMapLayerGroup = null;
 
@@ -92,7 +92,7 @@ function updateMapKPIs() {
         if(est.includes('EJECUCI')) act++;
         km += (r['LONGITUD EJECUTADA'] || 0) / 1000;
         area += (r['AREA EJECUTADA (M2)'] || 0);
-        inv += (r['VALOR TOTAL'] || 0);
+        inv += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
     });
     
     document.getElementById('kpi-map-mun').textContent = numMun;
@@ -111,7 +111,7 @@ function updateMapCharts() {
         const s = r['SUBREGION'] || 'OTRAS';
         const m = r['MUNICIPIO'] || 'N/A';
         const l = r['LONGITUD EJECUTADA'] || 0;
-        const i = r['VALOR TOTAL'] || 0;
+        const i = (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
         
         subL[s] = (subL[s] || 0) + l;
         subI[s] = (subI[s] || 0) + i;
@@ -319,7 +319,7 @@ function renderPlanTab() {
         dataInd[ind].ejecutado += cant;
         dataInd[ind].convenios++;
 
-        inversionTotal += parseNum(row['VALOR TOTAL']);
+        inversionTotal += parseNum(row['APORTE DEPARTAMENTO']) + parseNum(row['ADICION DEPARTAMENTO']);
         if (row['MUNICIPIO']) munis.add(String(row['MUNICIPIO']).trim());
 
         const vig = String(row['VIGENCIA'] || '').trim();
