@@ -314,35 +314,28 @@ async function getBase64ImageFromURL(url) {
     });
 }
 
-// Crops and resizes gallery photos to a standard 4:3 aspect ratio, compressed to JPEG at 75% quality
-async function getOptimizedBase64Image(url, maxWidth = 600, maxHeight = 450) {
+// Resizes gallery photos to fit within a bounding box of maxDim (default 600px), preserving original aspect ratio, compressed to JPEG at 75% quality
+async function getOptimizedBase64Image(url, maxDim = 600) {
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = 'Anonymous';
         img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = maxWidth;
-            canvas.height = maxHeight;
-            const ctx = canvas.getContext('2d');
-            
-            // Standard landscape crop (4:3 aspect ratio)
-            const targetRatio = maxWidth / maxHeight;
-            let srcWidth = img.width;
-            let srcHeight = img.height;
-            let srcX = 0;
-            let srcY = 0;
-            
-            if (img.width / img.height > targetRatio) {
-                // Image is wider, crop sides
-                srcWidth = img.height * targetRatio;
-                srcX = (img.width - srcWidth) / 2;
-            } else {
-                // Image is taller, crop top/bottom
-                srcHeight = img.width / targetRatio;
-                srcY = (img.height - srcHeight) / 2;
+            let width = img.width;
+            let height = img.height;
+            if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                    height = Math.round((height * maxDim) / width);
+                    width = maxDim;
+                } else {
+                    width = Math.round((width * maxDim) / height);
+                    height = maxDim;
+                }
             }
-            
-            ctx.drawImage(img, srcX, srcY, srcWidth, srcHeight, 0, 0, maxWidth, maxHeight);
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
             resolve(canvas.toDataURL('image/jpeg', 0.75));
         };
         img.onerror = () => reject(new Error('Image load error: ' + url));
@@ -620,13 +613,16 @@ async function generateProfessionalPDF(row) {
     btnPdf.disabled = true;
 
     try {
-        // Configure Poppins Font using Fontsource CDN
+        // Configure Poppins Font & FontAwesome Solid
         pdfMake.fonts = {
             Poppins: {
                 normal: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-400-normal.ttf',
                 bold: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-700-normal.ttf',
                 italics: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-400-italic.ttf',
                 bolditalics: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-700-italic.ttf'
+            },
+            FontAwesome: {
+                normal: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.ttf'
             }
         };
 
@@ -644,210 +640,175 @@ async function generateProfessionalPDF(row) {
             return val;
         };
 
+        const formatCurrency = (val) => '$' + Number(val || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
         // ===== 1. ASYNCHRONOUS CAPTURE OF LOGOS & MAPS =====
         const logoBase64 = await getBase64ImageFromURL('./assets/escudo_antioquia.png').catch(() => null);
-        const mapBase64 = await getBase64FromHtmlElement('map');
-        const antioquiaMapBase64 = await generateAntioquiaMapBase64(row['MUNICIPIO'], row).catch(() => null);
-
-        const antesImgs = document.querySelectorAll('#mod-galeria-antes img');
-        const despuesImgs = document.querySelectorAll('#mod-galeria-despues img');
         
-        const antesBase64 = await Promise.all(Array.from(antesImgs).map(img => getOptimizedBase64Image(img.src).catch(() => null)));
-        const despuesBase64 = await Promise.all(Array.from(despuesImgs).map(img => getOptimizedBase64Image(img.src).catch(() => null)));
-        
-        const validAntes = antesBase64.filter(Boolean);
-        const validDespues = despuesBase64.filter(Boolean);
-        const hasPhotos = validAntes.length > 0 || validDespues.length > 0;
+        const photoElements = document.querySelectorAll('#mod-galeria img');
+        const photosList = [];
+        for (const img of photoElements) {
+            const base64 = await getOptimizedBase64Image(img.src).catch(() => null);
+            if (base64) {
+                photosList.push({
+                    base64,
+                    stage: img.getAttribute('data-stage') || img.getAttribute('data-folder') || 'Evidencia',
+                    src: img.src
+                });
+            }
+        }
 
         const sysState = getSystemState(row['ESTADO CONVENIO']);
 
-        // ===== 2. LAYOUT & TEXT CELL BUILDERS =====
-        const thCell = (text) => ({ text, fontSize: 8.5, bold: true, color: '#ffffff', fillColor: '#0B5640', margin: [6, 5, 6, 5] });
-        const tdCell = (text, opts = {}) => ({ text: String(text ?? '-'), fontSize: 8.5, color: '#1E293B', margin: [6, 4, 6, 4], ...opts });
-        const tdRight = (text, opts = {}) => tdCell(text, { alignment: 'right', ...opts });
-
-        const zebraLayout = {
-            fillColor: function (rowIndex, node, columnIndex) {
-                return (rowIndex > 0 && rowIndex % 2 === 0) ? '#F8FAFC' : null;
-            },
-            hLineColor: function (i, node) { return '#E2E8F0'; },
-            vLineColor: function (i, node) { return '#E2E8F0'; },
-            hLineWidth: function (i, node) { return (i === 0 || i === node.table.body.length) ? 0 : 0.5; },
-            vLineWidth: function (i, node) { return 0; }
+        // ===== 2. LAYOUT HELPERS =====
+        const estimateTextHeight = (text, fontSize, lineSpacing, colWidth) => {
+            if (!text) return 0;
+            // Poppins is relatively wide. Let's use 0.68 as a safe average character width factor
+            const avgCharWidth = fontSize * 0.68;
+            const charsPerLine = colWidth / avgCharWidth;
+            const paragraphs = String(text).split('\n');
+            let totalLines = 0;
+            paragraphs.forEach(p => {
+                const words = p.split(/\s+/);
+                let currentLineLength = 0;
+                let pLines = 1;
+                words.forEach(w => {
+                    if (currentLineLength + w.length + 1 > charsPerLine) {
+                        pLines++;
+                        currentLineLength = w.length;
+                    } else {
+                        currentLineLength += w.length + 1;
+                    }
+                });
+                totalLines += pLines;
+            });
+            return totalLines * (fontSize * lineSpacing);
         };
 
-        // ===== 3. COMPONENT GENERATION (KPI, PROGRESS, GRID, TIMELINE) =====
-        const kpiCard = (title, value, accentColor) => ({
-            table: {
-                widths: ['*'],
-                body: [[
-                    {
-                        stack: [
-                            { text: title.toUpperCase(), fontSize: 6.5, bold: true, color: '#64748B', letterSpacing: 0.5, margin: [0, 0, 0, 4] },
-                            { text: value, fontSize: 11.5, bold: true, color: '#1E293B' }
-                        ],
-                        margin: [8, 6, 8, 6]
+        const estimateTextLines = (text, fontSize, width) => {
+            if (!text) return 0;
+            const avgCharWidth = fontSize * 0.68;
+            const charsPerLine = width / avgCharWidth;
+            const paragraphs = String(text).split('\n');
+            let totalLines = 0;
+            paragraphs.forEach(p => {
+                const words = p.split(/\s+/);
+                let currentLineLength = 0;
+                let pLines = 1;
+                words.forEach(w => {
+                    if (currentLineLength + w.length + 1 > charsPerLine) {
+                        pLines++;
+                        currentLineLength = w.length;
+                    } else {
+                        currentLineLength += w.length + 1;
                     }
-                ]]
-            },
-            layout: {
-                hLineWidth: () => 0.5,
-                vLineWidth: (i) => i === 0 ? 3 : 0.5,
-                hLineColor: () => '#E2E8F0',
-                vLineColor: (i) => i === 0 ? accentColor : '#E2E8F0',
-                fillColor: () => '#FFFFFF'
+                });
+                totalLines += pLines;
+            });
+            return totalLines;
+        };
+
+        const estimateIconLabelHeight = (labelText, valueText, width) => {
+            const colWidth = width - 14; // Icon is 14pt wide
+            const valueLines = Math.max(1, Math.ceil(estimateTextLines(valueText, 8, colWidth)));
+            return 10 + (valueLines * 9.5) + 10; // increased safety margin to 10
+        };
+
+        const roundedCard = (w, h, bgColor, borderColor, content, padding = 12, r = 16, hasShadow = false) => {
+            const shapes = [];
+            if (hasShadow) {
+                shapes.push({
+                    type: 'rect',
+                    x: 2,
+                    y: 2,
+                    w: w,
+                    h: h,
+                    r: r,
+                    color: '#E2E8F0'
+                });
+                shapes.push({
+                    type: 'rect',
+                    x: 1,
+                    y: 1,
+                    w: w,
+                    h: h,
+                    r: r,
+                    color: '#F1F5F9'
+                });
             }
-        });
+            shapes.push({
+                type: 'rect',
+                x: 0,
+                y: 0,
+                w: w,
+                h: h,
+                r: r,
+                color: bgColor,
+                lineColor: borderColor,
+                lineWidth: borderColor ? 1 : 0
+            });
+            return {
+                stack: [
+                    {
+                        canvas: shapes
+                    },
+                    {
+                        stack: content,
+                        margin: [padding, -h + padding, padding, 0]
+                    }
+                ],
+                width: w,
+                height: h
+            };
+        };
 
-        const largeKpiCard = (title, value, accentColor) => ({
-            table: {
-                widths: ['*'],
-                body: [[
+        const iconLabel = (iconUnicode, labelText, valueText, isDark = false) => {
+            return {
+                columns: [
+                    {
+                        text: iconUnicode,
+                        font: 'FontAwesome',
+                        fontSize: 9,
+                        color: isDark ? '#FFF200' : '#0B7A53',
+                        width: 14,
+                        margin: [0, 1.5, 0, 0]
+                    },
                     {
                         stack: [
-                            { text: title.toUpperCase(), fontSize: 7, bold: true, color: '#64748B', letterSpacing: 0.5, margin: [0, 0, 0, 3] },
-                            { text: value, fontSize: 13, bold: true, color: '#1E293B' }
+                            { text: String(labelText).toUpperCase(), fontSize: 6.5, bold: true, color: isDark ? '#D9DEE5' : '#4B5563', letterSpacing: 0.5 },
+                            { text: String(valueText ?? '-'), fontSize: 8, color: isDark ? '#FFFFFF' : '#1E293B', bold: true, margin: [0, 1, 0, 0] }
                         ],
-                        margin: [10, 8, 10, 8]
+                        width: '*'
                     }
-                ]]
-            },
-            layout: {
-                hLineWidth: () => 0.5,
-                vLineWidth: (i) => i === 0 ? 4 : 0.5,
-                hLineColor: () => '#E2E8F0',
-                vLineColor: (i) => i === 0 ? accentColor : '#E2E8F0',
-                fillColor: () => '#FFFFFF'
-            },
-            margin: [0, 0, 0, 6]
-        });
+                ],
+                margin: [0, 0, 0, 8]
+            };
+        };
 
-        const progressBar = (pct, color, width = 210, height = 5) => {
+        const progressBar = (pct, color, width = 220, height = 6) => {
+            const cappedPct = Math.max(0, Math.min(100, pct || 0));
             return {
                 canvas: [
-                    { type: 'rect', x: 0, y: 0, w: width, h: height, r: height / 2, color: '#F1F5F9' },
-                    { type: 'rect', x: 0, y: 0, w: Math.max(0, Math.min(width, (pct / 100) * width)), h: height, r: height / 2, color: color }
+                    { type: 'rect', x: 0, y: 0, w: width, h: height, r: height / 2, color: '#E5E7EB' },
+                    { type: 'rect', x: 0, y: 0, w: (cappedPct / 100) * width, h: height, r: height / 2, color: color }
                 ],
-                margin: [0, 5, 0, 5]
+                margin: [0, 4, 0, 4]
             };
         };
 
-        const progressCard = (title, pct, color, isLarge = false) => {
-            const width = isLarge ? 220 : 210;
-            const height = isLarge ? 8 : 5;
-            const labelSize = isLarge ? 8.5 : 7.5;
-            const pctSize = isLarge ? 14 : 11;
-            return {
-                table: {
-                    widths: ['*'],
-                    body: [[
-                        {
-                            stack: [
-                                {
-                                    columns: [
-                                        { text: title.toUpperCase(), fontSize: labelSize, bold: true, color: '#64748B', width: '*' },
-                                        { text: `${(pct || 0).toFixed(1)}%`, fontSize: pctSize, bold: true, color: color, width: 'auto' }
-                                    ],
-                                    margin: [0, 0, 0, 4]
-                                },
-                                progressBar(pct, color, width, height)
-                            ],
-                            margin: isLarge ? [12, 10, 12, 10] : [10, 8, 10, 8]
-                        }
-                    ]]
-                },
-                layout: {
-                    hLineWidth: () => 0.5,
-                    vLineWidth: (i) => i === 0 ? 3 : 0.5,
-                    hLineColor: () => '#E2E8F0',
-                    vLineColor: (i) => i === 0 ? color : '#E2E8F0',
-                    fillColor: () => '#FFFFFF'
-                }
-            };
-        };
-
-        const infoGridCard = (label, value) => ({
-            table: {
-                widths: ['*'],
-                body: [[
-                    {
-                        stack: [
-                            { text: label.toUpperCase(), fontSize: 6.5, bold: true, color: '#64748B', letterSpacing: 0.5, margin: [0, 0, 0, 2] },
-                            { text: String(value ?? '-'), fontSize: 9, bold: true, color: '#1E293B' }
-                        ],
-                        margin: [8, 6, 8, 6]
-                    }
-                ]]
-            },
-            layout: {
-                hLineWidth: () => 0.5,
-                vLineWidth: () => 0.5,
-                hLineColor: () => '#E2E8F0',
-                vLineColor: () => '#E2E8F0',
-                fillColor: () => '#FFFFFF'
-            }
-        });
-
-        const highlightedInfoGridCard = (label, value, accentColor = '#018D38', bgColor = '#F0FDFA') => ({
-            table: {
-                widths: ['*'],
-                body: [[
-                    {
-                        stack: [
-                            { text: label.toUpperCase(), fontSize: 6.5, bold: true, color: accentColor, letterSpacing: 0.5, margin: [0, 0, 0, 2] },
-                            { text: String(value ?? '-'), fontSize: 9.5, bold: true, color: '#1E293B' }
-                        ],
-                        margin: [8, 6, 8, 6]
-                    }
-                ]]
-            },
-            layout: {
-                hLineWidth: () => 0.5,
-                vLineWidth: (i) => i === 0 ? 3 : 0.5,
-                hLineColor: () => '#E2E8F0',
-                vLineColor: (i) => i === 0 ? accentColor : '#E2E8F0',
-                fillColor: () => bgColor
-            }
-        });
-
-        const timelineMilestone = (title, date, completed) => ({
-            stack: [
+        const progressCard = (title, pct, color) => {
+            return roundedCard(250, 64, '#FFFFFF', '#E2E8F0', [
                 {
-                    canvas: [
-                        { type: 'rect', x: 0, y: 0, w: 100, h: 4, r: 2, color: completed ? '#018D38' : '#E2E8F0' },
-                        { type: 'circle', cx: 50, cy: 2, r: 5, color: completed ? '#0B5640' : '#64748B' }
-                    ],
-                    margin: [0, 0, 0, 4]
+                    columns: [
+                        { text: title.toUpperCase(), fontSize: 7, bold: true, color: '#4B5563', width: '*' },
+                        { text: `${(pct || 0).toFixed(1)}%`, fontSize: 11, bold: true, color: color, width: 'auto' }
+                    ]
                 },
-                { text: title.toUpperCase(), fontSize: 6.5, bold: true, color: '#64748B', alignment: 'center' },
-                { text: date || '-', fontSize: 8, bold: true, color: '#1E293B', alignment: 'center', margin: [0, 2, 0, 0] }
-            ]
-        });
+                progressBar(pct, color, 226, 6)
+            ], 12, 18, true);
+        };
 
-        const alertCard = (title, desc, color) => ({
-            table: {
-                widths: ['*'],
-                body: [[
-                    {
-                        stack: [
-                            { text: title.toUpperCase(), fontSize: 7, bold: true, color: color, letterSpacing: 0.5, margin: [0, 0, 0, 2] },
-                            { text: desc, fontSize: 8, color: '#475569' }
-                        ],
-                        margin: [8, 6, 8, 6]
-                    }
-                ]]
-            },
-            layout: {
-                hLineWidth: () => 0.5,
-                vLineWidth: (i) => i === 0 ? 3 : 0.5,
-                hLineColor: () => '#E2E8F0',
-                vLineColor: (i) => i === 0 ? color : '#E2E8F0',
-                fillColor: () => '#FFFFFF'
-            },
-            margin: [0, 2, 0, 4]
-        });
-
-        // ===== 4. COMPILE ALERTS DYNAMICALLY =====
+        // ===== 3. COMPILE ALERTS DYNAMICALLY =====
         const alertsList = [];
         const today = new Date();
         const estStr = String(row['ESTADO CONVENIO'] || '').toLowerCase();
@@ -867,14 +828,14 @@ async function generateProfessionalPDF(row) {
                 const msLeft = termDate.getTime() - today.getTime();
                 const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
                 if (daysLeft <= 30) {
-                    alertsList.push({ title: 'Próximo a Terminar', desc: `Faltan ${daysLeft} días para la terminación (${termStr}).`, color: '#F28E18' });
+                    alertsList.push({ title: 'Próximo a Terminar', desc: `Faltan ${daysLeft} días para la terminación (${termStr}).`, color: '#F59E0B' });
                 }
             }
             if (termDate && termDate < today) {
                 const msPassed = today.getTime() - termDate.getTime();
                 const monthsPassed = msPassed / (1000 * 60 * 60 * 24 * 30.43);
                 if (monthsPassed >= 24) {
-                    alertsList.push({ title: 'Riesgo: Pérdida de Competencia', desc: `Vencido hace ${monthsPassed.toFixed(1)} meses. Límite legal de competencia de 30 meses en riesgo extremo.`, color: '#A90F09' });
+                    alertsList.push({ title: 'Riesgo Extremo: Pérdida de Competencia', desc: `Vencido hace ${monthsPassed.toFixed(1)} meses. Límite legal de competencia de 30 meses en riesgo extremo.`, color: '#A90F09' });
                 } else {
                     alertsList.push({ title: 'Vencido sin liquidar', desc: `El convenio finalizó el ${termStr} y sigue en estado abierto.`, color: '#A90F09' });
                 }
@@ -882,20 +843,18 @@ async function generateProfessionalPDF(row) {
             if (financiero > fisico + 15) {
                 alertsList.push({ title: 'Desfase Financiero Crítico', desc: `Avance financiero (${financiero.toFixed(1)}%) supera al físico (${fisico.toFixed(1)}%) por más de 15%.`, color: '#3561AB' });
             }
-            if (tieneFotos === 'NO') {
+            if (tieneFotos === 'NO' || photosList.length === 0) {
                 alertsList.push({ title: 'Sin Evidencia Fotográfica', desc: `El convenio no registra fotografías cargadas en el sistema.`, color: '#A90F09' });
             }
             if (estStr.includes('suspendido') && suspMeses >= 3) {
-                alertsList.push({ title: 'Suspensión Prolongada', desc: `Acumula ${suspMeses} meses de suspensión.`, color: '#F28E18' });
+                alertsList.push({ title: 'Suspensión Prolongada', desc: `Acumula ${suspMeses} meses de suspensión.`, color: '#F59E0B' });
             }
             if (estStr.includes('ejecución') && desembolsado === 0) {
-                alertsList.push({ title: 'Cero Desembolsos en Ejecución', desc: `Convenio en ejecución pero no hay desembolsos registrados.`, color: '#F28E18' });
+                alertsList.push({ title: 'Cero Desembolsos en Ejecución', desc: `Convenio en ejecución pero no hay desembolsos registrados.`, color: '#F59E0B' });
             }
         }
 
-        // ===== 5. GENERAL INFORMATION VALUES =====
-        const generatedAt = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-
+        // ===== 4. GENERAL INFORMATION VALUES =====
         let labelContratado = 'Alcance Contratado';
         let valContratado = '';
         const rawAlcanceM = row['ALCANCE (M)'] || getVal(['ALCANCE (M)']);
@@ -932,163 +891,264 @@ async function generateProfessionalPDF(row) {
             labelEjecutado = 'Área Ejecutada';
             valEjecutado = `${Number(rawEjecutadoM2).toLocaleString('es-CO')} m²`;
         } else {
-            if (hasM && !hasM2) {
-                labelEjecutado = 'Longitud Ejecutada';
-            } else if (hasM2 && !hasM) {
-                labelEjecutado = 'Área Ejecutada';
-            } else {
-                labelEjecutado = 'Longitud / Área Ejecutada';
-            }
             valEjecutado = 'N/A';
         }
 
-        // Parse duration & dates
         let plazoInicial = 0;
         for (let key in row) {
             if (key.toUpperCase().trim() === 'PLAZO INICIAL' || key.toUpperCase().trim().includes('PLAZO INICIAL')) {
-                plazoInicial = parseInt(row[key]) || 0;
+                plazoInicial = parseNum(row[key]);
                 break;
             }
         }
-        if (!plazoInicial) {
-            plazoInicial = parseInt(row['PLAZO INICIAL'] || row['PLAZO_INICIAL'] || 0) || 0;
-        }
-        const prorrogas = parseInt(row['PRORROGA (MESES)'] || row['PRÓRROGA (MESES)'] || row['PRRROGA (MESES)'] || 0) || 0;
-        const suspensiones = parseInt(row['SUSPENSION(MESES)'] || row['SUSPENSIÓN(MESES)'] || row['SUSPENSIN(MESES)'] || 0) || 0;
+        if (!plazoInicial) plazoInicial = parseNum(row['PLAZO INICIAL'] || row['PLAZO_INICIAL'] || 0);
+        const prorrogas = parseNum(row['PRORROGA (MESES)'] || row['PRÓRROGA (MESES)'] || row['PRRROGA (MESES)'] || 0);
+        const suspensiones = parseNum(row['SUSPENSION(MESES)'] || row['SUSPENSIÓN(MESES)'] || row['SUSPENSIN(MESES)'] || 0);
         const plazoTotal = plazoInicial + prorrogas;
 
         const termOriginalStr = String(row['FECHA DE TERMINACION'] || row['FECHA DE TERMINACIÓN'] || row['FECHA DE TERMINACIN'] || getVal(['FECHA DE TERMINAC'], false) || '-').trim();
         const termNuevaStr = String(row['NUEVA FECHA DE TERMINACION'] || row['NUEVA FECHA DE TERMINACIÓN'] || row['NUEVA FECHA DE TERMINACIN'] || getVal(['NUEVA FECHA DE TERMINAC'], false) || 'Sin cambios').trim();
 
+        // Logo configuration
         const logoElement = logoBase64 
-            ? { image: logoBase64, width: 34, margin: [0, 2, 8, 0] } 
+            ? { image: logoBase64, width: 50, margin: [0, 2, 20, 0] } 
             : {
                 table: {
-                    widths: [40],
-                    body: [[{ text: 'GOB\nANT', fontSize: 7, bold: true, color: '#ffffff', fillColor: '#0B5640', alignment: 'center', margin: [0, 8, 0, 8] }]]
+                    widths: [50],
+                    body: [[{ text: 'GOB\nANT', fontSize: 10, bold: true, color: '#ffffff', fillColor: '#07543A', alignment: 'center', margin: [0, 10, 0, 10] }]]
                 },
                 layout: 'noBorders',
-                margin: [0, 0, 8, 0]
+                margin: [0, 2, 20, 0]
               };
 
-        // ===== 6. TRAMS & GEOGRAPHIC RECORDS =====
-        let geoRows = [];
-        if (currentExtractedFeatures && currentExtractedFeatures.length > 0) {
-            geoRows = currentExtractedFeatures.map(feat => {
-                const c = getCoords(feat.layer) || { start: 'N/A', end: 'N/A' };
-                return [tdCell(feat.name), tdRight(c.start), tdRight(c.end)];
-            });
-        } else {
-            const la = parseFloat(row['LATITUD']), lo = parseFloat(row['LONGITUD']);
-            if (!isNaN(la) && !isNaN(lo) && la !== 0) {
-                geoRows = [[tdCell('Punto de Referencia Único (Coordenadas Centrales)'), tdRight(`${la.toFixed(6)}, ${lo.toFixed(6)}`), tdRight(`${la.toFixed(6)}, ${lo.toFixed(6)}`)]];
+        // Date helper for photos
+        const getPhotoDate = (stage) => {
+            const fInicio = getVal(['FECHA DE ACTA DE INICIO']) || getVal(['ACTA DE INICIO']) || getVal(['FECHA DE SUSCRIPC']);
+            const fTerminacion = row['NUEVA FECHA DE TERMINACION'] || row['FECHA DE TERMINACION'];
+            
+            if (stage === 'Antes') {
+                return fInicio || 'Fecha Inicial';
+            } else if (stage === 'Después' || stage === 'Despues') {
+                return fTerminacion || 'Fecha Final';
             } else {
-                geoRows = [[{ text: 'No hay datos geográficos disponibles para este convenio.', colSpan: 3, alignment: 'center', italics: true, fontSize: 8, color: '#94a3b8', margin: [6, 6, 6, 6] }, {}, {}]];
+                if (fInicio && fTerminacion) {
+                    const d1 = parseCOPDate(fInicio);
+                    const d2 = parseCOPDate(fTerminacion);
+                    if (d1 && d2) {
+                        const midTime = d1.getTime() + (d2.getTime() - d1.getTime()) / 2;
+                        return new Date(midTime).toLocaleDateString('es-CO');
+                    }
+                }
+                return 'En Ejecución';
             }
+        };
+
+        // Dynamic height calculation for page 1 observations & alerts
+        const obsText = row['OBSERVACIONES'] || 'Sin observaciones adicionales registradas por el supervisor en el sistema.';
+        const obsHeight = 24 + 18 + estimateTextHeight(obsText, 8, 1.3, 486) + 15; // increased baseline + safety margin
+
+        const viasText = row['VIA_PRIORIZADA'] || 'No especificada';
+        
+        // Parse vias into an array
+        const parseVias = (text) => {
+            if (!text || text === 'No especificada') return [];
+            return text.split(/[\n,;\u2022]+/g)
+                       .map(s => s.trim())
+                       .filter(s => s.length > 0);
+        };
+        const viasArray = parseVias(viasText);
+        
+        let viasHeight = 24 + 18 + 15; // default height if empty
+        let viasContent = { text: 'No especificada', fontSize: 8, color: '#1E293B' };
+        
+        if (viasArray.length > 0) {
+            const colVias1 = [];
+            const colVias2 = [];
+            const colVias3 = [];
+            
+            let h1 = 0, h2 = 0, h3 = 0;
+            
+            viasArray.forEach((v, idx) => {
+                // width inside each column is around 146pt (155pt column - 8pt icon)
+                const itemH = estimateTextHeight(v, 7, 1.1, 146) + 4; // 4pt margin bottom
+                const viaBullet = {
+                    columns: [
+                        { text: '\uf0da', font: 'FontAwesome', fontSize: 6, color: '#0B7A53', width: 8, margin: [0, 1.5, 0, 0] },
+                        { text: v, fontSize: 7, color: '#1E293B', lineHeight: 1.1 }
+                    ],
+                    margin: [0, 0, 0, 4]
+                };
+                if (idx % 3 === 0) {
+                    colVias1.push(viaBullet);
+                    h1 += itemH;
+                } else if (idx % 3 === 1) {
+                    colVias2.push(viaBullet);
+                    h2 += itemH;
+                } else {
+                    colVias3.push(viaBullet);
+                    h3 += itemH;
+                }
+            });
+            
+            viasHeight = 24 + 18 + Math.max(h1, h2, h3) + 15; // padding + title + max column height + safety margin
+            
+            viasContent = {
+                columns: [
+                    { stack: colVias1, width: '33%' },
+                    { stack: colVias2, width: '33%' },
+                    { stack: colVias3, width: '34%' }
+                ],
+                columnGap: 10
+            };
         }
 
-        // ===== 7. PHOTO GALLERY COMPONENT =====
-        const photoCard = (base64Img, caption) => ({
-            table: {
-                widths: ['*'],
-                body: [
-                    [{ image: base64Img, width: 210, height: 140, alignment: 'center' }],
-                    [{ text: caption.toUpperCase(), alignment: 'center', fontSize: 7, bold: true, color: '#64748B', margin: [0, 4, 0, 4] }]
-                ]
-            },
-            layout: {
-                hLineWidth: () => 0.5,
-                vLineWidth: () => 0.5,
-                hLineColor: () => '#E2E8F0',
-                vLineColor: () => '#E2E8F0',
-                fillColor: () => '#FFFFFF'
-            },
-            margin: [0, 4, 0, 8]
+        const rawObjeto = row['OBJETO'] || 'Sin descripción u objeto definido.';
+        const objetoText = rawObjeto;
+        const objetoLines = estimateTextLines(objetoText, 7, 300); // 300 width
+        const objetoSectionHeight = 8 + (objetoLines * 7.7) + 8; // 8pt title, 8pt margin bottom
+        
+        const supervisorHeight = estimateIconLabelHeight('Supervisor Responsable', row['SUPERVISOR'], 170);
+        const ejecutorHeight = estimateIconLabelHeight('Conveniante Ejecutor', row['CONVENIANTE EJECUTOR'], 170);
+        const inicioHeight = estimateIconLabelHeight('Fecha de Inicio', getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || 'N/A', 170);
+        
+        const convenioBannerHeight = 24 + 24 + Math.max(objetoSectionHeight, supervisorHeight + ejecutorHeight + inicioHeight) + 15;
+
+        const infoHeaderHeight = 8 + 10; // title + margin
+        const col1Height = estimateIconLabelHeight('Vigencia', row['VIGENCIA'], 114) +
+                           estimateIconLabelHeight('Clasificación', row['CLASIFICACIÓN'] || row['CLASIFICACI"N'], 114);
+                           
+        const col2Height = estimateIconLabelHeight('Municipio', row['MUNICIPIO'], 114) +
+                           estimateIconLabelHeight(labelContratado, valContratado, 114);
+                           
+        const col3Height = estimateIconLabelHeight('Subregión', getSubregion(row['MUNICIPIO']), 114) +
+                           estimateIconLabelHeight(labelEjecutado, valEjecutado, 114);
+                           
+        const col4Height = estimateIconLabelHeight('Indicador', row['INDICADOR'] ? (row['INDICADOR'].length > 40 ? row['INDICADOR'].substring(0, 40) + '...' : row['INDICADOR']) : 'N/A', 114) +
+                           estimateIconLabelHeight('Estado Actual', sysState.label, 114);
+                           
+        const infoGeneralHeight = 24 + infoHeaderHeight + Math.max(col1Height, col2Height, col3Height, col4Height) + 15;
+
+        console.log("PDF HEIGHT DEBUG:", {
+            infoGeneralHeight,
+            col1Height,
+            col2Height,
+            col3Height,
+            col4Height,
+            convenioBannerHeight,
+            objetoSectionHeight,
+            objetoLines,
+            supervisorHeight,
+            ejecutorHeight,
+            inicioHeight
         });
 
-        const createPhotoPlaceholder = (stage) => ({
-            table: {
-                widths: ['*'],
-                body: [[{
-                    stack: [
-                        { text: 'REGISTRO FOTOGRÁFICO', alignment: 'center', fontSize: 8, bold: true, color: '#94a3b8', margin: [0, 30, 0, 0] },
-                        { text: `NO DISPONIBLE (${stage.toUpperCase()})`, alignment: 'center', fontSize: 7, color: '#cbd5e1', margin: [0, 2, 0, 30] }
-                    ]
-                }]]
-            },
-            layout: {
-                hLineWidth: () => 1,
-                vLineWidth: () => 1,
-                hLineColor: () => '#cbd5e1',
-                vLineColor: () => '#cbd5e1',
-                hLineDash: () => ({ length: 4, space: 4 }),
-                vLineDash: () => ({ length: 4, space: 4 })
-            },
-            fillColor: '#F8FAFC',
-            margin: [0, 4, 0, 8]
-        });
-
-        const photoContent = [];
-        if (hasPhotos) {
-            if (validAntes.length === 0 && validDespues.length > 0) {
-                const itemsPerPage = 6;
-                for (let i = 0; i < validDespues.length; i += itemsPerPage) {
-                    const chunk = validDespues.slice(i, i + itemsPerPage);
-                    const pageIndex = Math.floor(i / itemsPerPage);
-                    photoContent.push(createSectionHeader(pageIndex === 0 ? '5. REGISTRO FOTOGRÁFICO DE OBRA' : '5. REGISTRO FOTOGRÁFICO DE OBRA (CONTINUACIÓN)', 'before'));
-                    photoContent.push({ text: 'Registro Fotográfico (Después de la Intervención)', fontSize: 9, bold: true, color: '#0B5640', margin: [0, 4, 0, 4] });
-                    const chunkRows = [];
-                    for (let j = 0; j < chunk.length; j += 2) {
-                        const imgIndexLeft = i + j;
-                        const left = photoCard(chunk[j], `Registro Después - Imagen ${imgIndexLeft + 1}`);
-                        const right = chunk[j + 1] ? photoCard(chunk[j + 1], `Registro Después - Imagen ${imgIndexLeft + 2}`) : { text: '', margin: [6, 4, 0, 4] };
-                        chunkRows.push([left, right]);
-                    }
-                    photoContent.push({ table: { widths: ['*', '*'], body: chunkRows }, layout: 'noBorders', margin: [0, 4, 0, 0] });
-                }
-            } else if (validDespues.length === 0 && validAntes.length > 0) {
-                const itemsPerPage = 6;
-                for (let i = 0; i < validAntes.length; i += itemsPerPage) {
-                    const chunk = validAntes.slice(i, i + itemsPerPage);
-                    const pageIndex = Math.floor(i / itemsPerPage);
-                    photoContent.push(createSectionHeader(pageIndex === 0 ? '5. REGISTRO FOTOGRÁFICO DE OBRA' : '5. REGISTRO FOTOGRÁFICO DE OBRA (CONTINUACIÓN)', 'before'));
-                    photoContent.push({ text: 'Registro Fotográfico (Antes de la Intervención)', fontSize: 9, bold: true, color: '#0B5640', margin: [0, 4, 0, 4] });
-                    const chunkRows = [];
-                    for (let j = 0; j < chunk.length; j += 2) {
-                        const imgIndexLeft = i + j;
-                        const left = photoCard(chunk[j], `Registro Antes - Imagen ${imgIndexLeft + 1}`);
-                        const right = chunk[j + 1] ? photoCard(chunk[j + 1], `Registro Antes - Imagen ${imgIndexLeft + 2}`) : { text: '', margin: [6, 4, 0, 4] };
-                        chunkRows.push([left, right]);
-                    }
-                    photoContent.push({ table: { widths: ['*', '*'], body: chunkRows }, layout: 'noBorders', margin: [0, 4, 0, 0] });
-                }
-            } else {
-                const maxPhotos = Math.max(validAntes.length, validDespues.length);
-                const itemsPerPage = 3; 
-                for (let i = 0; i < maxPhotos; i += itemsPerPage) {
-                    const pageIndex = Math.floor(i / itemsPerPage);
-                    photoContent.push(createSectionHeader(pageIndex === 0 ? '5. REGISTRO FOTOGRÁFICO DE OBRA' : '5. REGISTRO FOTOGRÁFICO DE OBRA (CONTINUACIÓN)', 'before'));
-                    photoContent.push({ text: 'Registro Fotográfico Comparativo (Antes vs Después)', fontSize: 9, bold: true, color: '#0B5640', margin: [0, 4, 0, 4] });
-                    const chunkRows = [];
-                    const limit = Math.min(i + itemsPerPage, maxPhotos);
-                    for (let k = i; k < limit; k++) {
-                        const left = validAntes[k] ? photoCard(validAntes[k], `Registro Antes - Imagen ${k + 1}`) : createPhotoPlaceholder('Antes');
-                        const right = validDespues[k] ? photoCard(validDespues[k], `Registro Después - Imagen ${k + 1}`) : createPhotoPlaceholder('Después');
-                        chunkRows.push([left, right]);
-                    }
-                    photoContent.push({ table: { widths: ['*', '*'], body: chunkRows }, layout: 'noBorders', margin: [0, 4, 0, 0] });
-                }
-            }
+        let alertsStack = [];
+        let alertsCardHeight = 45 + 15; // with safety margin
+        if (alertsList.length === 0) {
+            alertsStack = [
+                {
+                    columns: [
+                        { text: '\uf058', font: 'FontAwesome', fontSize: 10, color: '#0B7A53', width: 14 },
+                        { text: 'SIN ALERTAS DE RIESGO DEPARTAMENTAL', fontSize: 7.5, bold: true, color: '#0B7A53', letterSpacing: 0.5 }
+                    ],
+                    margin: [0, 0, 0, 4]
+                },
+                { text: 'El convenio no presenta retrasos, vencimientos ni advertencias contractuales activas.', fontSize: 8, color: '#4B5563' }
+            ];
+            alertsCardHeight = 45 + 15;
         } else {
-            photoContent.push(createSectionHeader('5. REGISTRO FOTOGRÁFICO DE OBRA', 'before'));
-            photoContent.push({ text: 'Registro Fotográfico Comparativo (Estandarizado)', fontSize: 9, bold: true, color: '#0B5640', margin: [0, 4, 0, 4] });
-            photoContent.push({ 
+            alertsStack = [
+                {
+                    columns: [
+                        { text: '\uf071', font: 'FontAwesome', fontSize: 10, color: '#EF4444', width: 14 },
+                        { text: 'ALERTAS DE RIESGO DETECTADAS', fontSize: 7.5, bold: true, color: '#EF4444', letterSpacing: 0.5 }
+                    ],
+                    margin: [0, 0, 0, 6]
+                }
+            ];
+            let runningHeight = 24 + 18;
+            alertsList.forEach((a, idx) => {
+                const isLast = idx === alertsList.length - 1;
+                const textHeight = estimateTextHeight(a.desc, 7.5, 1.2, 486);
+                runningHeight += 12 + textHeight + (isLast ? 0 : 6);
+                
+                alertsStack.push({
+                    stack: [
+                        { text: a.title.toUpperCase(), fontSize: 7.5, bold: true, color: '#EF4444' },
+                        { text: a.desc, fontSize: 7.5, color: '#4B5563', margin: [0, 1, 0, 0] }
+                    ],
+                    margin: [0, 0, 0, isLast ? 0 : 6]
+                });
+            });
+            alertsCardHeight = runningHeight + 15; // with safety margin
+        }
+
+        // ===== 5. TIMELINE GENERATION (PAGE 2) =====
+        const timelineSteps = [
+            { title: 'Suscripción', date: getVal(['FECHA DE SUSCRIPC'], true) || 'Por registrar', desc: 'Suscripción formal del convenio interadministrativo.' },
+            { title: 'Acta de Inicio', date: getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || 'Pendiente', desc: 'Inicio oficial de la ejecución de las obras.' },
+            { title: 'Fecha Acta Terminación', date: getVal(['FECHA DE TERMINAC'], true) || 'Por registrar', desc: 'Fecha contractual de terminación inicial pactada.' },
+            { title: 'Prórrogas', date: prorrogas > 0 ? `${prorrogas} Meses` : 'Sin prórrogas', desc: prorrogas > 0 ? `Se registran ${prorrogas} meses de adición de plazo.` : 'No se registran adiciones de plazo en el histórico.' },
+            { title: 'Suspensiones', date: suspensiones > 0 ? `${suspensiones} Meses` : 'Sin suspensiones', desc: suspensiones > 0 ? `Se registran ${suspensiones} meses de suspensión de obra.` : 'No se registran suspensiones de obra en el histórico.' },
+            { title: 'Nueva Fecha Terminación', date: termNuevaStr !== 'Sin cambios' ? termNuevaStr : termOriginalStr, desc: 'Fecha de terminación vigente con adiciones y plazos.' },
+            { title: 'Fecha Acta Liquidación', date: row['FECHA ACTA DE CIERRE DE EXPEDIENTE'] || (isLiquidado ? 'Liquidado' : 'Pendiente'), desc: 'Cierre definitivo y balance final del convenio.' }
+        ];
+
+        const timelineContent = [];
+        timelineSteps.forEach((s, idx) => {
+            const hasDate = s.date && s.date !== 'Pendiente' && s.date !== 'Por registrar' && s.date !== 'Sin cambios' && s.date !== 'Sin suspensiones' && s.date !== 'Sin prórrogas';
+            const isLast = idx === timelineSteps.length - 1;
+            
+            const nodeColor = hasDate ? '#0B7A53' : '#94A3B8';
+            const nodeBg = hasDate ? '#E6F3ED' : '#F1F5F9';
+            
+            const canvasItems = [
+                { type: 'circle', cx: 15, cy: 15, r: 8, color: nodeBg, lineColor: nodeColor, lineWidth: 1 },
+                { type: 'circle', cx: 15, cy: 15, r: 4, color: nodeColor }
+            ];
+            
+            if (!isLast) {
+                canvasItems.unshift({ type: 'line', x1: 15, y1: 15, x2: 15, y2: 45, lineWidth: 1.5, lineColor: '#D9DEE5', dash: { length: 3, space: 3 } });
+            }
+
+            timelineContent.push({
+                columns: [
+                    {
+                        width: 30,
+                        canvas: canvasItems,
+                        height: 40
+                    },
+                    {
+                        width: 100,
+                        stack: [
+                            { text: s.title.toUpperCase(), fontSize: 7, bold: true, color: '#4B5563' },
+                            { text: s.date, fontSize: 8.5, bold: true, color: hasDate ? '#07543A' : '#64748B', margin: [0, 2, 0, 0] }
+                        ],
+                        margin: [0, 8, 0, 0]
+                    },
+                    {
+                        width: '*',
+                        stack: [
+                            { text: s.desc, fontSize: 7.5, color: '#4B5563', lineHeight: 1.2 }
+                        ],
+                        margin: [0, 8, 0, 0]
+                    }
+                ],
+                margin: [0, 0, 0, 2]
+            });
+        });
+
+        // ===== 6. PHOTO GALLERY GRID GENERATION (PAGE 3) =====
+        const photoGalleryContent = [];
+        if (photosList.length === 0) {
+            photoGalleryContent.push({
                 table: {
                     widths: ['*'],
                     body: [[{
                         stack: [
-                            { text: 'REGISTRO FOTOGRÁFICO DE OBRA', alignment: 'center', fontSize: 10, bold: true, color: '#94a3b8', margin: [0, 40, 0, 0] },
-                            { text: 'NO SE DISPONE DE IMÁGENES ASOCIADAS PARA ESTE CONVENIO', alignment: 'center', fontSize: 8.5, color: '#cbd5e1', margin: [0, 4, 0, 40] }
+                            { text: '\uf030', font: 'FontAwesome', fontSize: 18, color: '#94A3B8', alignment: 'center', margin: [0, 40, 0, 4] },
+                            { text: 'REGISTRO FOTOGRÁFICO DE OBRA', alignment: 'center', fontSize: 10, bold: true, color: '#94A3B8' },
+                            { text: 'NO SE DISPONE DE IMÁGENES ASOCIADAS PARA ESTE CONVENIO', alignment: 'center', fontSize: 8, color: '#cbd5e1', margin: [0, 4, 0, 40] }
                         ]
                     }]]
                 },
@@ -1101,351 +1161,386 @@ async function generateProfessionalPDF(row) {
                     vLineDash: () => ({ length: 4, space: 4 })
                 },
                 fillColor: '#F8FAFC',
-                margin: [0, 4, 0, 10]
+                margin: [0, 15, 0, 10]
             });
-        }
-
-        // ===== 8. DOCUMENT DEFINTION (LETTER VERTICAL, 20MM MARGINS) =====
-        const docDefinition = {
-            pageSize: 'LETTER',
-            pageOrientation: 'portrait',
-            pageMargins: [56.7, 56.7, 56.7, 56.7],
-
-            defaultStyle: {
-                font: 'Poppins',
-                fontSize: 10,
-                color: '#1E293B'
-            },
-
-            header: (currentPage, pageCount) => ({
-                margin: [56.7, 18, 56.7, 0],
-                columns: [
-                    { text: `Secretaría de Infraestructura Física · Ficha Convenio ${row['CONVENIO']}`, fontSize: 7, color: '#94A3B8', font: 'Poppins' },
-                    { text: `Página ${currentPage} de ${pageCount}`, alignment: 'right', fontSize: 7, color: '#94A3B8', font: 'Poppins', bold: true }
-                ]
-            }),
-
-            footer: (currentPage, pageCount) => ({
-                margin: [56.7, 10, 56.7, 0],
-                columns: [
-                    { text: 'Gobernación de Antioquia\nSecretaría de Infraestructura Física', fontSize: 6.5, color: '#94A3B8', font: 'Poppins' },
-                    { text: 'Dirección de Infraestructura y Apoyo Territorial\nFicha de Seguimiento Técnico Contractual', fontSize: 6.5, color: '#94A3B8', alignment: 'center', font: 'Poppins' },
-                    { text: `Generado: ${generatedAt}`, fontSize: 6.5, color: '#94A3B8', alignment: 'right', font: 'Poppins' }
-                ]
-            }),
-
-            content: [
-                // ============================================================
-                // PÁGINA 1 – INFORMACIÓN GENERAL Y OBSERVACIONES/ALERTAS
-                // ============================================================
-                {
-                    table: {
-                        widths: ['*'],
-                        body: [
-                            [
+        } else {
+            const buildPhotoCard = (photoObj, isHorizontal) => {
+                const w = isHorizontal ? 250 : 163.3;
+                const imgH = isHorizontal ? 150 : 220;
+                const footerHeight = 16;
+                const cardHeight = imgH + footerHeight;
+                
+                let stageColor = '#4B5563';
+                if (photoObj.stage === 'Antes') stageColor = '#4B5563';
+                else if (photoObj.stage === 'Durante') stageColor = '#F59E0B';
+                else if (photoObj.stage === 'Después' || photoObj.stage === 'Despues') stageColor = '#0B7A53';
+                
+                return {
+                    stack: [
+                        {
+                            canvas: [
                                 {
-                                    canvas: [{ type: 'rect', x: 0, y: 0, w: 498, h: 4, r: 2, color: '#018D38' }],
-                                    margin: [-10, -10, -10, 6]
-                                }
-                            ],
-                            [
-                                {
-                                    columns: [
-                                        logoElement,
-                                        {
-                                            stack: [
-                                                { text: 'FICHA TÉCNICA DE SEGUIMIENTO', fontSize: 8.5, bold: true, color: '#64748B', letterSpacing: 0.8 },
-                                                { text: `Convenio N° ${row['CONVENIO']}`, fontSize: 16, bold: true, color: '#0B5640', margin: [0, 2, 0, 2] },
-                                                { text: `Objeto: ${row['OBJETO'] ? (row['OBJETO'].length > 120 ? row['OBJETO'].substring(0, 120) + '...' : row['OBJETO']) : 'N/A'}`, fontSize: 8.5, color: '#475569', lineHeight: 1.2 }
-                                            ],
-                                            width: '*'
-                                        },
-                                        {
-                                            stack: [
-                                                { text: 'ESTADO', fontSize: 7, bold: true, color: '#64748B', alignment: 'right' },
-                                                {
-                                                    table: {
-                                                        body: [[{ text: sysState.label.toUpperCase(), fontSize: 8, bold: true, color: '#FFFFFF', alignment: 'center', margin: [6, 3, 6, 3] }]]
-                                                    },
-                                                    layout: { defaultBorder: false, fillColor: sysState.hex },
-                                                    margin: [0, 3, 0, 4],
-                                                    alignment: 'right'
-                                                },
-                                                { text: `Corte: ${new Date().toLocaleDateString('es-CO')}`, fontSize: 7, color: '#94A3B8', alignment: 'right' }
-                                            ],
-                                            width: 'auto',
-                                            margin: [10, 0, 0, 0]
-                                        }
-                                    ],
-                                    margin: [10, 0, 10, 8]
+                                    type: 'rect',
+                                    x: 0,
+                                    y: 0,
+                                    w: w,
+                                    h: cardHeight,
+                                    r: 12,
+                                    color: '#FFFFFF',
+                                    lineColor: '#D9DEE5',
+                                    lineWidth: 1
                                 }
                             ]
-                        ]
-                    },
-                    layout: {
-                        hLineWidth: (i) => (i === 0 || i === 2) ? 0.5 : 0,
-                        vLineWidth: (i) => (i === 0 || i === 1) ? 0.5 : 0,
-                        hLineColor: () => '#E2E8F0',
-                        vLineColor: () => '#E2E8F0',
-                        fillColor: () => '#FFFFFF'
-                    },
-                    margin: [0, 0, 0, 10]
-                },
-
-                // Progress Bars side-by-side (en la portada, un poco más grandes debajo del header)
-                {
-                    columns: [
-                        { stack: [ progressCard('Avance Físico Real', row['FISICO_NORM'] || 0, '#018D38', true) ], width: '50%', margin: [0, 0, 2, 0] },
-                        { stack: [ progressCard('Avance Financiero Ejecutado', row['FINANCIERO_NORM'] || 0, '#3561AB', true) ], width: '50%', margin: [2, 0, 0, 0] }
+                        },
+                        {
+                            image: photoObj.base64,
+                            cover: {
+                                width: w - 2,
+                                height: imgH - 1,
+                                valign: 'center',
+                                align: 'center'
+                            },
+                            alignment: 'center',
+                            margin: [1, -cardHeight + 1, 1, 0]
+                        },
+                        {
+                            text: photoObj.stage.toUpperCase(),
+                            fontSize: 7,
+                            bold: true,
+                            color: stageColor,
+                            alignment: 'center',
+                            margin: [0, 4, 0, 0]
+                        }
                     ],
-                    margin: [0, 0, 0, 10]
-                },
-
-                createSectionHeader('1. Información General del Convenio'),
+                    width: w,
+                    margin: [0, 4, 0, 8]
+                };
+            };
+            
+            const photoRows = [];
+            let photoIndex = 0;
+            while (photoIndex < photosList.length) {
+                // Row 1: 2 horizontal (landscape) photos
+                const horizChunk = photosList.slice(photoIndex, photoIndex + 2);
+                if (horizChunk.length > 0) {
+                    const columns = horizChunk.map(p => buildPhotoCard(p, true));
+                    while (columns.length < 2) {
+                        columns.push({ text: '', width: 250 });
+                    }
+                    photoRows.push({
+                        columns: columns,
+                        columnGap: 10,
+                        margin: [0, 0, 0, 10],
+                        unbreakable: true
+                    });
+                    photoIndex += 2;
+                }
                 
-                // Information Grid (2 columns x 4 rows)
-                {
-                    columns: [
-                        {
-                            stack: [
-                                infoGridCard('Municipio', row['MUNICIPIO']),
-                                { text: '', margin: [0, 2] },
-                                infoGridCard('Indicador Plan de Desarrollo', row['INDICADOR']),
-                                { text: '', margin: [0, 2] },
-                                infoGridCard('Supervisor Responsable', row['SUPERVISOR'] || 'Sin Asignar'),
-                                { text: '', margin: [0, 2] },
-                                highlightedInfoGridCard(labelContratado, valContratado, '#018D38', '#F0FDFA')
-                            ],
-                            width: '50%',
-                            margin: [0, 0, 2, 0]
-                        },
-                        {
-                            stack: [
-                                infoGridCard('Subregión', getSubregion(row['MUNICIPIO'])),
-                                { text: '', margin: [0, 2] },
-                                infoGridCard('Clasificación', row['CLASIFICACIÓN'] || row['CLASIFICACI"N']),
-                                { text: '', margin: [0, 2] },
-                                infoGridCard('Vigencia', row['VIGENCIA']),
-                                { text: '', margin: [0, 2] },
-                                highlightedInfoGridCard(labelEjecutado, valEjecutado, '#018D38', '#F0FDFA')
-                            ],
-                            width: '50%',
-                            margin: [2, 0, 0, 0]
-                        }
-                    ],
-                    margin: [0, 0, 0, 10]
-                },
-
-                createSectionHeader('Observaciones y Alertas de Riesgo'),
-                {
-                    columns: [
-                        // Left: Supervisor Observations
-                        {
-                            stack: [
-                                {
-                                    table: {
-                                        widths: ['*'],
-                                        body: [[
-                                            {
-                                                stack: [
-                                                    { text: 'OBSERVACIONES TÉCNICAS', fontSize: 7, bold: true, color: '#018D38', letterSpacing: 0.5, margin: [0, 0, 0, 4] },
-                                                    { text: row['OBSERVACIONES'] || 'Sin observaciones registradas por el supervisor.', fontSize: 8.5, color: '#1E293B', alignment: 'justify', lineHeight: 1.3 }
-                                                ],
-                                                margin: [8, 6, 8, 6]
-                                            }
-                                        ]]
-                                    },
-                                    layout: {
-                                        hLineWidth: () => 0,
-                                        vLineWidth: (i) => i === 0 ? 3 : 0,
-                                        vLineColor: () => '#018D38',
-                                        fillColor: () => '#F8FAFC'
-                                    }
-                                }
-                            ],
-                            width: '55%',
-                            margin: [0, 0, 4, 0]
-                        },
-                        // Right: Alerts List
-                        {
-                            stack: alertsList.length === 0 
-                                ? [ alertCard('Sin Alertas Activas', 'El convenio no presenta retrasos ni advertencias contractuales.', '#018D38') ]
-                                : alertsList.map(a => alertCard(a.title, a.desc, a.color)),
-                            width: '45%',
-                            margin: [4, 0, 0, 0]
-                        }
-                    ],
-                    margin: [0, 0, 0, 0]
-                },
-
-                // ============================================================
-                // PÁGINA 2 – RESUMEN EJECUTIVO, CRONOLOGÍA Y LOCALIZACIÓN
-                // ============================================================
-                createSectionHeader('2. Resumen Ejecutivo de Inversión', 'before'),
-                
-                // Columnas de Resumen Ejecutivo: Tabla a la izquierda (58%), Dos Tarjetas Grandes a la derecha (42%)
-                {
-                    columns: [
-                        {
-                            stack: [
-                                {
-                                    table: {
-                                        widths: ['*', 'auto'],
-                                        body: [
-                                            [
-                                                { text: 'CONCEPTO DE INVERSIÓN', fontSize: 7, bold: true, color: '#64748B', fillColor: '#F8FAFC', margin: [8, 5, 8, 5] },
-                                                { text: 'VALOR COMPROMETIDO', fontSize: 7, bold: true, color: '#64748B', fillColor: '#F8FAFC', alignment: 'right', margin: [8, 5, 8, 5] }
-                                            ],
-                                            [
-                                                { text: '1. APORTE DEPARTAMENTO', fontSize: 8, color: '#475569', margin: [8, 5, 8, 5] },
-                                                { text: formatCurrency(row['APORTE DEPARTAMENTO'] || 0), fontSize: 8.5, bold: true, color: '#1E293B', alignment: 'right', margin: [8, 5, 8, 5] }
-                                            ],
-                                            [
-                                                { text: '2. APORTE MUNICIPIO', fontSize: 8, color: '#475569', margin: [8, 5, 8, 5] },
-                                                { text: formatCurrency(row['APORTE MUNICIPIO'] || 0), fontSize: 8.5, bold: true, color: '#1E293B', alignment: 'right', margin: [8, 5, 8, 5] }
-                                            ],
-                                            [
-                                                { text: '3. ADICIÓN DEPARTAMENTO', fontSize: 8, color: '#475569', margin: [8, 5, 8, 5] },
-                                                { text: formatCurrency(row['ADICION DEPARTAMENTO'] || 0), fontSize: 8.5, bold: true, color: '#1E293B', alignment: 'right', margin: [8, 5, 8, 5] }
-                                            ],
-                                            [
-                                                { text: '4. ADICIÓN MUNICIPIO', fontSize: 8, color: '#475569', margin: [8, 5, 8, 5] },
-                                                { text: formatCurrency(row['ADICION MUNICIPIO'] || 0), fontSize: 8.5, bold: true, color: '#1E293B', alignment: 'right', margin: [8, 5, 8, 5] }
-                                            ],
-                                            [
-                                                { text: 'INVERSIÓN TOTAL (DEPTO + MPIO)', fontSize: 8.5, bold: true, color: '#0B5640', fillColor: '#E6F3ED', margin: [8, 6, 8, 6] },
-                                                { text: formatCurrency(
-                                                    (row['APORTE DEPARTAMENTO'] || 0) + 
-                                                    (row['APORTE MUNICIPIO'] || 0) + 
-                                                    (row['ADICION DEPARTAMENTO'] || 0) + 
-                                                    (row['ADICION MUNICIPIO'] || 0)
-                                                  ), fontSize: 8.5, bold: true, color: '#0B5640', fillColor: '#E6F3ED', alignment: 'right', margin: [8, 6, 8, 6] }
-                                            ]
-                                        ]
-                                    },
-                                    layout: {
-                                        hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 1.5 : 0.5,
-                                        vLineWidth: () => 0,
-                                        hLineColor: (i, node) => (i === 0 || i === node.table.body.length) ? '#CBD5E1' : '#E2E8F0'
-                                    }
-                                }
-                            ],
-                            width: '58%',
-                            margin: [0, 0, 10, 0]
-                        },
-                        {
-                            stack: [
-                                largeKpiCard('TOTAL DESEMBOLSADO (IDEA)', formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), '#3561AB'),
-                                largeKpiCard('TOTAL AUTORIZADO', formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO'] || row['VALOR TOTAL AUTORIZADO']), '#8B4A97')
-                            ],
-                            width: '42%'
-                        }
-                    ],
-                    margin: [0, 0, 0, 10]
-                },
-
-                createSectionHeader('3. Cronología del Convenio'),
-
-                // Horizontal timeline
-                {
-                    columns: [
-                        { stack: [ timelineMilestone('Suscripción', getVal(['FECHA DE SUSCRIPC'], true), true) ], width: '25%' },
-                        { stack: [ timelineMilestone('Acta Inicio', getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true), getVal(['FECHA DE ACTA DE INICIO'], true) ? true : false) ], width: '25%' },
-                        { stack: [ timelineMilestone('Terminación', getVal(['NUEVA FECHA DE TERMINAC'], true) || getVal(['FECHA DE TERMINAC'], true), getVal(['FECHA DE TERMINAC'], true) ? true : false) ], width: '25%' },
-                        { stack: [ timelineMilestone('Cierre / Liq.', row['FECHA ACTA DE CIERRE DE EXPEDIENTE'] || (isLiquidado ? 'Liquidado' : 'Pendiente'), isLiquidado) ], width: '25%' }
-                    ],
-                    margin: [0, 4, 0, 4]
-                },
-
-                // Plazo inicial, plazo total, novedades y nueva fecha de terminación resaltada (4 columnas de tarjetas del mismo alto)
-                {
-                    columns: [
-                        { stack: [ infoGridCard('PLAZO INICIAL', `${plazoInicial} Meses`) ], width: '25%', margin: [0, 0, 3, 0] },
-                        { stack: [ infoGridCard('NOVEDADES ACUMULADAS', `${prorrogas} m. prórr. / ${suspensiones} m. susp.`) ], width: '25%', margin: [3, 0, 3, 0] },
-                        { stack: [ highlightedInfoGridCard('PLAZO TOTAL', `${plazoTotal} Meses`, '#0B5640', '#E6F3ED') ], width: '25%', margin: [3, 0, 3, 0] },
-                        { stack: [ highlightedInfoGridCard('NUEVA FECHA TERMINACIÓN', termNuevaStr, '#D97706', '#FEF3C7') ], width: '25%', margin: [3, 0, 0, 0] }
-                    ],
-                    margin: [0, 8, 0, 8]
-                },
-
-                createSectionHeader('4. Localización Geográfica del Proyecto'),
-                {
-                    table: {
-                        widths: ['50%', '50%'],
-                        body: [
-                            [
-                                { text: 'Ubicación General (Departamento)', alignment: 'center', fontSize: 7.5, bold: true, color: '#64748B', margin: [0, 4, 0, 4] },
-                                { text: 'Detalle del Trazado (Localización)', alignment: 'center', fontSize: 7.5, bold: true, color: '#64748B', margin: [0, 4, 0, 4] }
-                            ],
-                            [
-                                antioquiaMapBase64 
-                                    ? { image: antioquiaMapBase64, width: 220, height: 160, alignment: 'center', margin: [0, 0, 0, 4] }
-                                    : { text: 'Mapa del departamento no disponible.', alignment: 'center', fontSize: 8, margin: [0, 30], color: '#94A3B8', italics: true },
-                                mapBase64
-                                    ? { image: mapBase64, width: 220, height: 160, alignment: 'center', margin: [0, 0, 0, 4] }
-                                    : { text: 'Trazado geográfico detallado no disponible.', alignment: 'center', fontSize: 8, margin: [0, 30], color: '#94A3B8', italics: true }
-                            ]
-                        ]
-                    },
-                    layout: {
-                        hLineWidth: (i) => (i === 0 || i === 2) ? 0.5 : 0,
-                        vLineWidth: (i) => (i === 0 || i === 2) ? 0.5 : 0,
-                        hLineColor: () => '#E2E8F0',
-                        vLineColor: () => '#E2E8F0',
-                        fillColor: () => '#FFFFFF'
-                    },
-                    margin: [0, 2, 0, 6]
-                },
-
-                { text: 'Segmentos de Referencia e Inventario Geográfico', fontSize: 9, bold: true, color: '#0B5640', margin: [0, 4, 0, 4] },
-                {
-                    table: {
-                        headerRows: 1,
-                        widths: ['*', 'auto', 'auto'],
-                        body: [
-                            [thCell('Tramo / Segmento de Intervención'), thCell('Coordenada Inicio (Lat, Lng)'), thCell('Coordenada Fin (Lat, Lng)')],
-                            ...geoRows
-                        ]
-                    },
-                    layout: zebraLayout,
-                    margin: [0, 0, 0, 0]
-                },
-
-                // ============================================================
-                // PÁGINA 3+ – REGISTRO FOTOGRÁFICO
-                // ============================================================
-                ...photoContent
-            ],
-
-            styles: {
-                secHeader: {
-                    fontSize: 10,
-                    bold: true,
-                    color: '#ffffff',
-                    fillColor: '#0B5640',
-                    margin: [0, 8, 0, 10]
-                },
-                subHeader: {
-                    fontSize: 9,
-                    bold: true,
-                    color: '#0B5640',
-                    margin: [0, 6, 0, 4]
-                },
-                fieldLabel: {
-                    fontSize: 8.5,
-                    bold: true,
-                    color: '#64748b',
-                    margin: [0, 1, 0, 2]
-                },
-                fieldValue: {
-                    fontSize: 8.5,
-                    color: '#334155',
-                    margin: [0, 1, 0, 5]
+                // Row 2: 3 vertical (portrait) photos
+                const vertChunk = photosList.slice(photoIndex, photoIndex + 3);
+                if (vertChunk.length > 0) {
+                    const columns = vertChunk.map(p => buildPhotoCard(p, false));
+                    while (columns.length < 3) {
+                        columns.push({ text: '', width: 163.3 });
+                    }
+                    photoRows.push({
+                        columns: columns,
+                        columnGap: 10,
+                        margin: [0, 0, 0, 10],
+                        unbreakable: true
+                    });
+                    photoIndex += 3;
                 }
             }
+            photoGalleryContent.push(...photoRows);
+        }
+
+        const docDefinition = {
+            pageSize: 'A4',
+            pageOrientation: 'portrait',
+            pageMargins: [40, 50, 40, 50],
+            defaultStyle: { font: 'Poppins', fontSize: 10, color: '#1E293B' },
+            header: (currentPage, pageCount) => {
+                if (currentPage === 1) return null;
+                return {
+                    margin: [40, 18, 40, 0],
+                    columns: [
+                        { text: `Secretaría de Infraestructura Física · Convenio ${row['CONVENIO']}`, fontSize: 7, color: '#94A3B8', font: 'Poppins' }
+                    ]
+                };
+            },
+            footer: (currentPage, pageCount) => ({
+                margin: [40, 10, 40, 0],
+                columns: [
+                    { text: 'Por Antioquia Firme 2024–2027', fontSize: 7, color: '#4B5563', font: 'Poppins', bold: true },
+                    { text: `Página ${currentPage} de ${pageCount}`, alignment: 'right', fontSize: 7, color: '#4B5563', font: 'Poppins', bold: true }
+                ]
+            }),
+            content: [
+                {
+                    columns: [
+                        logoElement,
+                        {
+                            stack: [
+                                { text: 'DIRECCIÓN DE INFRAESTRUCTURA Y APOYO TERRITORIAL', fontSize: 8.5, bold: true, color: '#64748B', letterSpacing: 0.8 },
+                                { text: 'Secretaría de Infraestructura Física', fontSize: 16, bold: true, color: '#0B7A53', margin: [0, 2, 0, 2] },
+                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 19, bold: true, color: '#07543A' }
+                            ],
+                            width: '*',
+                            margin: [0, 2, 0, 0]
+                        },
+                        {
+                            width: 120,
+                            stack: [
+                                roundedCard(120, 38, '#FFFFFF', '#E2E8F0', [
+                                    { text: 'ESTADO DEL CONVENIO', fontSize: 6, bold: true, color: '#64748B', alignment: 'center', margin: [0, 2, 0, 4] },
+                                    {
+                                        text: [
+                                            { text: '\u2022 ', fontSize: 12, color: sysState.hex, bold: true },
+                                            { text: sysState.label.toUpperCase(), fontSize: 8, bold: true, color: sysState.hex }
+                                        ],
+                                        alignment: 'center'
+                                    }
+                                ], 8, 18)
+                            ]
+                        }
+                    ],
+                    margin: [0, 0, 0, 15]
+                },
+                { canvas: [{ type: 'rect', x: 0, y: 0, w: 510, h: 2, r: 0, color: '#0B7A53' }], margin: [0, 8, 0, 18] },
+                {
+                    columns: [
+                        { stack: [ progressCard('Avance Físico Real', row['FISICO_NORM'] || 0, '#0B7A53') ], width: '50%' },
+                        { stack: [ progressCard('Avance Financiero Ejecutado', row['FINANCIERO_NORM'] || 0, '#3561AB') ], width: '50%' }
+                    ],
+                    columnGap: 10,
+                    margin: [0, 0, 0, 18]
+                },
+                // Green CONVENIO banner (full-width)
+                {
+                    stack: [
+                        roundedCard(510, convenioBannerHeight, '#07543A', null, [
+                            {
+                                columns: [
+                                    { text: 'CONVENIO', fontSize: 7, bold: true, color: '#A3E635', letterSpacing: 0.8, width: 'auto', margin: [0, 4, 10, 0] },
+                                    { text: row['CONVENIO'] || 'S/N', fontSize: 18, bold: true, color: '#FFFFFF', width: '*' }
+                                ],
+                                margin: [0, 0, 0, 8]
+                            },
+                            {
+                                columns: [
+                                    {
+                                        width: 300,
+                                        stack: [
+                                            { text: 'OBJETO DEL CONVENIO', fontSize: 6.5, bold: true, color: '#A3E635', letterSpacing: 0.5 },
+                                            { text: objetoText, fontSize: 7, color: '#FFFFFF', margin: [0, 1, 0, 0], lineHeight: 1.1 }
+                                        ]
+                                    },
+                                    {
+                                        width: 170,
+                                        stack: [
+                                            iconLabel('\uf508', 'Supervisor Responsable', row['SUPERVISOR'] || 'Sin Asignar', true),
+                                            iconLabel('\uf2b5', 'Conveniante Ejecutor', row['CONVENIANTE EJECUTOR'] || 'N/A', true),
+                                            iconLabel('\uf073', 'Fecha de Inicio', getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || 'N/A', true)
+                                        ]
+                                    }
+                                ],
+                                columnGap: 16
+                            }
+                        ], 12, 24)
+                    ],
+                    margin: [0, 0, 0, 15],
+                    unbreakable: true
+                },
+                // INFORMACIÓN GENERAL card (full-width, 4 columns)
+                {
+                    stack: [
+                        roundedCard(510, infoGeneralHeight, '#FFFFFF', '#E2E8F0', [
+                            { text: 'INFORMACIÓN GENERAL', fontSize: 8, bold: true, color: '#07543A', letterSpacing: 0.5, margin: [0, 0, 0, 10] },
+                            {
+                                columns: [
+                                    {
+                                        width: 114,
+                                        stack: [
+                                            iconLabel('\uf073', 'Vigencia', row['VIGENCIA']),
+                                            iconLabel('\uf02c', 'Clasificación', row['CLASIFICACIÓN'] || row['CLASIFICACI"N'])
+                                        ]
+                                    },
+                                    {
+                                        width: 114,
+                                        stack: [
+                                            iconLabel('\uf3c5', 'Municipio', row['MUNICIPIO']),
+                                            iconLabel('\uf548', labelContratado, valContratado)
+                                        ]
+                                    },
+                                    {
+                                        width: 114,
+                                        stack: [
+                                            iconLabel('\uf279', 'Subregión', getSubregion(row['MUNICIPIO'])),
+                                            iconLabel('\uf548', labelEjecutado, valEjecutado)
+                                        ]
+                                    },
+                                    {
+                                        width: 114,
+                                        stack: [
+                                            iconLabel('\uf201', 'Indicador', row['INDICADOR'] ? (row['INDICADOR'].length > 40 ? row['INDICADOR'].substring(0, 40) + '...' : row['INDICADOR']) : 'N/A'),
+                                            iconLabel('\uf05a', 'Estado Actual', sysState.label)
+                                        ]
+                                    }
+                                ],
+                                columnGap: 10
+                            }
+                        ], 12, 18, true)
+                    ],
+                    margin: [0, 0, 0, 15],
+                    unbreakable: true
+                },
+                {
+                    stack: [
+                        roundedCard(510, viasHeight, '#FFFFFF', '#E2E8F0', [
+                            {
+                                columns: [
+                                    { text: '\uf018', font: 'FontAwesome', fontSize: 10, color: '#0B7A53', width: 14, margin: [0, 1.5, 0, 0] },
+                                    { text: 'VÍAS PRIORIZADAS', fontSize: 7.5, bold: true, color: '#0B7A53', letterSpacing: 0.5 }
+                                ],
+                                margin: [0, 0, 0, 6]
+                            },
+                            viasContent
+                        ], 12, 18, true)
+                    ],
+                    margin: [0, 0, 0, 15],
+                    unbreakable: true
+                },
+                {
+                    stack: [
+                        roundedCard(510, obsHeight, '#FFFFFF', '#E2E8F0', [
+                            {
+                                columns: [
+                                    { text: '\uf075', font: 'FontAwesome', fontSize: 10, color: '#0B7A53', width: 14, margin: [0, 1.5, 0, 0] },
+                                    { text: 'OBSERVACIONES TÉCNICAS DE SUPERVISIÓN', fontSize: 7.5, bold: true, color: '#0B7A53', letterSpacing: 0.5 }
+                                ],
+                                margin: [0, 0, 0, 6]
+                            },
+                            { text: obsText, fontSize: 8, color: '#1E293B', alignment: 'justify', lineHeight: 1.3 }
+                        ], 12, 18, true)
+                    ],
+                    margin: [0, 0, 0, 15],
+                    unbreakable: true
+                },
+                {
+                    stack: [
+                        roundedCard(510, alertsCardHeight, alertsList.length === 0 ? '#E6F3ED' : '#FEF2F2', alertsList.length === 0 ? '#A3D5BE' : '#FCA5A5', alertsStack, 12, 18)
+                    ],
+                    margin: [0, 0, 0, 0],
+                    unbreakable: true
+                },
+                {
+                    pageBreak: 'before',
+                    columns: [
+                        { text: 'RESUMEN EJECUTIVO DE INVERSIÓN', fontSize: 13, bold: true, color: '#07543A', width: '*' },
+                        { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 10, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 3, 0, 0] }
+                    ],
+                    margin: [0, 0, 0, 8]
+                },
+                { canvas: [{ type: 'rect', x: 0, y: 0, w: 510, h: 2, r: 0, color: '#0B7A53' }], margin: [0, 0, 0, 15] },
+                {
+                    stack: [
+                        roundedCard(510, 200, '#FFFFFF', '#D9DEE5', [
+                            {
+                                table: {
+                                    widths: ['*', 150],
+                                    body: [
+                                        [
+                                            { text: 'INVERSIÓN TOTAL', fontSize: 10, bold: true, color: '#07543A', margin: [8, 8, 8, 8] },
+                                            { text: formatCurrency((row['APORTE DEPARTAMENTO'] || 0) + (row['APORTE MUNICIPIO'] || 0) + (row['ADICION DEPARTAMENTO'] || 0) + (row['ADICION MUNICIPIO'] || 0)), fontSize: 10.5, bold: true, color: '#07543A', alignment: 'right', margin: [8, 8, 8, 8] }
+                                        ],
+                                        [
+                                            { text: 'APORTE DEPARTAMENTO', fontSize: 9.5, bold: true, color: '#0B7A53', fillColor: '#E6F3ED', margin: [8, 8, 8, 8] },
+                                            { text: formatCurrency(row['APORTE DEPARTAMENTO']), fontSize: 10, bold: true, color: '#0B7A53', fillColor: '#E6F3ED', alignment: 'right', margin: [8, 8, 8, 8] }
+                                        ],
+                                        [
+                                            { text: 'APORTE MUNICIPIO', fontSize: 9, bold: false, color: '#4B5563', margin: [8, 6, 8, 6] },
+                                            { text: formatCurrency(row['APORTE MUNICIPIO']), fontSize: 9.5, bold: true, color: '#1E293B', alignment: 'right', margin: [8, 6, 8, 6] }
+                                        ],
+                                        [
+                                            { text: 'ADICIÓN DEPARTAMENTO', fontSize: 9, bold: false, color: '#4B5563', margin: [8, 6, 8, 6] },
+                                            { text: formatCurrency(row['ADICION DEPARTAMENTO']), fontSize: 9.5, bold: true, color: '#1E293B', alignment: 'right', margin: [8, 6, 8, 6] }
+                                        ],
+                                        [
+                                            { text: 'ADICIÓN MUNICIPIO', fontSize: 9, bold: false, color: '#4B5563', margin: [8, 6, 8, 6] },
+                                            { text: formatCurrency(row['ADICION MUNICIPIO']), fontSize: 9.5, bold: true, color: '#1E293B', alignment: 'right', margin: [8, 6, 8, 6] }
+                                        ],
+                                        [
+                                            { text: 'TOTAL DESEMBOLSADO', fontSize: 9, bold: false, color: '#4B5563', margin: [8, 6, 8, 6] },
+                                            { text: formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), fontSize: 9.5, bold: true, color: '#3561AB', alignment: 'right', margin: [8, 6, 8, 6] }
+                                        ],
+                                        [
+                                            { text: 'TOTAL AUTORIZADO DEPARTAMENTO', fontSize: 9.5, bold: true, color: '#0B7A53', fillColor: '#E6F3ED', margin: [8, 8, 8, 8] },
+                                            { text: formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO'] || row['VALOR TOTAL AUTORIZADO']), fontSize: 10, bold: true, color: '#0B7A53', fillColor: '#E6F3ED', alignment: 'right', margin: [8, 8, 8, 8] }
+                                        ]
+                                    ]
+                                },
+                                layout: {
+                                    hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 0 : 0.5,
+                                    vLineWidth: () => 0,
+                                    hLineColor: () => '#E2E8F0'
+                                }
+                            }
+                        ], 12)
+                    ],
+                    margin: [0, 0, 0, 20]
+                },
+                {
+                    columns: [
+                        { text: 'LÍNEA DE TIEMPO Y EVENTOS CONTRACTUALES', fontSize: 13, bold: true, color: '#07543A', width: '*' },
+                        { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 10, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 3, 0, 0] }
+                    ],
+                    margin: [0, 15, 0, 8]
+                },
+                { canvas: [{ type: 'rect', x: 0, y: 0, w: 510, h: 2, r: 0, color: '#0B7A53' }], margin: [0, 0, 0, 15] },
+                {
+                    stack: timelineContent,
+                    margin: [0, 0, 0, 20]
+                },
+                {
+                    columns: [
+                        {
+                            stack: [
+                                roundedCard(250, 48, '#F5F7FA', '#D9DEE5', [
+                                    iconLabel('\uf073', 'Plazo Inicial', `${plazoInicial} Meses`)
+                                ], 10)
+                            ],
+                            width: '50%'
+                        },
+                        {
+                            stack: [
+                                roundedCard(250, 48, '#E6F3ED', '#A3D5BE', [
+                                    iconLabel('\uf073', 'Plazo Total Vigente', `${plazoTotal} Meses`)
+                                ], 10)
+                            ],
+                            width: '50%'
+                        }
+                    ],
+                    columnGap: 10,
+                    margin: [0, 0, 0, 0]
+                },
+                {
+                    pageBreak: 'before',
+                    columns: [
+                        { text: 'REGISTRO FOTOGRÁFICO DE OBRA', fontSize: 13, bold: true, color: '#07543A', width: '*' },
+                        { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 10, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 3, 0, 0] }
+                    ],
+                    margin: [0, 0, 0, 8]
+                },
+                { canvas: [{ type: 'rect', x: 0, y: 0, w: 510, h: 2, r: 0, color: '#0B7A53' }], margin: [0, 0, 0, 15] },
+                {
+                    stack: photoGalleryContent
+                }
+            ],
+            styles: {}
         };
 
-        // ===== 9. GENERATE AND DOWNLOAD PDF =====
+        // ===== 8. GENERATE AND DOWNLOAD PDF =====
         pdfMake.createPdf(docDefinition).download(`Ficha_Tecnica_Convenio_${row['CONVENIO']}.pdf`);
 
         btnPdf.innerHTML = originalText;
@@ -1616,6 +1711,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderMapTab();
                 } else if (targetTab === 'plan' && typeof renderPlanTab === 'function') {
                     renderPlanTab();
+                } else if (targetTab === 'portal' && typeof checkAndRenderPortal === 'function') {
+                    checkAndRenderPortal();
                 }
             });
         });
@@ -1646,13 +1743,16 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        if (typeof initSupervisorPortal === 'function') {
+            initSupervisorPortal();
+        }
         loadExcelFile();
     } catch (e) { console.error("Error inicial:", e); }
 });
 
 async function loadExcelFile() {
     const sheetId = '13c4V84sj_T1ZQxoq_HLqNHxUUXINzvZJeKWVgK_H55Q';
-    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx&gid=1676437891`;
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx&gid=1676437891&t=${Date.now()}`;
     const localUrl = './data/convenios.xlsx';
     
     try {
@@ -1764,6 +1864,12 @@ function processExcelData(data) {
             r['CONVENIO'] = String(r['CONVENIO']).replace('24AS', '25AS');
         }
     });
+
+    // Guardar copia de base de datos Excel e integrar cambios de localStorage
+    window.baseExcelData = JSON.parse(JSON.stringify(rawData));
+    if (window.DIATDataService) {
+        rawData = window.DIATDataService.mergeData(window.baseExcelData);
+    }
     
     const welcomeScreen = document.getElementById('welcome-screen');
     if (welcomeScreen) welcomeScreen.style.display = 'none';
@@ -2754,6 +2860,45 @@ function openModal(row) {
     document.getElementById('mod-txt-financiero').textContent = pfn.toFixed(1) + '%';
     document.getElementById('mod-bar-financiero').style.width = pfn + '%';
 
+    // Renderizar historial de visitas en el modal de detalle del convenio
+    const detailVisitsList = document.getElementById('modal-detalle-visitas-list');
+    if (detailVisitsList) {
+        detailVisitsList.innerHTML = '';
+        if (window.DIATDataService) {
+            const allVisits = window.DIATDataService.getTechnicalVisits();
+            const convenioVisits = allVisits.filter(v => String(v.convenioId).trim() === String(row['CONVENIO']).trim());
+            if (convenioVisits.length === 0) {
+                detailVisitsList.innerHTML = `<div class="text-center py-4 text-slate-400 font-medium text-xs italic">No se registran visitas técnicas para este convenio.</div>`;
+            } else {
+                convenioVisits.forEach(v => {
+                    const item = document.createElement('div');
+                    item.className = 'p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition cursor-pointer';
+                    
+                    let photosCountHtml = '';
+                    if (v.photos && v.photos.length > 0) {
+                        photosCountHtml = `<span class="text-institutional-primary font-bold"><i class="fa-solid fa-camera mr-1"></i>${v.photos.length} foto${v.photos.length > 1 ? 's' : ''}</span>`;
+                    }
+
+                    item.innerHTML = `
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="bg-institutional-pale text-institutional-primary px-1.5 py-0.5 rounded font-bold text-[9px] uppercase">${v.tipo}</span>
+                            <span class="text-[9px] text-slate-400 font-semibold">${v.fecha}</span>
+                        </div>
+                        <p class="text-[10px] text-slate-600 line-clamp-2 leading-relaxed mb-1.5 font-medium">${v.observaciones || 'Sin observaciones.'}</p>
+                        <div class="flex justify-between items-center text-[9px] text-slate-400 font-semibold">
+                            <span>Por: ${v.usuario || 'N/A'}</span>
+                            ${photosCountHtml}
+                        </div>
+                    `;
+                    item.addEventListener('click', (e) => {
+                        window.openVisitDetailModal(v.id);
+                    });
+                    detailVisitsList.appendChild(item);
+                });
+            }
+        }
+    }
+
     document.getElementById('modal-detalle').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     
@@ -2765,44 +2910,107 @@ function openModal(row) {
 
     const emp = document.getElementById('mod-galeria-empty');
     const galAntes = document.getElementById('mod-galeria-antes');
+    const galDurante = document.getElementById('mod-galeria-durante');
     const galDespues = document.getElementById('mod-galeria-despues');
     if (galAntes) galAntes.innerHTML = '';
+    if (galDurante) galDurante.innerHTML = '';
     if (galDespues) galDespues.innerHTML = '';
     emp.classList.add('hidden'); currentGalleryImages = [];
     const n = String(row['CONVENIO']).trim();
 
-    const loadImages = (folder, container) => {
-        if (!container) return;
-        for(let i=1; i<=8; i++){
-            const img = document.createElement('img');
-            img.src = `./assets/fotos/${n}/${folder}/${i}.jpg`;
-            img.className = 'w-full h-24 object-cover rounded-lg cursor-pointer hover:ring-2 hover:ring-institutional-light transition-all shadow-sm';
-            img.onerror = () => img.remove();
-            img.onload = () => { 
-                img.onclick = () => { 
-                    currentGalleryImages = Array.from(document.querySelectorAll('#mod-galeria img')).map(e => e.src); 
-                    openLightbox(currentGalleryImages.indexOf(img.src)); 
-                }; 
-                container.appendChild(img); 
-            };
-        }
-    };
-
-    loadImages('antes', galAntes);
-    loadImages('despues', galDespues);
-
-    setTimeout(() => { 
+    const updateGalleryVisibility = () => {
         const totalImgs = document.querySelectorAll('#mod-galeria img').length;
-        if(totalImgs === 0) {
-            emp.classList.remove('hidden'); 
+        if (totalImgs > 0) {
+            emp.classList.add('hidden');
+        } else {
+            emp.classList.remove('hidden');
         }
         
-        if (galAntes && galAntes.querySelectorAll('img').length === 0 && galAntes.parentElement) galAntes.parentElement.classList.add('hidden');
-        else if (galAntes && galAntes.parentElement) galAntes.parentElement.classList.remove('hidden');
+        [
+            { gal: galAntes },
+            { gal: galDurante },
+            { gal: galDespues }
+        ].forEach(item => {
+            if (item.gal) {
+                const imgs = item.gal.querySelectorAll('img').length;
+                if (imgs === 0 && item.gal.parentElement) {
+                    item.gal.parentElement.classList.add('hidden');
+                } else if (item.gal.parentElement) {
+                    item.gal.parentElement.classList.remove('hidden');
+                }
+            }
+        });
+    };
 
-        if (galDespues && galDespues.querySelectorAll('img').length === 0 && galDespues.parentElement) galDespues.parentElement.classList.add('hidden');
-        else if (galDespues && galDespues.parentElement) galDespues.parentElement.classList.remove('hidden');
-    }, 600);
+    // ── Carga de fotos desde index.json (soporta cualquier nombre de archivo) ──
+    const addPhotoToGallery = (src, label, container) => {
+        const domImg = document.createElement('img');
+        domImg.className = 'w-full h-24 object-cover rounded-lg cursor-pointer hover:ring-2 hover:ring-institutional-light transition-all shadow-sm';
+        domImg.setAttribute('data-stage', label);
+        domImg.setAttribute('data-folder', label);
+        domImg.onload = () => { container.appendChild(domImg); updateGalleryVisibility(); };
+        domImg.onerror = () => domImg.remove();
+        domImg.onclick = () => { 
+            currentGalleryImages = Array.from(document.querySelectorAll('#mod-galeria img')).map(e => e.src); 
+            openLightbox(currentGalleryImages.indexOf(domImg.src)); 
+        };
+        domImg.src = src;
+    };
+
+    fetch(`./assets/fotos/${n}/index.json`)
+        .then(r => r.ok ? r.json() : null)
+        .then(idx => {
+            if (idx) {
+                // Método principal: usar index.json con rutas relativas exactas
+                const loadFromIndex = (fileList, container, label) => {
+                    if (!container || !fileList || fileList.length === 0) return;
+                    fileList.forEach(relPath => {
+                        addPhotoToGallery(`./assets/fotos/${n}/${relPath}`, label, container);
+                    });
+                };
+                loadFromIndex(idx.antes,   galAntes,   'Antes');
+                loadFromIndex(idx.durante, galDurante, 'Durante');
+                loadFromIndex(idx.despues, galDespues, 'Después');
+            } else {
+                // Fallback: intento con nombres numéricos (1-15) para convenios sin index.json
+                const extensions = ['jpg', 'jpeg', 'png', 'jfif', 'JPG', 'JPEG', 'PNG', 'JFIF'];
+                const loadImages = (foldersList, container, label) => {
+                    if (!container) return;
+                    for (let i = 1; i <= 15; i++) {
+                        let found = false;
+                        const tryCombination = (fi, ei) => {
+                            if (found || fi >= foldersList.length) return;
+                            if (ei >= extensions.length) { tryCombination(fi + 1, 0); return; }
+                            const img = new Image();
+                            const src = `./assets/fotos/${n}/${foldersList[fi]}/${i}.${extensions[ei]}`;
+                            img.onload = () => { if (found) return; found = true; addPhotoToGallery(src, label, container); };
+                            img.onerror = () => tryCombination(fi, ei + 1);
+                            img.src = src;
+                        };
+                        tryCombination(0, 0);
+                    }
+                };
+                loadImages(['Antes', 'antes'], galAntes, 'Antes');
+                loadImages(['Durante', 'durante'], galDurante, 'Durante');
+                loadImages(['Despues', 'Después', 'despues', 'después'], galDespues, 'Después');
+            }
+        })
+        .catch(() => { /* sin fotos o sin acceso */ })
+        .finally(() => {
+            try {
+                const localPhotos = JSON.parse(localStorage.getItem('diat_photos_' + n)) || [];
+                localPhotos.forEach(photo => {
+                    if (photo && photo.base64 && galDespues) {
+                        addPhotoToGallery(photo.base64, 'Después', galDespues);
+                    }
+                });
+            } catch (e) {
+                console.error("Error cargando fotos de localStorage:", e);
+            }
+            updateGalleryVisibility();
+        });
+
+    setTimeout(updateGalleryVisibility, 1500);
 }
 
 function closeModal() { document.getElementById('modal-detalle').classList.add('hidden'); document.body.style.overflow = 'auto'; }
@@ -4816,5 +5024,1702 @@ function renderPlanTab() {
         }
     });
 }
+
+// ============================================================
+// 34. PORTAL DE SUPERVISORES DIAT - LOGICA INTEGRADA
+// ============================================================
+
+// Variables locales del mapa de edición
+window.editMapInstance = null;
+window.editMarker = null;
+window.editUploadedPhotos = [];
+
+// Helper para Toasts dinámicos
+function alertToast(title, desc, type = "success") {
+    const toast = document.getElementById('toast-notification');
+    if (!toast) return;
+    
+    const titleEl = toast.querySelector('h4');
+    const descEl = toast.querySelector('p');
+    const iconEl = toast.querySelector('i');
+
+    if (titleEl) titleEl.textContent = title;
+    if (descEl) descEl.textContent = desc;
+
+    if (iconEl) {
+        iconEl.className = 'fa-solid';
+        if (type === 'success') {
+            iconEl.classList.add('fa-circle-check');
+            toast.style.background = 'linear-gradient(135deg, #0B5640, #018D38)';
+        } else if (type === 'warning') {
+            iconEl.classList.add('fa-triangle-exclamation');
+            toast.style.background = 'linear-gradient(135deg, #F28E18, #D97706)';
+        } else {
+            iconEl.classList.add('fa-circle-xmark');
+            toast.style.background = 'linear-gradient(135deg, #A90F09, #DC2626)';
+        }
+    }
+
+    toast.classList.remove('opacity-0', 'translate-y-20');
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+    
+    setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-20');
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(80px)';
+    }, 3500);
+}
+
+// Convertidor flexible de fechas para input date HTML
+function toDateInputValue(str) {
+    if (!str || str === '--') {
+        return new Date().toISOString().substring(0, 10);
+    }
+    // Si el formato es DD/MM/YYYY
+    const parts = str.split('/');
+    if (parts.length === 3) {
+        const d = parts[0].padStart(2, '0');
+        const m = parts[1].padStart(2, '0');
+        const y = parts[2];
+        return `${y}-${m}-${d}`;
+    }
+    return str;
+}
+
+// Catálogo de usuarios del portal — añadir más supervisores aquí
+const PORTAL_USERS = {
+    'JMARINGA': {
+        password: '1037653193',
+        name: 'Jonathan Marín Gallego',
+        // supervisorExcelName: nombre EXACTO como aparece en la columna SUPERVISOR del Excel
+        supervisorExcelName: 'JONATHAN MARÍN GALLEGO',
+        role: 'Supervisor Técnico DIAT',
+        email: 'jmarin@antioquia.gov.co',
+        initials: 'JM'
+    }
+};
+
+// Helper para obtener el usuario autenticado desde sessionStorage o localStorage
+function getLoggedUser() {
+    try {
+        const userSession = sessionStorage.getItem('diat_logged_user');
+        if (userSession) return JSON.parse(userSession);
+        const userLocal = localStorage.getItem('diat_logged_user');
+        if (userLocal) return JSON.parse(userLocal);
+    } catch (e) {
+        console.error("Error al leer usuario autenticado:", e);
+    }
+    return null;
+}
+
+// Normaliza un nombre para comparación sin importar acentos ni mayúsculas
+function normalizeSupervisorName(str) {
+    return String(str || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase()
+        .trim();
+}
+
+// Obtiene las filas de rawData asignadas al supervisor actualmente logueado
+function getSupervisorRows() {
+    const user = getLoggedUser();
+    if (!user) return [];
+    const excelName = user.supervisorExcelName || user.name;
+    const normalizedTarget = normalizeSupervisorName(excelName);
+    return rawData.filter(row => {
+        const rowSup = normalizeSupervisorName(row['SUPERVISOR']);
+        return rowSup === normalizedTarget;
+    });
+}
+
+// Inicializa el Portal de Supervisores y enlaza sus eventos
+function initSupervisorPortal() {
+    // 1. Enlace de Login
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const userInp = document.getElementById('login-username').value.trim().toUpperCase();
+            const passInp = document.getElementById('login-password').value.trim();
+
+            const userDef = PORTAL_USERS[userInp];
+            if (userDef && passInp === userDef.password) {
+                const userObj = {
+                    username: userInp,
+                    name: userDef.name,
+                    supervisorExcelName: userDef.supervisorExcelName,
+                    role: userDef.role,
+                    email: userDef.email,
+                    initials: userDef.initials || userDef.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                };
+                
+                const rememberMe = document.getElementById('login-remember') && document.getElementById('login-remember').checked;
+                if (rememberMe) {
+                    localStorage.setItem('diat_logged_user', JSON.stringify(userObj));
+                    sessionStorage.removeItem('diat_logged_user');
+                } else {
+                    sessionStorage.setItem('diat_logged_user', JSON.stringify(userObj));
+                    localStorage.removeItem('diat_logged_user');
+                }
+                
+                document.getElementById('modal-login').classList.add('hidden');
+                
+                checkAuthStatus();
+                
+                // Redirigir a pestaña del Portal y sub-pestaña dashboard
+                const portalTabBtn = document.querySelector('.tab-btn[data-tab="portal"]');
+                if (portalTabBtn) portalTabBtn.click();
+                
+                alertToast('Sesión Iniciada', 'Bienvenido, ' + userDef.name + '.');
+            } else {
+                alertToast('Credenciales Incorrectas', 'Usuario o contraseña inválidos.', 'error');
+            }
+        });
+    }
+
+    const triggerAuth = document.getElementById('btn-portal-login-trigger');
+    if (triggerAuth) {
+        triggerAuth.addEventListener('click', () => {
+            document.getElementById('modal-login').classList.remove('hidden');
+        });
+    }
+
+    // 2. Enlace de Perfil en Header
+    const headerProfile = document.getElementById('header-user-profile');
+    if (headerProfile) {
+        headerProfile.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const logged = getLoggedUser();
+            if (logged) {
+                document.getElementById('user-menu-dropdown').classList.toggle('hidden');
+            } else {
+                document.getElementById('modal-login').classList.remove('hidden');
+            }
+        });
+    }
+
+    // Cerrar menú de usuario al hacer clic fuera
+    document.addEventListener('click', () => {
+        const dd = document.getElementById('user-menu-dropdown');
+        if (dd) dd.classList.add('hidden');
+    });
+
+    // 3. Acciones de items del Menú de Usuario
+    document.querySelectorAll('.user-menu-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('user-menu-dropdown').classList.add('hidden');
+            const action = item.getAttribute('data-action');
+            if (action === 'logout') {
+                handleLogout();
+            } else {
+                // Ir a pestaña del portal
+                const portalTabBtn = document.querySelector('.tab-btn[data-tab="portal"]');
+                if (portalTabBtn) portalTabBtn.click();
+
+                // Cambiar a la sub-pestaña correcta
+                const targetSub = action === 'perfil' ? 'dashboard' : action;
+                const subtabBtn = document.querySelector(`.portal-subtab-btn[data-subtab="${targetSub}"]`);
+                if (subtabBtn) subtabBtn.click();
+            }
+        });
+    });
+
+    // Cerrar sesión desde botón interno del Portal
+    const btnLogout = document.getElementById('btn-portal-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', handleLogout);
+    }
+
+    // 4. Navegación de sub-pestañas internas del Portal
+    const subtabBtns = document.querySelectorAll('.portal-subtab-btn');
+    subtabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            subtabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const target = btn.getAttribute('data-subtab');
+            document.querySelectorAll('.portal-panel').forEach(p => p.classList.add('hidden'));
+            const panel = document.getElementById(`portal-panel-${target}`);
+            if (panel) panel.classList.remove('hidden');
+        });
+    });
+
+    // 5. Navegación de pestañas del Modal de Edición
+    const editTabBtns = document.querySelectorAll('.edit-tab-btn');
+    editTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            editTabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const target = btn.getAttribute('data-edittab');
+            document.querySelectorAll('.edit-panel').forEach(p => p.classList.add('hidden'));
+            const panel = document.getElementById(`edit-panel-${target}`);
+            if (panel) panel.classList.remove('hidden');
+
+            if (target === 'ubicacion' && window.editMapInstance) {
+                setTimeout(() => {
+                    window.editMapInstance.invalidateSize();
+                }, 100);
+            }
+        });
+    });
+
+    // 6. Enlace de carga de fotos generales
+    const fotoInput = document.getElementById('edit-foto-input');
+    if (fotoInput) {
+        fotoInput.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            let loaded = 0;
+            for (const file of files) {
+                try {
+                    const compressedBase64 = await compressImage(file);
+                    window.editUploadedPhotos.push({
+                        name: file.name,
+                        base64: compressedBase64
+                    });
+                } catch (err) {
+                    console.error("Error comprimiendo imagen general:", err);
+                }
+                loaded++;
+                if (loaded === files.length) {
+                    renderPhotoPreviews();
+                    e.target.value = ''; // limpiar input
+                }
+            }
+        });
+    }
+
+    // Enlace de carga de fotos para visitas técnicas
+    window.visitUploadedPhotos = [];
+    const visitFotoInput = document.getElementById('visit-foto-input');
+    if (visitFotoInput) {
+        visitFotoInput.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            let loaded = 0;
+            for (const file of files) {
+                try {
+                    const compressedBase64 = await compressImage(file);
+                    window.visitUploadedPhotos.push(compressedBase64);
+                } catch (err) {
+                    console.error("Error comprimiendo imagen de visita:", err);
+                }
+                loaded++;
+                if (loaded === files.length) {
+                    renderVisitPhotoPreviews();
+                    e.target.value = ''; // limpiar input
+                }
+            }
+        });
+    }
+
+    // 7. Geolocalización celular para visitas
+    const btnGPS = document.getElementById('btn-visit-capture-gps');
+    if (btnGPS) {
+        btnGPS.addEventListener('click', () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        document.getElementById('visit-gps-lat').value = lat.toFixed(6);
+                        document.getElementById('visit-gps-lng').value = lng.toFixed(6);
+                        
+                        if (window.visitMapInstance && window.visitMarker) {
+                            const pos = L.latLng(lat, lng);
+                            window.visitMarker.setLatLng(pos);
+                            window.visitMapInstance.setView(pos, 15);
+                        }
+                        alertToast("Ubicación capturada con éxito", "success");
+                    },
+                    (err) => {
+                        console.warn("Error de geolocalización, usando mock:", err);
+                        // Mock de coordenadas en Antioquia (Medellín/Jericó)
+                        const lat = 6.25184 + (Math.random() - 0.5) * 0.05;
+                        const lng = -75.56359 + (Math.random() - 0.5) * 0.05;
+                        document.getElementById('visit-gps-lat').value = lat.toFixed(6);
+                        document.getElementById('visit-gps-lng').value = lng.toFixed(6);
+                        if (window.visitMapInstance && window.visitMarker) {
+                            const pos = L.latLng(lat, lng);
+                            window.visitMarker.setLatLng(pos);
+                            window.visitMapInstance.setView(pos, 15);
+                        }
+                        alertToast("GPS no disponible. Se generaron coordenadas de simulación.", "warning");
+                    }
+                );
+            } else {
+                alertToast("Geolocalización no soportada por el navegador", "error");
+            }
+        });
+    }
+
+    // Actualizar marcador al cambiar manualmente lat/lng inputs de visita
+    ['visit-gps-lat', 'visit-gps-lng'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', () => {
+                const lat = parseFloat(document.getElementById('visit-gps-lat').value);
+                const lng = parseFloat(document.getElementById('visit-gps-lng').value);
+                if (!isNaN(lat) && !isNaN(lng) && window.visitMapInstance && window.visitMarker) {
+                    const pos = L.latLng(lat, lng);
+                    window.visitMarker.setLatLng(pos);
+                    window.visitMapInstance.setView(pos, 14);
+                }
+            });
+        }
+    });
+
+    // Función para inicializar mapa de visita
+    window.visitMapInstance = null;
+    window.visitMarker = null;
+    function initVisitMap(lat, lng) {
+        const mapDiv = document.getElementById('visit-map');
+        if (!mapDiv) return;
+
+        const initialPos = (lat && lng && lat !== 0 && lng !== 0) ? L.latLng(lat, lng) : L.latLng(6.25184, -75.56359);
+        const initialZoom = (lat && lng && lat !== 0 && lng !== 0) ? 14 : 8;
+
+        if (!window.visitMapInstance) {
+            window.visitMapInstance = L.map('visit-map', {
+                zoomControl: true,
+                attributionControl: false
+            });
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 18,
+                crossOrigin: true
+            }).addTo(window.visitMapInstance);
+
+            window.visitMarker = L.marker(initialPos, {
+                draggable: true
+            }).addTo(window.visitMapInstance);
+
+            window.visitMarker.on('dragend', function() {
+                const pos = window.visitMarker.getLatLng();
+                document.getElementById('visit-gps-lat').value = pos.lat.toFixed(6);
+                document.getElementById('visit-gps-lng').value = pos.lng.toFixed(6);
+            });
+
+            window.visitMapInstance.on('click', function(e) {
+                window.visitMarker.setLatLng(e.latlng);
+                document.getElementById('visit-gps-lat').value = e.latlng.lat.toFixed(6);
+                document.getElementById('visit-gps-lng').value = e.latlng.lng.toFixed(6);
+            });
+        } else {
+            window.visitMarker.setLatLng(initialPos);
+        }
+
+        window.visitMapInstance.setView(initialPos, initialZoom);
+        setTimeout(() => {
+            window.visitMapInstance.invalidateSize();
+        }, 100);
+    }
+
+    // Función para inicializar mapa de detalle de visita (solo lectura)
+    window.visitDetailMapInstance = null;
+    window.visitDetailMarker = null;
+    function initVisitDetailMap(lat, lng) {
+        const mapDiv = document.getElementById('visit-detail-map');
+        if (!mapDiv) return;
+
+        const initialPos = (lat && lng && lat !== 0 && lng !== 0) ? L.latLng(lat, lng) : L.latLng(6.25184, -75.56359);
+        const initialZoom = (lat && lng && lat !== 0 && lng !== 0) ? 14 : 8;
+
+        if (!window.visitDetailMapInstance) {
+            window.visitDetailMapInstance = L.map('visit-detail-map', {
+                zoomControl: true,
+                attributionControl: false
+            });
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 18,
+                crossOrigin: true
+            }).addTo(window.visitDetailMapInstance);
+
+            window.visitDetailMarker = L.marker(initialPos).addTo(window.visitDetailMapInstance);
+        } else {
+            window.visitDetailMarker.setLatLng(initialPos);
+        }
+
+        window.visitDetailMapInstance.setView(initialPos, initialZoom);
+        setTimeout(() => {
+            window.visitDetailMapInstance.invalidateSize();
+        }, 100);
+    }
+
+    // Modal para visualizar detalle de visita técnica
+    window.openVisitDetailModal = function(visitId) {
+        const visits = window.DIATDataService.getTechnicalVisits();
+        const v = visits.find(visit => visit.id === visitId);
+        if (!v) return;
+
+        document.getElementById('visit-detail-title').textContent = `Visita Técnica - Convenio N° ${v.convenioId}`;
+        document.getElementById('visit-detail-subtitle').textContent = `Fecha de Visita: ${v.fecha}`;
+        document.getElementById('visit-detail-tipo').textContent = v.tipo;
+        document.getElementById('visit-detail-usuario').textContent = v.usuario || 'N/A';
+        document.getElementById('visit-detail-obs').textContent = v.observaciones || '--';
+        document.getElementById('visit-detail-compromisos').textContent = v.compromisos || '--';
+        document.getElementById('visit-detail-riesgos').textContent = v.riesgos || '--';
+
+        // Cargar fotos
+        const photosContainer = document.getElementById('visit-detail-photos');
+        const emptyPhotos = document.getElementById('visit-detail-photos-empty');
+        photosContainer.innerHTML = '';
+        
+        if (v.photos && v.photos.length > 0) {
+            emptyPhotos.classList.add('hidden');
+            photosContainer.classList.remove('hidden');
+            v.photos.forEach((photo, idx) => {
+                const img = document.createElement('img');
+                img.src = photo;
+                img.className = 'w-full aspect-square object-cover rounded border border-slate-200 cursor-pointer hover:opacity-90 transition-all';
+                img.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.openVisitPhotoLightbox(v.id, idx);
+                });
+                photosContainer.appendChild(img);
+            });
+        } else {
+            emptyPhotos.classList.remove('hidden');
+            photosContainer.classList.add('hidden');
+        }
+
+        // Cargar ubicación
+        const lat = parseFloat(v.lat) || 0;
+        const lng = parseFloat(v.lng) || 0;
+        document.getElementById('visit-detail-lat').textContent = lat !== 0 ? lat.toFixed(6) : 'N/A';
+        document.getElementById('visit-detail-lng').textContent = lng !== 0 ? lng.toFixed(6) : 'N/A';
+
+        // Mostrar modal
+        document.getElementById('modal-detalle-visita').style.display = 'flex';
+        document.getElementById('modal-detalle-visita').classList.remove('hidden');
+
+        // Inicializar mapa de detalle
+        setTimeout(() => {
+            initVisitDetailMap(lat, lng);
+        }, 200);
+    };
+
+    // Cerrar modal de detalle de visitas
+    ['btn-close-visit-detail-modal', 'btn-close-visit-detail'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('click', () => {
+                document.getElementById('modal-detalle-visita').style.display = 'none';
+                document.getElementById('modal-detalle-visita').classList.add('hidden');
+            });
+        }
+    });
+
+    // 8. Guardar Visita en el nuevo modal independiente
+    const btnSaveVisit = document.getElementById('btn-save-visit');
+    if (btnSaveVisit) {
+        btnSaveVisit.addEventListener('click', async () => {
+            const convenioId = document.getElementById('visit-convenio-select').value;
+            if (!convenioId) {
+                alertToast("Error", "Debes seleccionar un convenio para registrar la visita", "error");
+                return;
+            }
+
+            const fechaVal = document.getElementById('visit-fecha').value;
+            const tipo = document.getElementById('visit-tipo').value;
+            const observaciones = document.getElementById('visit-obs').value;
+            const compromisos = document.getElementById('visit-compromisos').value;
+            const riesgos = document.getElementById('visit-riesgos').value;
+            const lat = parseFloat(document.getElementById('visit-gps-lat').value) || 0;
+            const lng = parseFloat(document.getElementById('visit-gps-lng').value) || 0;
+
+            if (!observaciones.trim()) {
+                alertToast("Error", "Las observaciones técnicas son obligatorias para registrar la visita", "error");
+                return;
+            }
+
+            const user = getLoggedUser();
+            const username = user ? user.name : 'Jonathan Marín';
+
+            btnSaveVisit.disabled = true;
+            const oldHtml = btnSaveVisit.innerHTML;
+            btnSaveVisit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Registrando...';
+
+            // Guardar visita técnica
+            await window.DIATDataService.addTechnicalVisit(username, convenioId, {
+                fecha: fechaVal ? toDateInputValue(fechaVal) : undefined,
+                tipo,
+                observaciones,
+                compromisos,
+                riesgos,
+                lat,
+                lng,
+                photoCount: window.visitUploadedPhotos.length,
+                photos: window.visitUploadedPhotos
+            });
+
+            // Si las coordenadas son válidas, actualizar la ubicación del convenio en la base de datos
+            if (lat !== 0 && lng !== 0) {
+                const row = rawData.find(r => String(r['CONVENIO']).trim() === String(convenioId).trim());
+                if (row) {
+                    await window.DIATDataService.saveConvenioUpdate(username, convenioId, {
+                        'LATITUD': lat,
+                        'LONGITUD': lng
+                    }, row);
+                }
+            }
+
+            btnSaveVisit.disabled = false;
+            btnSaveVisit.innerHTML = oldHtml;
+
+            // Limpiar campos y cerrar modal
+            document.getElementById('visit-obs').value = '';
+            document.getElementById('visit-compromisos').value = '';
+            document.getElementById('visit-riesgos').value = '';
+            window.visitUploadedPhotos = [];
+            if (document.getElementById('visit-foto-input')) document.getElementById('visit-foto-input').value = '';
+            renderVisitPhotoPreviews();
+
+            document.getElementById('modal-registrar-visita').style.display = 'none';
+            document.getElementById('modal-registrar-visita').classList.add('hidden');
+
+            alertToast('Visita Registrada', 'La visita técnica ha sido guardada con éxito.');
+
+            // Recargar datos y fusionar
+            if (window.baseExcelData && window.DIATDataService) {
+                rawData = window.DIATDataService.mergeData(window.baseExcelData);
+            }
+
+            // Actualizar dashboard principal, mapa, listados y portal
+            applyFilters();
+            renderSupervisorPortal();
+        });
+    }
+
+    // Al cambiar la selección en el selector de convenios del modal de visitas
+    const visitConvenioSelect = document.getElementById('visit-convenio-select');
+    if (visitConvenioSelect) {
+        visitConvenioSelect.addEventListener('change', () => {
+            const convenioId = visitConvenioSelect.value;
+            const row = rawData.find(r => String(r['CONVENIO']).trim() === String(convenioId).trim());
+            if (row) {
+                const lat = parseFloat(row['LATITUD']) || 0;
+                const lng = parseFloat(row['LONGITUD']) || 0;
+                document.getElementById('visit-gps-lat').value = lat !== 0 ? lat.toFixed(6) : '';
+                document.getElementById('visit-gps-lng').value = lng !== 0 ? lng.toFixed(6) : '';
+                initVisitMap(lat, lng);
+            }
+        });
+    }
+
+    // 9. Registrar Visita desde pestaña del portal (Abre nuevo modal independiente)
+    const btnRegistrarPortal = document.getElementById('btn-registrar-visita-portal');
+    if (btnRegistrarPortal) {
+        btnRegistrarPortal.addEventListener('click', () => {
+            const supervisorRows = getSupervisorRows();
+            if (supervisorRows.length === 0) {
+                alertToast('Sin convenios', 'No tienes convenios asignados para registrar visitas.', 'warning');
+                return;
+            }
+
+            // Resetear inputs del formulario de visita
+            document.getElementById('visit-fecha').value = toDateInputValue('');
+            document.getElementById('visit-tipo').value = 'Avance de obra';
+            document.getElementById('visit-obs').value = '';
+            document.getElementById('visit-compromisos').value = '';
+            document.getElementById('visit-riesgos').value = '';
+            window.visitUploadedPhotos = [];
+            if (document.getElementById('visit-foto-input')) document.getElementById('visit-foto-input').value = '';
+            renderVisitPhotoPreviews();
+
+            // Poblar dropdown select
+            const selectEl = document.getElementById('visit-convenio-select');
+            selectEl.innerHTML = '';
+            supervisorRows.forEach((r, idx) => {
+                const opt = document.createElement('option');
+                opt.value = String(r['CONVENIO']).trim();
+                opt.textContent = `Convenio ${r['CONVENIO']} - ${r['MUNICIPIO'] || ''} (${r['ESTADO CONVENIO'] || ''})`;
+                selectEl.appendChild(opt);
+            });
+
+            // Seleccionar el primero por defecto y cargar ubicación
+            const firstRow = supervisorRows[0];
+            const lat = parseFloat(firstRow['LATITUD']) || 0;
+            const lng = parseFloat(firstRow['LONGITUD']) || 0;
+            document.getElementById('visit-gps-lat').value = lat !== 0 ? lat.toFixed(6) : '';
+            document.getElementById('visit-gps-lng').value = lng !== 0 ? lng.toFixed(6) : '';
+
+            // Mostrar modal
+            document.getElementById('modal-registrar-visita').style.display = 'flex';
+            document.getElementById('modal-registrar-visita').classList.remove('hidden');
+
+            // Inicializar mapa
+            setTimeout(() => {
+                initVisitMap(lat, lng);
+            }, 200);
+        });
+    }
+
+    // 10. Botones de cerrar modal de actualización de convenios
+    ['btn-close-edit-modal', 'btn-cancel-edit'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('click', () => {
+                document.getElementById('modal-actualizar-convenio').style.display = 'none';
+                document.getElementById('modal-actualizar-convenio').classList.add('hidden');
+            });
+        }
+    });
+
+    // Cerrar modal de registro de visitas
+    ['btn-close-visit-modal', 'btn-cancel-visit'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('click', () => {
+                document.getElementById('modal-registrar-visita').style.display = 'none';
+                document.getElementById('modal-registrar-visita').classList.add('hidden');
+            });
+        }
+    });
+
+    // 11. Botón guardar cambios de convenio
+    const btnSaveEdit = document.getElementById('btn-save-edit');
+    if (btnSaveEdit) {
+        btnSaveEdit.addEventListener('click', async () => {
+            const convenioId = document.getElementById('edit-general-id').value;
+            const row = rawData.find(r => String(r['CONVENIO']).trim() === String(convenioId).trim());
+            if (!row) return;
+
+            const estado = document.getElementById('edit-general-estado').value;
+            const fisico = parseFloat(document.getElementById('edit-seg-fisico').value) || 0;
+            const financiero = parseFloat(document.getElementById('edit-seg-financiero').value) || 0;
+            const longitud = parseFloat(document.getElementById('edit-seg-longitud').value) || 0;
+            const area = parseFloat(document.getElementById('edit-seg-area').value) || 0;
+            const desembolsado = parseFloat(document.getElementById('edit-seg-desembolsado').value) || 0;
+            const autorizado = parseFloat(document.getElementById('edit-seg-autorizado').value) || 0;
+            const corteInput = document.getElementById('edit-seg-corte').value;
+            const observaciones = document.getElementById('edit-seg-obs').value;
+
+            if (isNaN(fisico) || fisico < 0) {
+                alertToast("Avance Inválido", "El avance físico debe ser mayor o igual a 0", "error");
+                return;
+            }
+            if (isNaN(financiero) || financiero < 0) {
+                alertToast("Avance Inválido", "El avance financiero debe ser mayor o igual a 0", "error");
+                return;
+            }
+
+            // Convertir fecha de corte a DD/MM/YYYY
+            let fechaCorte = '';
+            if (corteInput) {
+                const parts = corteInput.split('-');
+                if (parts.length === 3) {
+                    fechaCorte = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                }
+            }
+
+            const updatedFields = {
+                'ESTADO CONVENIO': estado,
+                'LONGITUD EJECUTADA (m)': longitud,
+                'AREA EJECUTADA (m2)': area,
+                'VALOR TOTAL DESEMBOLSADO': desembolsado,
+                'VALOR TOTAL AUTORIZADO DEPARTAMENTO': autorizado,
+                'OBSERVACIONES': observaciones
+            };
+
+            const user = getLoggedUser();
+            const username = user ? user.name : 'Jonathan Marín';
+
+            // Mostrar la barra de progreso y ocultar botones para retroalimentación visual inmediata
+            const progressContainer = document.getElementById('edit-save-progress-container');
+            const progressText = document.getElementById('edit-save-progress-text');
+            const progressPct = document.getElementById('edit-save-progress-pct');
+            const progressBar = document.getElementById('edit-save-progress-bar');
+            const actionsContainer = document.getElementById('edit-actions-container');
+
+            if (progressContainer && actionsContainer) {
+                progressContainer.classList.remove('hidden');
+                actionsContainer.classList.add('hidden');
+                progressBar.style.width = '20%';
+                progressPct.textContent = '20%';
+                progressText.textContent = 'Conectando con Google Sheets...';
+            }
+
+            // Guardar cambios en el service (Google Sheets de forma real)
+            if (progressText && progressBar && progressPct) {
+                progressBar.style.width = '40%';
+                progressPct.textContent = '40%';
+                progressText.textContent = 'Sincronizando con base en la nube...';
+            }
+
+            const saveSuccess = await window.DIATDataService.saveConvenioUpdate(username, convenioId, updatedFields, row);
+
+            if (saveSuccess) {
+                // Guardar fotos
+                localStorage.setItem('diat_photos_' + convenioId, JSON.stringify(window.editUploadedPhotos));
+
+                // Retraso de propagación para que Google Sheets procese los cambios en el XLSX de exportación
+                const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+                
+                if (progressText && progressBar && progressPct) {
+                    progressBar.style.width = '60%';
+                    progressPct.textContent = '60%';
+                    progressText.textContent = 'Guardando cambios en Google Sheets...';
+                }
+                await delay(1000);
+
+                if (progressText && progressBar && progressPct) {
+                    progressBar.style.width = '75%';
+                    progressPct.textContent = '75%';
+                    progressText.textContent = 'Esperando procesamiento de la nube (2s)...';
+                }
+                await delay(1000);
+
+                if (progressText && progressBar && progressPct) {
+                    progressBar.style.width = '90%';
+                    progressPct.textContent = '90%';
+                    progressText.textContent = 'Esperando procesamiento de la nube (1s)...';
+                }
+                await delay(1000);
+
+                if (progressText && progressBar && progressPct) {
+                    progressBar.style.width = '95%';
+                    progressPct.textContent = '95%';
+                    progressText.textContent = 'Descargando base de datos actualizada...';
+                }
+
+                // Recargar datos directamente desde la nube (Google Sheets) para reflejar los cambios
+                await loadExcelFile();
+
+                if (progressText && progressBar && progressPct) {
+                    progressBar.style.width = '100%';
+                    progressPct.textContent = '100%';
+                    progressText.textContent = '¡Sincronización exitosa!';
+                }
+
+                setTimeout(() => {
+                    // Cerrar modal
+                    document.getElementById('modal-actualizar-convenio').style.display = 'none';
+                    document.getElementById('modal-actualizar-convenio').classList.add('hidden');
+                    
+                    // Restaurar botones para la siguiente apertura
+                    progressContainer.classList.add('hidden');
+                    actionsContainer.classList.remove('hidden');
+
+                    // Actualizar portal
+                    renderSupervisorPortal();
+
+                    alertToast("Sincronización Exitosa", "Convenio actualizado y sincronizado con Google Sheets.");
+                }, 500);
+            } else {
+                // Restaurar botones si falla
+                if (progressContainer && actionsContainer) {
+                    progressContainer.classList.add('hidden');
+                    actionsContainer.classList.remove('hidden');
+                }
+            }
+        });
+    }
+
+    // Funciones de cálculo automático de avances físico y financiero
+    const updateCalculatedFisico = () => {
+        const alcanceM = parseFloat(document.getElementById('edit-alcance-m').value) || 0;
+        const alcanceM2 = parseFloat(document.getElementById('edit-alcance-m2').value) || 0;
+        const longitud = parseFloat(document.getElementById('edit-seg-longitud').value) || 0;
+        const area = parseFloat(document.getElementById('edit-seg-area').value) || 0;
+
+        let fisico = 0;
+        if (alcanceM > 0) {
+            fisico = (longitud / alcanceM) * 100;
+        } else if (alcanceM2 > 0) {
+            fisico = (area / alcanceM2) * 100;
+        }
+        document.getElementById('edit-seg-fisico').value = fisico.toFixed(1);
+    };
+
+    const updateCalculatedFinanciero = () => {
+        const desembolsado = parseFloat(document.getElementById('edit-seg-desembolsado').value) || 0;
+        const autorizado = parseFloat(document.getElementById('edit-seg-autorizado').value) || 0;
+
+        let financiero = 0;
+        if (desembolsado > 0) {
+            financiero = (autorizado / desembolsado) * 100;
+        }
+        document.getElementById('edit-seg-financiero').value = financiero.toFixed(1);
+    };
+
+    // Registrar los escuchas para recalcular automáticamente
+    ['edit-seg-longitud', 'edit-seg-area'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateCalculatedFisico);
+    });
+
+    ['edit-seg-desembolsado', 'edit-seg-autorizado'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateCalculatedFinanciero);
+    });
+
+    checkAuthStatus();
+}
+
+// Comprueba estado de sesión y dibuja perfil en Header y Portal
+function checkAuthStatus() {
+    const user = getLoggedUser();
+    const btnLoginTrigger = document.getElementById('btn-login-trigger');
+    const headerName = document.getElementById('header-user-name');
+    const headerRole = document.getElementById('header-user-role');
+    const headerAvatarImg = document.getElementById('header-user-avatar-img');
+
+    // Elementos del dropdown
+    const ddName = document.getElementById('dropdown-user-name');
+    const ddRole = document.getElementById('dropdown-user-role');
+
+    // Paneles del Portal
+    const unauthorized = document.getElementById('portal-unauthorized');
+    const authorized = document.getElementById('portal-authorized');
+
+    if (user) {
+        if (btnLoginTrigger) btnLoginTrigger.classList.add('hidden');
+        if (headerName) headerName.textContent = user.name;
+        if (headerRole) headerRole.textContent = user.role;
+        if (headerAvatarImg) {
+            headerAvatarImg.src = `https://ui-avatars.com/api/?name=Jonathan+Marin&background=0B5640&color=fff&bold=true`;
+        }
+        if (ddName) ddName.textContent = user.name;
+        if (ddRole) ddRole.textContent = user.role;
+
+        if (unauthorized) unauthorized.classList.add('hidden');
+        if (authorized) authorized.classList.remove('hidden');
+
+        renderSupervisorPortal();
+    } else {
+        if (btnLoginTrigger) btnLoginTrigger.classList.remove('hidden');
+        if (headerName) headerName.textContent = 'Supervisión DIAT';
+        if (headerRole) headerRole.textContent = 'Equipo Técnico';
+        if (headerAvatarImg) {
+            headerAvatarImg.src = './assets/perfil_equipo.jpg';
+        }
+        if (ddName) ddName.textContent = 'Supervisión DIAT';
+        if (ddRole) ddRole.textContent = 'Equipo Técnico';
+
+        if (unauthorized) unauthorized.classList.remove('hidden');
+        if (authorized) authorized.classList.add('hidden');
+    }
+}
+
+// Cierra la sesión
+function handleLogout() {
+    localStorage.removeItem('diat_logged_user');
+    sessionStorage.removeItem('diat_logged_user');
+    checkAuthStatus();
+    
+    // Regresar a la pestaña principal (Resumen)
+    const resumenTabBtn = document.querySelector('.tab-btn[data-tab="resumen"]');
+    if (resumenTabBtn) resumenTabBtn.click();
+    
+    alertToast("Sesión Cerrada", "Has salido del portal de supervisores.");
+}
+
+// Renderización de la pestaña portal si está activa
+function checkAndRenderPortal() {
+    const user = getLoggedUser();
+    if (user) {
+        renderSupervisorPortal();
+    }
+}
+
+// Renderizado principal del dashboard y subpestañas del Portal del Supervisor
+function renderSupervisorPortal() {
+    const supervisorRows = getSupervisorRows();
+    
+    // 1. Calcular KPIs
+    let activos = 0, porLiquidar = 0, finalizados = 0, sumInv = 0, sumLong = 0;
+    
+    supervisorRows.forEach(r => {
+        const state = getSystemState(r['ESTADO CONVENIO']).label;
+        if (state === 'En Ejecución') activos++;
+        else if (state === 'Por Liquidar') porLiquidar++;
+        else if (state === 'Liquidado' || state === 'Ejecutado') finalizados++;
+
+        sumInv += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
+        sumLong += r['LONGITUD EJECUTADA'] || 0;
+    });
+
+    const alertsCount = getAlertsCount(supervisorRows);
+
+    // Escribir KPIs en HTML
+    document.getElementById('kpi-port-total').textContent = supervisorRows.length;
+    document.getElementById('kpi-port-ejec').textContent = activos;
+    document.getElementById('kpi-port-liq').textContent = porLiquidar;
+    document.getElementById('kpi-port-fin').textContent = finalizados;
+    document.getElementById('kpi-port-inv').textContent = formatCurrency(sumInv);
+    document.getElementById('kpi-port-long').textContent = formatNumber(sumLong) + ' m';
+    document.getElementById('kpi-port-venc').textContent = alertsCount;
+    document.getElementById('kpi-port-update').textContent = 'Corte: ' + new Date().toLocaleDateString('es-CO');
+
+    // 2. Renderizar subpestañas y gráficos
+    renderSupervisorCharts(supervisorRows);
+    renderSupervisorConvenios(supervisorRows);
+    renderSupervisorAlertas(supervisorRows);
+    renderSupervisorVisitasTable(supervisorRows);
+    renderSupervisorHistorialTable(supervisorRows);
+}
+
+// Variable global para almacenar las instancias de los gráficos del portal del supervisor
+window.portalCharts = {};
+
+function renderSupervisorCharts(supervisorRows) {
+    // 1. Chart - Distribución por Estado Contractual
+    const estadosCount = {};
+    supervisorRows.forEach(r => {
+        const label = getSystemState(r['ESTADO CONVENIO']).label || 'Otros';
+        estadosCount[label] = (estadosCount[label] || 0) + 1;
+    });
+
+    const canvasEstados = document.getElementById('chart-port-estados');
+    if (canvasEstados) {
+        if (window.portalCharts['estados']) {
+            window.portalCharts['estados'].destroy();
+        }
+
+        const labels = Object.keys(estadosCount);
+        const data = Object.values(estadosCount);
+
+        const colorPalette = {
+            'En Ejecución': '#0B5640',
+            'Por Liquidar': '#F28E18',
+            'Liquidado': '#3561AB',
+            'Ejecutado': '#38BDF8',
+            'Suspendido': '#94A3B8'
+        };
+        const backgroundColors = labels.map(l => colorPalette[l] || '#64748B');
+
+        const ctx = canvasEstados.getContext('2d');
+        window.portalCharts['estados'] = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: { family: 'Poppins', size: 10 },
+                            color: '#475569'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        padding: 10,
+                        titleFont: { family: 'Poppins', size: 11, weight: 'bold' },
+                        bodyFont: { family: 'Poppins', size: 12 },
+                        cornerRadius: 8
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+    }
+
+    // 2. Chart - Avance Físico vs Financiero por Convenio
+    const canvasAvances = document.getElementById('chart-port-avances');
+    if (canvasAvances) {
+        if (window.portalCharts['avances']) {
+            window.portalCharts['avances'].destroy();
+        }
+
+        const sortedRows = [...supervisorRows].slice(0, 10);
+        const ids = sortedRows.map(r => `Conv. ${String(r['CONVENIO']).trim().slice(-6)}`);
+        const fisicos = sortedRows.map(r => parseFloat(r['FISICO_NORM']) || 0);
+        const financieros = sortedRows.map(r => parseFloat(r['FINANCIERO_NORM']) || 0);
+
+        const ctx = canvasAvances.getContext('2d');
+        window.portalCharts['avances'] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ids,
+                datasets: [
+                    {
+                        label: 'Avance Físico (%)',
+                        data: fisicos,
+                        backgroundColor: '#0B5640',
+                        borderRadius: 6,
+                        borderWidth: 0
+                    },
+                    {
+                        label: 'Avance Financiero (%)',
+                        data: financieros,
+                        backgroundColor: '#3561AB',
+                        borderRadius: 6,
+                        borderWidth: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: { family: 'Poppins', size: 10 },
+                            color: '#475569'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        padding: 10,
+                        titleFont: { family: 'Poppins', size: 11, weight: 'bold' },
+                        bodyFont: { family: 'Poppins', size: 12 },
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.dataset.label}: ${context.raw.toFixed(1)}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            font: { family: 'Poppins', size: 9 },
+                            color: '#64748B'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: '#F1F5F9' },
+                        ticks: {
+                            font: { family: 'Poppins', size: 9 },
+                            color: '#64748B',
+                            callback: function(value) { return value + '%'; }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Renderiza las tarjetas de convenios asignados
+function renderSupervisorConvenios(supervisorRows) {
+    const grid = document.getElementById('portal-convenios-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (supervisorRows.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 font-medium text-sm italic">No tienes convenios asignados bajo tu supervisión.</div>`;
+        return;
+    }
+
+    supervisorRows.forEach(row => {
+        const id = String(row['CONVENIO']).trim();
+        const municipio = row['MUNICIPIO'] || 'N/A';
+        const fisico = row['FISICO_NORM'] || 0;
+        const financiero = row['FINANCIERO_NORM'] || 0;
+        const objeto = row['OBJETO'] || 'Sin descripción';
+        const truncatedObjeto = objeto.length > 120 ? objeto.substring(0, 120) + '...' : objeto;
+        const estado = row['ESTADO CONVENIO'] || 'N/A';
+        const sysState = getSystemState(estado);
+
+        const card = document.createElement('div');
+        card.className = 'supervisor-card';
+        card.innerHTML = `
+            <div>
+                <div class="flex justify-between items-start gap-2 mb-3">
+                    <div>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Convenio N°</span>
+                        <h4 class="text-base font-black text-slate-800">${id}</h4>
+                    </div>
+                    <span class="badge-estado ${sysState.badgeClass} text-[9px] font-bold uppercase tracking-wider">${sysState.label}</span>
+                </div>
+                <div class="mb-4">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Municipio</span>
+                    <p class="text-sm font-bold text-slate-700">${municipio}</p>
+                </div>
+                <div class="mb-4">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Objeto</span>
+                    <p class="text-xs text-slate-500 font-medium leading-relaxed" title="${objeto}">${truncatedObjeto}</p>
+                </div>
+                <div class="space-y-3 mb-5">
+                    <div>
+                        <div class="flex justify-between items-center text-[10px] font-bold mb-1">
+                            <span class="text-slate-400 uppercase">Avance Físico</span>
+                            <span class="text-institutional-primary font-black">${fisico.toFixed(1)}%</span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                            <div class="bg-institutional-primary h-full animate-pulse-slow" style="width: ${fisico}%; background-color: #0B5640;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center text-[10px] font-bold mb-1">
+                            <span class="text-slate-400 uppercase">Avance Financiero</span>
+                            <span class="text-blue-600 font-black">${financiero.toFixed(1)}%</span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                            <div class="bg-blue-600 h-full" style="width: ${financiero}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <button type="button" class="w-full py-2.5 bg-institutional-pale hover:bg-institutional-primary/10 text-institutional-primary font-bold rounded-xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border border-institutional-light/10" onclick="openEditConvenioModal('${id}')">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    Actualizar Convenio
+                </button>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+// Cuenta de alertas específicas del supervisor
+function getAlertsCount(supervisorRows) {
+    const today = new Date();
+    let count = 0;
+    supervisorRows.forEach(row => {
+        const estStr = String(row['ESTADO CONVENIO'] || '').toLowerCase();
+        if (estStr.includes('liquidado') || estStr.includes('resciliado')) return;
+        
+        let termStr = row['NUEVA FECHA DE TERMINACION'] || row['FECHA DE TERMINACION'];
+        let termDate = parseCOPDate(termStr);
+        const fisico = row['FISICO_NORM'] || 0;
+        const financiero = row['FINANCIERO_NORM'] || 0;
+
+        if (termDate && termDate < today) {
+            count++;
+        } else if (termDate) {
+            const msLeft = termDate.getTime() - today.getTime();
+            const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+            if (daysLeft <= 30) count++;
+        }
+        if (financiero > fisico + 15) count++;
+    });
+    return count;
+}
+
+// Renderizado del sub-mapa Leaflet en edición
+function initEditMap(lat, lng) {
+    const mapDiv = document.getElementById('edit-map');
+    if (!mapDiv) return;
+
+    const initialPos = (lat && lng && lat !== 0 && lng !== 0) ? L.latLng(lat, lng) : L.latLng(7.15, -75.55);
+    const initialZoom = (lat && lng && lat !== 0 && lng !== 0) ? 14 : 8;
+
+    if (!window.editMapInstance) {
+        window.editMapInstance = L.map('edit-map', {
+            zoomControl: true,
+            attributionControl: false
+        });
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 18,
+            crossOrigin: true
+        }).addTo(window.editMapInstance);
+
+        window.editMarker = L.marker(initialPos, {
+            draggable: true
+        }).addTo(window.editMapInstance);
+
+        window.editMarker.on('dragend', function() {
+            const pos = window.editMarker.getLatLng();
+            document.getElementById('edit-gps-lat').value = pos.lat.toFixed(6);
+            document.getElementById('edit-gps-lng').value = pos.lng.toFixed(6);
+        });
+
+        window.editMapInstance.on('click', function(e) {
+            window.editMarker.setLatLng(e.latlng);
+            document.getElementById('edit-gps-lat').value = e.latlng.lat.toFixed(6);
+            document.getElementById('edit-gps-lng').value = e.latlng.lng.toFixed(6);
+        });
+    } else {
+        window.editMarker.setLatLng(initialPos);
+    }
+
+    window.editMapInstance.setView(initialPos, initialZoom);
+    window.editMapInstance.invalidateSize();
+}
+
+// Helper para comprimir imágenes del lado del cliente usando canvas
+function compressImage(file, maxWidth = 1000, maxHeight = 1000) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.7));
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+// Dibuja vistas previas de imágenes cargadas para visitas
+function renderVisitPhotoPreviews() {
+    const previewContainer = document.getElementById('visit-foto-preview');
+    if (!previewContainer) return;
+    previewContainer.innerHTML = '';
+
+    if (window.visitUploadedPhotos.length === 0) {
+        previewContainer.innerHTML = `<div class="col-span-full text-center py-4 text-slate-400 font-medium text-xs italic">Ninguna fotografía de visita cargada.</div>`;
+        return;
+    }
+
+    window.visitUploadedPhotos.forEach((photo, index) => {
+        const item = document.createElement('div');
+        item.className = 'relative group aspect-square rounded-lg overflow-hidden border border-slate-200';
+        item.style.height = '60px';
+        item.style.width = '60px';
+        item.innerHTML = `
+            <img src="${photo}" class="w-full h-full object-cover" />
+            <button type="button" class="absolute top-0.5 right-0.5 bg-red-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[9px] hover:bg-red-700" onclick="deleteVisitPhoto(${index})">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        `;
+        previewContainer.appendChild(item);
+    });
+}
+
+window.deleteVisitPhoto = function(index) {
+    window.visitUploadedPhotos.splice(index, 1);
+    renderVisitPhotoPreviews();
+};
+
+window.openVisitPhotoLightbox = function(visitId, photoIndex) {
+    const visits = window.DIATDataService.getTechnicalVisits();
+    const visit = visits.find(v => v.id === visitId);
+    if (!visit || !visit.photos || visit.photos.length === 0) return;
+    
+    currentGalleryImages = visit.photos;
+    openLightbox(photoIndex);
+};
+
+// Dibuja vistas previas de imágenes cargadas en el modal
+function renderPhotoPreviews() {
+    const previewContainer = document.getElementById('edit-galeria-preview');
+    if (!previewContainer) return;
+    previewContainer.innerHTML = '';
+
+    if (window.editUploadedPhotos.length === 0) {
+        previewContainer.innerHTML = `<div class="col-span-full text-center py-6 text-slate-400 font-medium text-xs italic">Ninguna fotografía cargada en esta sesión.</div>`;
+        return;
+    }
+
+    window.editUploadedPhotos.forEach((photo, index) => {
+        const item = document.createElement('div');
+        item.className = 'photo-preview-item';
+        item.innerHTML = `
+            <img src="${photo.base64}" class="photo-preview-img" />
+            <button type="button" class="photo-preview-delete" onclick="deleteUploadedPhoto(${index})">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        `;
+        previewContainer.appendChild(item);
+    });
+}
+
+// Simulador de barra de progreso de sincronización
+function simulateSyncProgress() {
+    return new Promise((resolve) => {
+        const container = document.getElementById('edit-save-progress-container');
+        const text = document.getElementById('edit-save-progress-text');
+        const pctText = document.getElementById('edit-save-progress-pct');
+        const bar = document.getElementById('edit-save-progress-bar');
+        const actions = document.getElementById('edit-actions-container');
+
+        if (container && text && pctText && bar && actions) {
+            container.classList.remove('hidden');
+            actions.classList.add('hidden');
+            bar.style.width = '0%';
+            pctText.textContent = '0%';
+            text.textContent = 'Validando campos y empaquetando reporte...';
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 10;
+                if (progress > 100) progress = 100;
+
+                bar.style.width = `${progress}%`;
+                pctText.textContent = `${progress}%`;
+
+                if (progress >= 30 && progress < 60) {
+                    text.textContent = 'Guardando cambios en base local...';
+                } else if (progress >= 60 && progress < 90) {
+                    text.textContent = 'Sincronizando modificaciones con Google Sheets...';
+                } else if (progress >= 90) {
+                    text.textContent = 'Sincronización completa con Base Maestra.';
+                }
+
+                if (progress === 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        container.classList.add('hidden');
+                        actions.classList.remove('hidden');
+                        resolve();
+                    }, 350);
+                }
+            }, 100);
+        } else {
+            resolve();
+        }
+    });
+}
+
+// Abre el modal de edición de convenio y carga sus datos correspondientes
+window.openEditConvenioModal = function(convenioId) {
+    const row = rawData.find(r => String(r['CONVENIO']).trim() === String(convenioId).trim());
+    if (!row) return;
+
+    // Resetear pestañas del modal
+    document.querySelectorAll('.edit-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-edittab') === 'general') btn.classList.add('active');
+    });
+    document.querySelectorAll('.edit-panel').forEach(panel => {
+        panel.classList.add('hidden');
+        if (panel.id === 'edit-panel-general') panel.classList.remove('hidden');
+    });
+
+    // Cargar datos en los inputs del modal
+    document.getElementById('edit-modal-title').textContent = `Actualizar Convenio N° ${row['CONVENIO']}`;
+    document.getElementById('edit-modal-subtitle').textContent = `${row['MUNICIPIO'] || 'N/A'} — ${row['SUBREGION'] || 'N/A'}`;
+
+    document.getElementById('edit-general-id').value = row['CONVENIO'] || '';
+    document.getElementById('edit-general-mun').value = row['MUNICIPIO'] || '';
+    document.getElementById('edit-general-sub').value = row['SUBREGION'] || '';
+    document.getElementById('edit-general-ejec').value = row['CONVENIANTE EJECUTOR'] || '';
+    document.getElementById('edit-general-sup').value = row['SUPERVISOR'] || 'Jonathan Marín Gallego';
+    document.getElementById('edit-general-valor').value = formatCurrency(row['VALOR TOTAL'] || 0);
+    
+    let plazoVal = 0;
+    for (let key in row) {
+        if (key.toUpperCase().trim() === 'PLAZO INICIAL' || key.toUpperCase().trim().includes('PLAZO INICIAL')) {
+            plazoVal = parseFloat(row[key]) || 0;
+            break;
+        }
+    }
+    document.getElementById('edit-general-plazo').value = plazoVal;
+    const selectEstado = document.getElementById('edit-general-estado');
+    if (selectEstado) {
+        const valToSet = row['ESTADO CONVENIO'] || 'En Ejecución';
+        let matched = false;
+        for (let option of selectEstado.options) {
+            if (option.value.toLowerCase() === valToSet.toLowerCase()) {
+                selectEstado.value = option.value;
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            selectEstado.value = 'En Ejecución';
+        }
+    }
+
+    // Cargar sección de Seguimiento
+    document.getElementById('edit-alcance-m').value = row['ALCANCE (m)'] || row['ALCANCE (M)'] || 0;
+    document.getElementById('edit-alcance-m2').value = row['ALCANCE (m2)'] || row['ALCANCE (M2)'] || 0;
+
+    document.getElementById('edit-seg-fisico').value = (row['FISICO_NORM'] || 0).toFixed(1);
+    document.getElementById('edit-seg-financiero').value = (row['FINANCIERO_NORM'] || 0).toFixed(1);
+    document.getElementById('edit-seg-longitud').value = row['LONGITUD EJECUTADA'] || 0;
+    document.getElementById('edit-seg-area').value = row['AREA EJECUTADA (M2)'] || 0;
+    document.getElementById('edit-seg-desembolsado').value = row['VALOR TOTAL DESEMBOLSADO'] || 0;
+    document.getElementById('edit-seg-autorizado').value = row['VALOR TOTAL AUTORIZADO DEPARTAMENTO'] || 0;
+    
+    const corteStr = row['FECHA DE CORTE'] || row['FECHA_CORTE'] || '';
+    document.getElementById('edit-seg-corte').value = toDateInputValue(corteStr);
+    document.getElementById('edit-seg-obs').value = row['OBSERVACIONES'] || '';
+
+    // Cargar fotos guardadas
+    window.editUploadedPhotos = [];
+    try {
+        const stored = localStorage.getItem('diat_photos_' + row['CONVENIO']);
+        if (stored) {
+            window.editUploadedPhotos = JSON.parse(stored) || [];
+        }
+    } catch (e) {
+        console.error(e);
+    }
+    renderPhotoPreviews();
+
+    // Mostrar modal
+    document.getElementById('modal-actualizar-convenio').style.display = 'flex';
+    document.getElementById('modal-actualizar-convenio').classList.remove('hidden');
+};
+
+// Elimina una imagen cargada de la lista
+window.deleteUploadedPhoto = function(index) {
+    window.editUploadedPhotos.splice(index, 1);
+    renderPhotoPreviews();
+};
+
+// Carga las visitas de un convenio específico en el modal
+function renderEditModalVisitsList(convenioId) {
+    const list = document.getElementById('edit-visitas-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    if (!window.DIATDataService) {
+        list.innerHTML = `<div class="text-center py-4 text-slate-400 font-medium text-xs italic">Error de servicio de datos.</div>`;
+        return;
+    }
+
+    const allVisits = window.DIATDataService.getTechnicalVisits();
+    const filtered = allVisits.filter(v => String(v.convenioId).trim() === String(convenioId).trim());
+
+    if (filtered.length === 0) {
+        list.innerHTML = `<div class="text-center py-4 text-slate-400 font-medium text-xs italic">No se registran visitas técnicas previas.</div>`;
+        return;
+    }
+
+    filtered.forEach(v => {
+        const item = document.createElement('div');
+        item.className = 'bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1 text-left';
+        
+        let photosHtml = '';
+        if (v.photos && v.photos.length > 0) {
+            photosHtml = `
+                <div class="mt-2 grid grid-cols-4 gap-2 pt-2 border-t border-slate-200">
+                    ${v.photos.map((photo, idx) => `
+                        <img src="${photo}" class="w-12 h-12 object-cover rounded cursor-pointer border border-slate-200 hover:ring-2 hover:ring-institutional-light transition-all" onclick="window.openVisitPhotoLightbox('${v.id}', ${idx})" />
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        item.innerHTML = `
+            <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                <span>Fecha: ${v.fecha}</span>
+                <span class="bg-institutional-pale text-institutional-primary px-1.5 py-0.5 rounded">${v.tipo}</span>
+            </div>
+            <p class="text-xs font-bold text-slate-700 mt-1">${v.observaciones}</p>
+            ${v.compromisos ? `<p class="text-[10px] text-slate-500"><strong class="text-slate-600">Compromisos:</strong> ${v.compromisos}</p>` : ''}
+            ${v.riesgos ? `<p class="text-[10px] text-slate-500"><strong class="text-slate-600">Riesgos:</strong> ${v.riesgos}</p>` : ''}
+            <div class="text-[9px] text-slate-400 mt-1 flex justify-between">
+                <span>Registrado por: ${v.usuario}</span>
+            </div>
+            ${photosHtml}
+        `;
+        list.appendChild(item);
+    });
+}
+
+// Carga las visitas del supervisor en la sub-pestaña del portal
+function renderSupervisorVisitasTable(supervisorRows) {
+    const tbody = document.getElementById('portal-visitas-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!window.DIATDataService) return;
+
+    const allVisits = window.DIATDataService.getTechnicalVisits();
+    const assignedIds = supervisorRows.map(r => String(r['CONVENIO']).trim());
+    const filtered = allVisits.filter(v => assignedIds.includes(String(v.convenioId).trim()));
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 font-medium text-xs italic">No se registran visitas técnicas en tus convenios.</td></tr>`;
+        return;
+    }
+
+    filtered.forEach(v => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition-all';
+        tr.style.cursor = 'pointer';
+        
+        tr.addEventListener('click', (e) => {
+            if (e.target.closest('button') || e.target.closest('img')) return;
+            window.openVisitDetailModal(v.id);
+        });
+
+        let photosHtml = `<span class="text-slate-400 font-bold"><i class="fa-solid fa-image mr-1"></i>0</span>`;
+        if (v.photos && v.photos.length > 0) {
+            photosHtml = `
+                <div class="flex flex-col gap-1 items-center justify-center">
+                    <button type="button" class="text-institutional-primary hover:text-institutional-light font-bold text-[10px] uppercase flex items-center gap-1" onclick="event.stopPropagation(); window.openVisitPhotoLightbox('${v.id}', 0)">
+                        <i class="fa-solid fa-images"></i> Ver (${v.photos.length})
+                    </button>
+                    <div class="flex gap-1 justify-center max-w-[80px] overflow-hidden">
+                        ${v.photos.slice(0, 3).map((p, idx) => `
+                            <img src="${p}" class="w-4 h-4 object-cover rounded cursor-pointer border border-slate-200" onclick="event.stopPropagation(); window.openVisitPhotoLightbox('${v.id}', ${idx})" />
+                        `).join('')}
+                        ${v.photos.length > 3 ? `<span class="text-[9px] text-slate-400 font-bold">+${v.photos.length - 3}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        const truncate = (str, len = 80) => (str && str.length > len) ? str.slice(0, len) + '...' : (str || '--');
+
+        tr.innerHTML = `
+            <td class="p-3 font-bold text-slate-700 text-left">${v.convenioId}</td>
+            <td class="p-3 whitespace-nowrap text-slate-500 text-center">${v.fecha}</td>
+            <td class="p-3 text-slate-600 font-bold text-center"><span class="bg-institutional-pale text-institutional-primary px-1.5 py-0.5 rounded text-[10px]">${v.tipo}</span></td>
+            <td class="p-3 text-slate-600 text-left">${truncate(v.observaciones)}</td>
+            <td class="p-3 text-slate-500 text-left">${truncate(v.compromisos)}</td>
+            <td class="p-3 text-slate-500 text-left">${truncate(v.riesgos)}</td>
+            <td class="p-3 text-center">${photosHtml}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Carga el historial de modificaciones del supervisor
+function renderSupervisorHistorialTable(supervisorRows) {
+    const tbody = document.getElementById('portal-historial-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!window.DIATDataService) return;
+
+    const history = window.DIATDataService.getChangeHistory();
+    const assignedIds = supervisorRows.map(r => String(r['CONVENIO']).trim());
+    const filtered = history.filter(h => assignedIds.includes(String(h.convenio).trim()));
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400 font-medium text-xs italic">Sin modificaciones registradas recientemente.</td></tr>`;
+        return;
+    }
+
+    filtered.forEach(h => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-100 hover:bg-slate-50';
+        tr.innerHTML = `
+            <td class="p-3 text-slate-500 whitespace-nowrap">${h.fecha} ${h.hora}</td>
+            <td class="p-3 font-semibold text-slate-600">${h.usuario}</td>
+            <td class="p-3 font-bold text-slate-700">${h.convenio}</td>
+            <td class="p-3 text-slate-600 font-bold text-left uppercase text-[10px]">${h.campo}</td>
+            <td class="p-3 text-red-600 text-left max-w-[150px] truncate" title="${h.valorAnterior}">${h.valorAnterior || '--'}</td>
+            <td class="p-3 text-emerald-600 text-left max-w-[150px] truncate font-bold" title="${h.valorNew}">${h.valorNew || '--'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Carga las alertas específicas del supervisor en el portal
+function renderSupervisorAlertas(supervisorRows) {
+    const container = document.getElementById('portal-alertas-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const today = new Date();
+    let alertCount = 0;
+
+    supervisorRows.forEach(row => {
+        const id = String(row['CONVENIO']).trim();
+        const municipio = row['MUNICIPIO'] || 'N/A';
+        const fisico = row['FISICO_NORM'] || 0;
+        const financiero = row['FINANCIERO_NORM'] || 0;
+        
+        let termStr = row['NUEVA FECHA DE TERMINACION'] || row['FECHA DE TERMINACION'];
+        let termDate = parseCOPDate(termStr);
+        const estStr = String(row['ESTADO CONVENIO'] || '').toLowerCase();
+        const isLiquidado = estStr.includes('liquidado') || estStr.includes('resciliado');
+
+        if (!isLiquidado) {
+            let alertItem = null;
+            if (termDate && termDate < today) {
+                alertItem = {
+                    type: 'vencido',
+                    icon: 'fa-triangle-exclamation',
+                    title: 'Convenio Vencido sin Liquidar',
+                    desc: `El convenio venció el ${termStr} y continúa abierto sin acta de liquidación.`
+                };
+            } else if (termDate) {
+                const msLeft = termDate.getTime() - today.getTime();
+                const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+                if (daysLeft <= 30) {
+                    alertItem = {
+                        type: 'proximos',
+                        icon: 'fa-clock',
+                        title: 'Próximo a Vencer',
+                        desc: `Faltan ${daysLeft} días para la fecha límite de terminación (${termStr}).`
+                    };
+                }
+            }
+
+            if (financiero > fisico + 15) {
+                alertItem = {
+                    type: 'desfase',
+                    icon: 'fa-chart-pie',
+                    title: 'Desfase Financiero Crítico',
+                    desc: `El avance financiero (${financiero.toFixed(1)}%) supera al físico (${fisico.toFixed(1)}%) en más del 15%.`
+                };
+            }
+
+            if (alertItem) {
+                alertCount++;
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `alert-feed-item alert-${alertItem.type} flex justify-between items-center gap-4`;
+                itemDiv.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <div class="alert-item-icon ${alertItem.type}">
+                            <i class="fa-solid ${alertItem.icon}"></i>
+                        </div>
+                        <div>
+                            <h4 class="alert-item-title">${alertItem.title}</h4>
+                            <p class="text-xs text-slate-500 leading-relaxed mt-0.5">${alertItem.desc}</p>
+                            <div class="alert-item-meta mt-1.5">
+                                <span class="alert-item-tag"><i class="fa-solid fa-hashtag"></i>${id}</span>
+                                <span class="alert-item-tag"><i class="fa-solid fa-location-dot"></i>${municipio}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <button type="button" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs uppercase tracking-wider transition-all" onclick="openEditConvenioModal('${id}')">
+                            Gestionar
+                        </button>
+                    </div>
+                `;
+                container.appendChild(itemDiv);
+            }
+        }
+    });
+
+    if (alertCount === 0) {
+        container.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-8 text-center text-emerald-600 bg-emerald-50/50 rounded-xl border border-emerald-100 p-4">
+                <i class="fa-solid fa-circle-check text-2xl mb-2"></i>
+                <h4 class="text-xs font-bold uppercase tracking-wider">¡Todo al día!</h4>
+                <p class="text-[11px] text-emerald-600/80 mt-0.5">Tus convenios no presentan alertas de riesgo contractual vigentes.</p>
+            </div>
+        `;
+    }
+}
+
+
 
 

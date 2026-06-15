@@ -1,0 +1,24 @@
+﻿{
+    "convenio":  "24AS111B2041",
+    "antes":  [
+                  "Antes/05649VT01-1.jpg",
+                  "Antes/05649VT01-2.jpg",
+                  "Antes/05649VT03-1.jpg",
+                  "Antes/05649VT03-2.jpg",
+                  "Antes/05649VT03-3.jpg",
+                  "Antes/05649VT04-1.jpg",
+                  "Antes/05649VT04-2.jpg",
+                  "Antes/05649VT11-1.jpg",
+                  "Antes/05649VT11-2.jpg",
+                  "Antes/05649VT15-1.jpg",
+                  "Antes/05649VT15-2.jpg"
+              ],
+    "durante":  [
+
+                ],
+    "despues":  [
+                    "Después/1.jpg",
+                    "Después/2.png",
+                    "Después/3.png"
+                ]
+}

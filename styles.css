@@ -2595,3 +2595,151 @@ select.filter-control option { font-family: var(--font-base); }
     letter-spacing: 0.05em;
 }
 
+/* ============================================================
+   33. PORTAL DE SUPERVISORES & EDICIÓN DE CONVENIOS
+   ============================================================ */
+
+.user-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s ease;
+}
+.user-menu-item:hover {
+    background: #F8FAFC;
+    color: #0F172A;
+}
+.user-menu-item i {
+    font-size: 13px;
+    width: 16px;
+    color: #94A3B8;
+    text-align: center;
+}
+.user-menu-item:hover i {
+    color: #0B5640;
+}
+
+.portal-subtab-btn {
+    padding: 10px 18px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748B;
+    background: transparent;
+    border: none;
+    border-bottom: 2.5px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    outline: none;
+}
+.portal-subtab-btn:hover {
+    color: #0B5640;
+}
+.portal-subtab-btn.active {
+    color: #0B5640;
+    border-bottom-color: #0B5640;
+}
+
+.edit-tab-btn {
+    padding: 14px 22px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748B;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    outline: none;
+}
+.edit-tab-btn:hover {
+    color: #0B5640;
+    background: rgba(11, 86, 64, 0.02);
+}
+.edit-tab-btn.active {
+    color: #0B5640;
+    border-bottom-color: #0B5640;
+    background: white;
+}
+
+.portal-panel {
+    transition: opacity 0.25s ease;
+}
+.portal-panel.hidden {
+    display: none !important;
+}
+.edit-panel.hidden {
+    display: none !important;
+}
+
+.supervisor-card {
+    background: white;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.02);
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.supervisor-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+    border-color: #CBD5E1;
+}
+
+.photo-preview-item {
+    position: relative;
+    width: 100%;
+    padding-top: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #E2E8F0;
+    background-color: #F8FAFC;
+}
+.photo-preview-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.photo-preview-delete {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    border: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 99px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    transition: background 0.15s;
+    z-index: 10;
+}
+.photo-preview-delete:hover {
+    background: rgb(220, 38, 38);
+}
+
+

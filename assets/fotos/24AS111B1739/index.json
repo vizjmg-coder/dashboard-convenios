@@ -1,0 +1,16 @@
+﻿{
+    "convenio":  "24AS111B1739",
+    "antes":  [
+                  "Antes/3.jpg",
+                  "Antes/4.jpg"
+              ],
+    "durante":  [
+
+                ],
+    "despues":  [
+                    "Despues/1.jpg",
+                    "Despues/2.jpg",
+                    "Despues/3.jpg",
+                    "Despues/4.jpg"
+                ]
+}

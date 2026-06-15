@@ -1,0 +1,27 @@
+﻿{
+    "convenio":  "24AS111B2022",
+    "antes":  [
+                  "Antes/05467VT08-1.jpg",
+                  "Antes/05467VT08-2.jpg",
+                  "Antes/05467VT15-1.jpg",
+                  "Antes/05467VT15-2.jpg",
+                  "Antes/05541VT167-1.jpg",
+                  "Antes/05541VT167-2.jpg"
+              ],
+    "durante":  [
+
+                ],
+    "despues":  [
+                    "Después/TimePhoto_20251111_101753.jpg",
+                    "Después/TimePhoto_20251111_101820.jpg",
+                    "Después/TimePhoto_20251111_101837.jpg",
+                    "Después/TimePhoto_20251111_102239.jpg",
+                    "Después/TimePhoto_20251111_103323.jpg",
+                    "Después/TimePhoto_20251111_103432.jpg",
+                    "Después/TimePhoto_20251111_111835.jpg",
+                    "Después/TimePhoto_20251111_111902.jpg",
+                    "Después/TimePhoto_20251111_114345.jpg",
+                    "Después/TimePhoto_20251111_114357.jpg",
+                    "Después/TimePhoto_20251111_114511.jpg"
+                ]
+}

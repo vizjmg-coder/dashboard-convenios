@@ -1,0 +1,29 @@
+﻿{
+    "convenio":  "24AS111B2018",
+    "antes":  [
+                  "Antes/CONCORDIA/05541VT02-1.jpg",
+                  "Antes/CONCORDIA/05541VT02-2.jpg",
+                  "Antes/CONCORDIA/05541VT02-3.jpg",
+                  "Antes/BONILLA/05541VT12-1.jpg",
+                  "Antes/BONILLA/05541VT12-2.jpg",
+                  "Antes/BONILLA/05541VT12-3.jpg",
+                  "Antes/BONILLA/05541VT12-4.jpg",
+                  "Antes/MARIAL - ESCUELA/05541VT18-1.jpg",
+                  "Antes/MARIAL - ESCUELA/05541VT18-2.jpg",
+                  "Antes/MARIAL - ESCUELA/05541VT18-3.jpg",
+                  "Antes/EL CARMELO/05541VT37-1.jpg",
+                  "Antes/EL CARMELO/05541VT37-2.jpg",
+                  "Antes/EL CARMELO/05541VT37-3.jpg",
+                  "Antes/EL UVITAL/IMG_20240524_081940.jpg",
+                  "Antes/EL UVITAL/IMG_20240524_081945.jpg",
+                  "Antes/EL UVITAL/IMG_20240524_081954.jpg",
+                  "Antes/EL UVITAL/IMG_20240524_082101.jpg"
+              ],
+    "durante":  [
+
+                ],
+    "despues":  [
+                    "Después/1.png",
+                    "Después/2.png"
+                ]
+}
