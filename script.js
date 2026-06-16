@@ -10,6 +10,7 @@ let currentAlertFilter = 'all';
 let planMetric = 'contratado';
 let planAnualMetric = 'longitud';
 let planAnualFilter = 'todos-km';
+let planYearFilter = 'todos';
 let mapMetric = 'contratado';
 
 // Variables Mini-Mapa (Leaflet — ficha técnica modal y resumen)
@@ -1560,6 +1561,936 @@ async function generateProfessionalPDF(row) {
     }
 }
 
+async function generatePlanPDF() {
+    const btnPdf = document.getElementById('btn-export-plan-pdf');
+    if (!btnPdf) return;
+    const originalText = btnPdf.innerHTML;
+    btnPdf.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Generando PDF...';
+    btnPdf.disabled = true;
+
+    try {
+        // Configure Poppins Font & FontAwesome Solid
+        pdfMake.fonts = {
+            Poppins: {
+                normal: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-400-normal.ttf',
+                bold: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-700-normal.ttf',
+                italics: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-400-italic.ttf',
+                bolditalics: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-700-italic.ttf'
+            },
+            FontAwesome: {
+                normal: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.ttf'
+            }
+        };
+
+        // 1. Gather active filters and details
+        const yearFilterText = planYearFilter === 'todos' ? 'Cuatrienio 2024-2027' : `Meta ${planYearFilter}`;
+        const metricText = planMetric === 'contratado' ? 'Longitud/Área Contratada' : 'Longitud/Área Ejecutada';
+
+        // 2. Perform same calculations as renderPlanTab
+        let cumplidas = 0, proceso = 0, riesgo = 0;
+        let inversionTotal = 0;
+        let munis = new Set();
+        const dataInd = {};
+        Object.keys(indicadoresEstrategicos).forEach(k => {
+            dataInd[k] = { ejecutado: 0, convenios: 0 };
+        });
+
+        let sumCumplimiento = 0;
+        let countCumplimiento = 0;
+
+        rawData.forEach(row => {
+            const ind = normalizarIndicador(row['INDICADOR']);
+            if (!ind || !dataInd[ind]) return;
+
+            const cfg = indicadoresEstrategicos[ind];
+            let cant = 0;
+
+            if (cfg.tipo === 'km') {
+                const metros = planMetric === 'contratado' ? parseNum(row['ALCANCE (M)']) : parseNum(row['LONGITUD EJECUTADA']);
+                cant = metros / 1000;
+            } else if (cfg.tipo === 'm2') {
+                cant = planMetric === 'contratado' ? parseNum(row['ALCANCE (M2)']) : parseNum(row['AREA EJECUTADA (M2)']);
+            } else {
+                if (planMetric === 'contratado') {
+                    cant = 1;
+                } else {
+                    const estado = String(row['ESTADO CONVENIO'] || '').toUpperCase();
+                    const tieneEjecucion = estado.includes('EJECUCI') || estado.includes('EJECUT') ||
+                                           estado.includes('OPERA') || estado.includes('MEJORAD') ||
+                                           parseNum(row['LONGITUD EJECUTADA']) > 0 ||
+                                           parseNum(row['FISICO_NORM']) > 0;
+                    cant = tieneEjecucion ? 1 : 0;
+                }
+            }
+
+            const compYear = getRowCompletionYear(row);
+            if (planYearFilter !== 'todos' && compYear !== planYearFilter) {
+                return;
+            }
+
+            dataInd[ind].ejecutado += cant;
+            dataInd[ind].convenios++;
+            inversionTotal += parseNum(row['APORTE DEPARTAMENTO']) + parseNum(row['ADICION DEPARTAMENTO']);
+            if (row['MUNICIPIO']) munis.add(String(row['MUNICIPIO']).trim());
+        });
+
+        const indicatorsList = [];
+        Object.keys(indicadoresEstrategicos).forEach(ind => {
+            const d = dataInd[ind];
+            const cfg = indicadoresEstrategicos[ind];
+            const meta = cfg.metas[planYearFilter] !== undefined ? cfg.metas[planYearFilter] : 0;
+            const isNP = (meta === 0);
+            const e = d.ejecutado;
+            
+            let pct = 0;
+            let restante = 0;
+            
+            if (isNP) {
+                pct = 0;
+                restante = 0;
+            } else {
+                pct = meta > 0 ? Math.min((e / meta) * 100, 100) : 0;
+                restante = Math.max(meta - e, 0);
+            }
+
+            if (!isNP) {
+                if (pct >= 80) cumplidas++;
+                else if (pct >= 50) proceso++;
+                else riesgo++;
+
+                sumCumplimiento += pct;
+                countCumplimiento++;
+            }
+
+            indicatorsList.push({
+                name: ind,
+                meta,
+                ejecutado: e,
+                restante,
+                pct,
+                isNP,
+                unit: cfg.unit,
+                convenios: d.convenios
+            });
+        });
+
+        const promedio = countCumplimiento > 0 ? (sumCumplimiento / countCumplimiento).toFixed(1) : '0.0';
+
+        // 3. Fetch Institutional Logo & Charts
+        const logoBase64 = await getBase64ImageFromURL('./assets/escudo_antioquia.png').catch(() => null);
+        const chartMetasBase64 = (charts['plan-metas'] && typeof charts['plan-metas'].toBase64Image === 'function') ? charts['plan-metas'].toBase64Image() : null;
+        const chartAnualBase64 = (charts['plan-anual'] && typeof charts['plan-anual'].toBase64Image === 'function') ? charts['plan-anual'].toBase64Image() : null;
+
+        // 4. Construct pdfMake document
+        const docDefinition = {
+            pageSize: 'LETTER',
+            pageOrientation: 'portrait',
+            pageMargins: [35, 30, 35, 30],
+            defaultStyle: {
+                font: 'Poppins',
+                fontSize: 8.5,
+                color: '#1E293B'
+            },
+            content: [
+                // Header Row
+                {
+                    columns: [
+                        logoBase64 ? {
+                            image: logoBase64,
+                            width: 32,
+                            alignment: 'left'
+                        } : { text: '' },
+                        {
+                            stack: [
+                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 10, bold: true, color: '#0B5640', letterSpacing: 0.5 },
+                                { text: 'SECRETARÍA DE INFRAESTRUCTURA FÍSICA', fontSize: 7.5, bold: true, color: '#64748B' },
+                                { text: 'Dirección de Infraestructura y Apoyo Territorial (DIAT)', fontSize: 7, color: '#94A3B8' }
+                            ],
+                            margin: [8, 0, 0, 0],
+                            width: '*'
+                        },
+                        {
+                            stack: [
+                                { text: 'FICHA TÉCNICA DE PLAN DE DESARROLLO', fontSize: 9, bold: true, color: '#0B5640', alignment: 'right' },
+                                { text: 'INDICADORES ESTRATÉGICOS', fontSize: 7.5, bold: true, color: '#64748B', alignment: 'right' },
+                                { text: `Generado: ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'})}`, fontSize: 7, color: '#94A3B8', alignment: 'right' }
+                            ],
+                            width: 'auto'
+                        }
+                    ],
+                    margin: [0, 0, 0, 8]
+                },
+                // Divider Line
+                {
+                    canvas: [{ type: 'line', x1: 0, y1: 0, x2: 542, y2: 0, lineWidth: 1.5, lineColor: '#0B5640' }],
+                    margin: [0, 0, 0, 10]
+                },
+                // Active Filters Context Callout
+                {
+                    table: {
+                        widths: ['*'],
+                        body: [
+                            [
+                                {
+                                    stack: [
+                                        {
+                                            columns: [
+                                                { text: `PERIODO DE METAS EVALUADAS: ${yearFilterText.toUpperCase()}`, bold: true, fontSize: 8, color: '#0F172A' },
+                                                { text: `MÉTRICA BASE: ${metricText.toUpperCase()}`, bold: true, fontSize: 8, color: '#0B5640', alignment: 'right' }
+                                            ]
+                                        }
+                                    ],
+                                    fillColor: '#F0FDF4',
+                                    border: [false, false, false, false],
+                                    margin: [8, 6, 8, 6]
+                                }
+                            ]
+                        ]
+                    },
+                    layout: {
+                        defaultBorder: false
+                    },
+                    margin: [0, 0, 0, 10]
+                },
+                // Performance summary row (columns)
+                {
+                    columns: [
+                        // Left Column: Large Global Avance Box
+                        {
+                            table: {
+                                widths: ['*'],
+                                body: [
+                                    [
+                                        {
+                                            stack: [
+                                                { text: 'AVANCE PROMEDIO GLOBAL', fontSize: 7, bold: true, color: '#0B5640', letterSpacing: 0.5 },
+                                                { text: `${promedio}%`, fontSize: 32, bold: true, color: '#0B5640', margin: [0, 2, 0, 2], letterSpacing: -1 },
+                                                { text: 'Cumplimiento promedio acumulado de metas programadas', fontSize: 6.5, color: '#0F766E', leading: 1.2 }
+                                            ],
+                                            fillColor: '#E6F4EA',
+                                            padding: 10
+                                        }
+                                    ]
+                                ]
+                            },
+                            layout: {
+                                hLineWidth: () => 1,
+                                vLineWidth: () => 1,
+                                hLineColor: () => '#CEEAD6',
+                                vLineColor: () => '#CEEAD6',
+                                paddingLeft: () => 10,
+                                paddingRight: () => 10,
+                                paddingTop: () => 8,
+                                paddingBottom: () => 8
+                            },
+                            width: 140
+                        },
+                        // Right Column: Strategic Meta Distributions & Totals
+                        {
+                            stack: [
+                                {
+                                    columns: [
+                                        // Cumplidas
+                                        {
+                                            table: {
+                                                widths: ['*'],
+                                                body: [
+                                                    [
+                                                        {
+                                                            stack: [
+                                                                { text: 'CUMPLIDAS (>=80%)', fontSize: 6.5, bold: true, color: '#137333' },
+                                                                { text: String(cumplidas), fontSize: 14, bold: true, color: '#137333', margin: [0, 2, 0, 0] }
+                                                            ],
+                                                            fillColor: '#E6F4EA'
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            layout: {
+                                                hLineWidth: () => 1, vLineWidth: () => 1,
+                                                hLineColor: () => '#CEEAD6', vLineColor: () => '#CEEAD6',
+                                                paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                                            },
+                                            margin: [0, 0, 4, 0]
+                                        },
+                                        // En Proceso
+                                        {
+                                            table: {
+                                                widths: ['*'],
+                                                body: [
+                                                    [
+                                                        {
+                                                            stack: [
+                                                                { text: 'EN PROCESO (50-80%)', fontSize: 6.5, bold: true, color: '#B45309' },
+                                                                { text: String(proceso), fontSize: 14, bold: true, color: '#B45309', margin: [0, 2, 0, 0] }
+                                                            ],
+                                                            fillColor: '#FFF9DB'
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            layout: {
+                                                hLineWidth: () => 1, vLineWidth: () => 1,
+                                                hLineColor: () => '#FFE066', vLineColor: () => '#FFE066',
+                                                paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                                            },
+                                            margin: [4, 0, 4, 0]
+                                        },
+                                        // En Riesgo
+                                        {
+                                            table: {
+                                                widths: ['*'],
+                                                body: [
+                                                    [
+                                                        {
+                                                            stack: [
+                                                                { text: 'EN RIESGO (<50%)', fontSize: 6.5, bold: true, color: '#C5221F' },
+                                                                { text: String(riesgo), fontSize: 14, bold: true, color: '#C5221F', margin: [0, 2, 0, 0] }
+                                                            ],
+                                                            fillColor: '#FCE8E6'
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            layout: {
+                                                hLineWidth: () => 1, vLineWidth: () => 1,
+                                                hLineColor: () => '#FAD2CF', vLineColor: () => '#FAD2CF',
+                                                paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                                            },
+                                            margin: [4, 0, 0, 0]
+                                        }
+                                    ]
+                                },
+                                // Second row of stats in right column
+                                {
+                                    columns: [
+                                        // Inversión Total
+                                        {
+                                            table: {
+                                                widths: ['*'],
+                                                body: [
+                                                    [
+                                                        {
+                                                            stack: [
+                                                                { text: 'INVERSIÓN TOTAL ASOCIADA', fontSize: 6.5, bold: true, color: '#1E3A8A' },
+                                                                { text: formatCurrency(inversionTotal), fontSize: 11, bold: true, color: '#1E3A8A', margin: [0, 2, 0, 0] }
+                                                            ],
+                                                            fillColor: '#EFF6FF'
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            layout: {
+                                                hLineWidth: () => 1, vLineWidth: () => 1,
+                                                hLineColor: () => '#DBEAFE', vLineColor: () => '#DBEAFE',
+                                                paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                                            },
+                                            margin: [0, 6, 4, 0]
+                                        },
+                                        // Municipios
+                                        {
+                                            table: {
+                                                widths: ['*'],
+                                                body: [
+                                                    [
+                                                        {
+                                                            stack: [
+                                                                { text: 'MUNICIPIOS BENEFICIADOS', fontSize: 6.5, bold: true, color: '#475569' },
+                                                                { text: `${munis.size} municipios`, fontSize: 11, bold: true, color: '#334155', margin: [0, 2, 0, 0] }
+                                                            ],
+                                                            fillColor: '#F8FAFC'
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            layout: {
+                                                hLineWidth: () => 1, vLineWidth: () => 1,
+                                                hLineColor: () => '#E2E8F0', vLineColor: () => '#E2E8F0',
+                                                paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                                            },
+                                            margin: [4, 6, 0, 0]
+                                        }
+                                    ]
+                                }
+                            ],
+                            margin: [12, 0, 0, 0],
+                            width: '*'
+                        }
+                    ],
+                    margin: [0, 0, 0, 12]
+                },
+                // Strategic Indicators Table Header Title
+                { text: 'DETALLE DE CUMPLIMIENTO POR INDICADOR ESTRATÉGICO', fontSize: 7.5, bold: true, color: '#475569', letterSpacing: 0.5, margin: [0, 0, 0, 4] },
+                // Indicators Table
+                {
+                    table: {
+                        headerRows: 1,
+                        widths: ['*', 'auto', 'auto', 'auto', 'auto', 'auto'],
+                        body: [
+                            // Table Header Row
+                            [
+                                { text: 'INDICADOR ESTRATÉGICO', bold: true, color: '#FFFFFF', fillColor: '#0B5640', fontSize: 7.5 },
+                                { text: 'META', bold: true, color: '#FFFFFF', fillColor: '#0B5640', fontSize: 7.5, alignment: 'right' },
+                                { text: metricText.toUpperCase().split('/')[1] || metricText.toUpperCase(), bold: true, color: '#FFFFFF', fillColor: '#0B5640', fontSize: 7.5, alignment: 'right' },
+                                { text: 'RESTANTE', bold: true, color: '#FFFFFF', fillColor: '#0B5640', fontSize: 7.5, alignment: 'right' },
+                                { text: '% AVANCE', bold: true, color: '#FFFFFF', fillColor: '#0B5640', fontSize: 7.5, alignment: 'center' },
+                                { text: 'CONVENIOS', bold: true, color: '#FFFFFF', fillColor: '#0B5640', fontSize: 7.5, alignment: 'center' }
+                            ],
+                            // Dynamic rows
+                            ...indicatorsList.map((item, index) => {
+                                const isNP = item.isNP;
+                                const fmtVal = (val) => {
+                                    if (item.unit === 'km') return val.toFixed(1) + ' km';
+                                    if (item.unit === 'm²') return val.toLocaleString('es-CO') + ' m²';
+                                    return Math.round(val) + ' und';
+                                };
+                                
+                                const metaText = isNP ? 'NP' : fmtVal(item.meta);
+                                const ejecutadoText = fmtVal(item.ejecutado);
+                                const restanteText = isNP ? '-' : fmtVal(item.restante);
+                                const pctText = isNP ? 'NP' : `${item.pct.toFixed(1)}%`;
+                                
+                                let badgeColor = '#C5221F'; // Red
+                                let badgeBg = '#FCE8E6';
+                                if (isNP) {
+                                    badgeColor = '#64748B'; // Slate
+                                    badgeBg = '#F1F5F9';
+                                } else if (item.pct >= 80) {
+                                    badgeColor = '#137333'; // Green
+                                    badgeBg = '#E6F4EA';
+                                } else if (item.pct >= 50) {
+                                    badgeColor = '#B45309'; // Yellow/Orange
+                                    badgeBg = '#FFF9DB';
+                                }
+
+                                return [
+                                    { text: item.name, fontSize: 7.5, bold: true, color: '#334155' },
+                                    { text: metaText, fontSize: 7.5, alignment: 'right', color: '#475569' },
+                                    { text: ejecutadoText, fontSize: 7.5, alignment: 'right', color: '#0B5640', bold: true },
+                                    { text: restanteText, fontSize: 7.5, alignment: 'right', color: '#A90F09' },
+                                    { 
+                                        text: pctText, 
+                                        fontSize: 7.5, 
+                                        bold: true,
+                                        alignment: 'center', 
+                                        color: badgeColor,
+                                        fillColor: badgeBg
+                                    },
+                                    { text: `${item.convenios} conv.`, fontSize: 7, alignment: 'center', color: '#64748B' }
+                                ];
+                            })
+                        ]
+                    },
+                    layout: {
+                        hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 1 : 0.5,
+                        vLineWidth: () => 0.5,
+                        hLineColor: (i) => i === 0 ? '#0B5640' : '#E2E8F0',
+                        vLineColor: () => '#E2E8F0',
+                        paddingLeft: () => 6,
+                        paddingRight: () => 6,
+                        paddingTop: () => 4,
+                        paddingBottom: () => 4
+                    },
+                    margin: [0, 0, 0, 12]
+                },
+                // Visual charts title
+                { text: 'ANÁLISIS GRÁFICO DE AVANCES Y METAS', fontSize: 7.5, bold: true, color: '#475569', letterSpacing: 0.5, margin: [0, 0, 0, 4] },
+                // Charts in two columns
+                {
+                    columns: [
+                        chartMetasBase64 ? {
+                            stack: [
+                                { text: 'CUMPLIMIENTO POR INDICADOR', fontSize: 6.5, bold: true, color: '#475569', alignment: 'center', margin: [0, 0, 0, 2] },
+                                { image: chartMetasBase64, width: 250, alignment: 'center' }
+                            ]
+                        } : { text: 'Gráfico no disponible', fontSize: 8, alignment: 'center' },
+                        chartAnualBase64 ? {
+                            stack: [
+                                { text: 'EVOLUCIÓN ACUMULADA POR AÑO', fontSize: 6.5, bold: true, color: '#475569', alignment: 'center', margin: [0, 0, 0, 2] },
+                                { image: chartAnualBase64, width: 250, alignment: 'center' }
+                            ]
+                        } : { text: 'Gráfico no disponible', fontSize: 8, alignment: 'center' }
+                    ],
+                    margin: [0, 0, 0, 10]
+                },
+                // Footer details
+                {
+                    text: 'Este reporte refleja la información oficial consolidada de convenios de infraestructura de la Dirección de Apoyo Territorial DIAT. Gobernación de Antioquia Firme.',
+                    fontSize: 6.5,
+                    color: '#94A3B8',
+                    alignment: 'center',
+                    margin: [0, 10, 0, 0]
+                }
+            ]
+        };
+
+        // 5. Generate and download PDF
+        pdfMake.createPdf(docDefinition).download(`Ficha_Indicadores_Plan_${planYearFilter}.pdf`);
+
+        btnPdf.innerHTML = originalText;
+        btnPdf.disabled = false;
+
+        const toast = document.getElementById('toast-notification');
+        if (toast) {
+            toast.classList.remove('opacity-0', 'translate-y-20');
+            setTimeout(() => toast.classList.add('opacity-0', 'translate-y-20'), 3500);
+        }
+
+    } catch (err) {
+        console.error('Error generando PDF del Plan:', err);
+        alert('Ocurrió un error al generar el PDF de indicadores. Revisa la consola para más detalles.');
+        btnPdf.innerHTML = originalText;
+        btnPdf.disabled = false;
+    }
+}
+
+async function generateResumenPDF() {
+    const btnPdf = document.getElementById('btn-export-resumen-pdf');
+    if (!btnPdf) return;
+    const originalText = btnPdf.innerHTML;
+    btnPdf.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Generando PDF...';
+    btnPdf.disabled = true;
+
+    try {
+        // Configure Poppins Font & FontAwesome Solid
+        pdfMake.fonts = {
+            Poppins: {
+                normal: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-400-normal.ttf',
+                bold: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-700-normal.ttf',
+                italics: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-400-italic.ttf',
+                bolditalics: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-700-italic.ttf'
+            },
+            FontAwesome: {
+                normal: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.ttf'
+            }
+        };
+
+        // 1. Gather active filters
+        const activeFilters = [];
+        const checkFilter = (id, label) => {
+            const el = document.getElementById(id);
+            if (el && el.value) {
+                const val = el.value.trim();
+                activeFilters.push(`${label}: ${val}`);
+            }
+        };
+        checkFilter('filter-vigencia', 'Vigencia');
+        checkFilter('filter-supervisor', 'Supervisor');
+        checkFilter('filter-indicador', 'Indicador');
+        checkFilter('filter-clasificacion', 'Clasificación');
+        checkFilter('filter-municipio', 'Municipio');
+        checkFilter('filter-subregion', 'Subregión');
+        checkFilter('filter-estado', 'Estado');
+        checkFilter('filter-convenio-num', 'N° Convenio');
+
+        const filtersText = activeFilters.length > 0 ? activeFilters.join(' | ') : 'NINGUNO (MOSTRANDO TODOS LOS CONVENIOS)';
+
+        // 2. Perform calculations mirroring updateKPIs()
+        let activos = 0, porLiquidar = 0, sumInv = 0, sumDes = 0, sumAut = 0;
+        let totLonCon = 0, totLonEje = 0;
+        
+        filteredData.forEach(r => {
+            const est = String(r['ESTADO CONVENIO'] || '').toLowerCase();
+            if(est.includes('ejecuci')) activos++;
+            if(est.includes('por liquidar')) porLiquidar++; 
+            sumInv += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
+            sumDes += r['VALOR TOTAL DESEMBOLSADO'] || 0;
+            sumAut += r['VALOR TOTAL AUTORIZADO'] || 0;
+            
+            totLonCon += r['ALCANCE (M)'] || 0;
+            totLonEje += r['LONGITUD EJECUTADA'] || 0;
+        });
+
+        // 3. Fetch institutional logo
+        const logoBase64 = await getBase64ImageFromURL('./assets/escudo_antioquia.png').catch(() => null);
+
+        // 4. Generate the horizontal execution bar chart in km dynamically
+        const canvas = document.createElement('canvas');
+        canvas.width = 500;
+        canvas.height = 110;
+        const ctx = canvas.getContext('2d');
+        const textColor = '#475569'; 
+        const gridColor = 'rgba(15, 23, 42, 0.06)';
+
+        const offscreenChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Ejecución Física (km)'],
+                datasets: [
+                    { label: 'Contratado', data: [parseFloat((totLonCon / 1000).toFixed(2))], backgroundColor: '#94A3B8', borderRadius: 4, barThickness: 16 },
+                    { label: 'Ejecutado', data: [parseFloat((totLonEje / 1000).toFixed(2))], backgroundColor: '#018D38', borderRadius: 4, barThickness: 16 }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: false,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { font: { size: 10, family: 'Poppins', weight: 'bold' }, color: textColor }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: gridColor },
+                        ticks: { color: textColor, font: { size: 9, family: 'Poppins' } }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: textColor, font: { size: 10, weight: 'bold', family: 'Poppins' } }
+                    }
+                }
+            }
+        });
+
+        const chartBase64 = offscreenChart.toBase64Image();
+        offscreenChart.destroy();
+
+        // 5. Build the detailed convenios table
+        const tableBody = [
+            // Header Row
+            [
+                { text: 'CONVENIO', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5 },
+                { text: 'MUNICIPIO', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5 },
+                { text: 'CLASIFICACIÓN', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5 },
+                { text: 'SUPERVISOR', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5 },
+                { text: 'ESTADO', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5, alignment: 'center' },
+                { text: 'AV. FÍSICO', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5, alignment: 'right' },
+                { text: 'AV. FINANCIERO', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5, alignment: 'right' }
+            ]
+        ];
+
+        if (filteredData.length === 0) {
+            tableBody.push([
+                { text: 'No se encontraron convenios con los filtros seleccionados.', colSpan: 7, alignment: 'center', fontSize: 8, italics: true },
+                {}, {}, {}, {}, {}, {}
+            ]);
+        } else {
+            filteredData.forEach(r => {
+                const pfis = r['FISICO_NORM'] || 0;
+                const pfin = r['FINANCIERO_NORM'] || 0;
+                const sysState = getSystemState(r['ESTADO CONVENIO']);
+                
+                let badgeColor = '#64748B';
+                let badgeBg = '#F1F5F9';
+                if (sysState.badgeClass === 'badge-ejecutado' || sysState.badgeClass === 'badge-ejecucion') {
+                    badgeColor = '#137333';
+                    badgeBg = '#E6F4EA';
+                } else if (sysState.badgeClass === 'badge-por-liquidar' || sysState.badgeClass === 'badge-proximo') {
+                    badgeColor = '#B45309';
+                    badgeBg = '#FFF9DB';
+                } else if (sysState.badgeClass === 'badge-suspendido') {
+                    badgeColor = '#C5221F';
+                    badgeBg = '#FCE8E6';
+                } else if (sysState.badgeClass === 'badge-liquidado') {
+                    badgeColor = '#1A73E8';
+                    badgeBg = '#E8F0FE';
+                }
+
+                tableBody.push([
+                    { text: String(r['CONVENIO'] || ''), fontSize: 7.5, bold: true },
+                    { text: String(r['MUNICIPIO'] || ''), fontSize: 7.5 },
+                    { text: String(r['CLASIFICACIÓN'] || r['CLASIFICACI"N'] || ''), fontSize: 7 },
+                    { text: String(r['SUPERVISOR'] || 'SIN ASIGNAR'), fontSize: 7 },
+                    { text: sysState.label, fontSize: 7, bold: true, color: badgeColor, fillColor: badgeBg, alignment: 'center' },
+                    { text: pfis.toFixed(1) + '%', fontSize: 7.5, alignment: 'right', bold: true },
+                    { text: pfin.toFixed(1) + '%', fontSize: 7.5, alignment: 'right', bold: true }
+                ]);
+            });
+        }
+
+        // 6. Define the PDF Document
+        const docDefinition = {
+            pageSize: 'LETTER',
+            pageOrientation: 'portrait',
+            pageMargins: [35, 30, 35, 30],
+            defaultStyle: {
+                font: 'Poppins',
+                fontSize: 8.5,
+                color: '#1E293B'
+            },
+            content: [
+                // Header Row
+                {
+                    columns: [
+                        logoBase64 ? {
+                            image: logoBase64,
+                            width: 32,
+                            alignment: 'left'
+                        } : { text: '' },
+                        {
+                            stack: [
+                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 10, bold: true, color: '#0B5640', letterSpacing: 0.5 },
+                                { text: 'SECRETARÍA DE INFRAESTRUCTURA FÍSICA', fontSize: 7.5, bold: true, color: '#64748B' },
+                                { text: 'Dirección de Infraestructura y Apoyo Territorial (DIAT)', fontSize: 7, color: '#94A3B8' }
+                            ],
+                            margin: [8, 0, 0, 0],
+                            width: '*'
+                        },
+                        {
+                            stack: [
+                                { text: 'REPORTE GERENCIAL CONSOLIDADO', fontSize: 9, bold: true, color: '#0B5640', alignment: 'right' },
+                                { text: 'RESUMEN EJECUTIVO', fontSize: 7.5, bold: true, color: '#64748B', alignment: 'right' },
+                                { text: `Generado: ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'})}`, fontSize: 7, color: '#94A3B8', alignment: 'right' }
+                            ],
+                            width: 'auto'
+                        }
+                    ],
+                    margin: [0, 0, 0, 8]
+                },
+                // Divider Line
+                {
+                    canvas: [{ type: 'line', x1: 0, y1: 0, x2: 542, y2: 0, lineWidth: 1.5, lineColor: '#0B5640' }],
+                    margin: [0, 0, 0, 10]
+                },
+                // Active Filters Context Callout
+                {
+                    table: {
+                        widths: ['*'],
+                        body: [
+                            [
+                                {
+                                    stack: [
+                                        { text: 'FILTROS DE BÚSQUEDA ACTIVOS', fontSize: 7, bold: true, color: '#94A3B8', letterSpacing: 0.05 },
+                                        { text: filtersText.toUpperCase(), bold: true, fontSize: 8, color: '#0B5640', margin: [0, 2, 0, 0] }
+                                    ],
+                                    fillColor: '#F8FAFC',
+                                    border: [false, false, false, false],
+                                    margin: [8, 6, 8, 6]
+                                }
+                            ]
+                        ]
+                    },
+                    layout: {
+                        defaultBorder: false
+                    },
+                    margin: [0, 0, 0, 10]
+                },
+                // KPI Summary Grid (3 columns)
+                {
+                    columns: [
+                        // Col 1
+                        {
+                            stack: [
+                                {
+                                    table: {
+                                        widths: ['*'],
+                                        body: [
+                                            [
+                                                {
+                                                    stack: [
+                                                        { text: 'TOTAL CONVENIOS', fontSize: 6.5, bold: true, color: '#64748B' },
+                                                        { text: String(filteredData.length), fontSize: 13, bold: true, color: '#1E293B', margin: [0, 1, 0, 0] }
+                                                    ],
+                                                    fillColor: '#F8FAFC'
+                                                }
+                                            ]
+                                        ]
+                                    },
+                                    layout: {
+                                        hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#E2E8F0', vLineColor: () => '#E2E8F0',
+                                        paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                                    },
+                                    margin: [0, 0, 0, 4]
+                                },
+                                {
+                                    table: {
+                                        widths: ['*'],
+                                        body: [
+                                            [
+                                                {
+                                                    stack: [
+                                                        { text: 'INVERSIÓN TOTAL (DEPTO)', fontSize: 6.5, bold: true, color: '#8B4A97' },
+                                                        { text: formatCurrency(sumInv), fontSize: 11, bold: true, color: '#8B4A97', margin: [0, 1, 0, 0] }
+                                                    ],
+                                                    fillColor: '#FDF4FF'
+                                                }
+                                            ]
+                                        ]
+                                    },
+                                    layout: {
+                                        hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#F3E8FF', vLineColor: () => '#F3E8FF',
+                                        paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                                    }
+                                }
+                            ],
+                            margin: [0, 0, 4, 0]
+                        },
+                        // Col 2
+                        {
+                            stack: [
+                                {
+                                    table: {
+                                        widths: ['*'],
+                                        body: [
+                                            [
+                                                {
+                                                    stack: [
+                                                        { text: 'EN EJECUCIÓN', fontSize: 6.5, bold: true, color: '#018D38' },
+                                                        { text: String(activos), fontSize: 13, bold: true, color: '#018D38', margin: [0, 1, 0, 0] }
+                                                    ],
+                                                    fillColor: '#E6F4EA'
+                                                }
+                                            ]
+                                        ]
+                                    },
+                                    layout: {
+                                        hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#CEEAD6', vLineColor: () => '#CEEAD6',
+                                        paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                                    },
+                                    margin: [0, 0, 0, 4]
+                                },
+                                {
+                                    table: {
+                                        widths: ['*'],
+                                        body: [
+                                            [
+                                                {
+                                                    stack: [
+                                                        { text: 'DESEMBOLSADO', fontSize: 6.5, bold: true, color: '#3561AB' },
+                                                        { text: formatCurrency(sumDes), fontSize: 11, bold: true, color: '#3561AB', margin: [0, 1, 0, 0] }
+                                                    ],
+                                                    fillColor: '#E8F0FE'
+                                                }
+                                            ]
+                                        ]
+                                    },
+                                    layout: {
+                                        hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#D2E3FC', vLineColor: () => '#D2E3FC',
+                                        paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                                    }
+                                }
+                            ],
+                            margin: [4, 0, 4, 0]
+                        },
+                        // Col 3
+                        {
+                            stack: [
+                                {
+                                    table: {
+                                        widths: ['*'],
+                                        body: [
+                                            [
+                                                {
+                                                    stack: [
+                                                        { text: 'POR LIQUIDAR', fontSize: 6.5, bold: true, color: '#C2410C' },
+                                                        { text: String(porLiquidar), fontSize: 13, bold: true, color: '#C2410C', margin: [0, 1, 0, 0] }
+                                                    ],
+                                                    fillColor: '#FFEFE0'
+                                                }
+                                            ]
+                                        ]
+                                    },
+                                    layout: {
+                                        hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#FFD8A8', vLineColor: () => '#FFD8A8',
+                                        paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                                    },
+                                    margin: [0, 0, 0, 4]
+                                },
+                                {
+                                    table: {
+                                        widths: ['*'],
+                                        body: [
+                                            [
+                                                {
+                                                    stack: [
+                                                        { text: 'AUTORIZADO', fontSize: 6.5, bold: true, color: '#0B5640' },
+                                                        { text: formatCurrency(sumAut), fontSize: 11, bold: true, color: '#0B5640', margin: [0, 1, 0, 0] }
+                                                    ],
+                                                    fillColor: '#E6F4EA'
+                                                }
+                                            ]
+                                        ]
+                                    },
+                                    layout: {
+                                        hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#CEEAD6', vLineColor: () => '#CEEAD6',
+                                        paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                                    }
+                                }
+                            ],
+                            margin: [4, 0, 0, 0]
+                        }
+                    ],
+                    margin: [0, 0, 0, 12]
+                },
+                // Physical Execution Horizontal Bar Chart
+                {
+                    table: {
+                        widths: ['*'],
+                        body: [
+                            [
+                                {
+                                    stack: [
+                                        { text: 'CUMPLIMIENTO FÍSICO GLOBAL (KM)', fontSize: 7, bold: true, color: '#475569', alignment: 'center', margin: [0, 0, 0, 2] },
+                                        { image: chartBase64, width: 480, alignment: 'center' }
+                                    ],
+                                    fillColor: '#FFFFFF'
+                                }
+                            ]
+                        ]
+                    },
+                    layout: {
+                        hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#E2E8F0', vLineColor: () => '#E2E8F0',
+                        paddingLeft: () => 6, paddingRight: () => 6, paddingTop: () => 6, paddingBottom: () => 4
+                    },
+                    margin: [0, 0, 0, 12]
+                },
+                // Detailed Table Header
+                { text: `LISTADO DETALLADO DE CONVENIOS FILTRADOS (${filteredData.length})`, fontSize: 7.5, bold: true, color: '#475569', letterSpacing: 0.5, margin: [0, 0, 0, 4] },
+                // Detailed Table
+                {
+                    table: {
+                        headerRows: 1,
+                        widths: ['auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto'],
+                        body: tableBody
+                    },
+                    layout: {
+                        hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 1 : 0.5,
+                        vLineWidth: () => 0.5,
+                        hLineColor: (i) => i === 0 ? '#0B5640' : '#E2E8F0',
+                        vLineColor: () => '#E2E8F0',
+                        paddingLeft: () => 5,
+                        paddingRight: () => 5,
+                        paddingTop: () => 4,
+                        paddingBottom: () => 4
+                    }
+                },
+                // Footer
+                {
+                    text: 'Este reporte refleja la información oficial consolidada de convenios de infraestructura de la Dirección de Apoyo Territorial DIAT. Gobernación de Antioquia Firme.',
+                    fontSize: 6.5,
+                    color: '#94A3B8',
+                    alignment: 'center',
+                    margin: [0, 15, 0, 0],
+                    unbreakable: true
+                }
+            ]
+        };
+
+        // 7. Trigger download
+        const vigenciaStr = document.getElementById('filter-vigencia')?.value || 'Todos';
+        const clasifStr = document.getElementById('filter-clasificacion')?.value || 'Todas';
+        pdfMake.createPdf(docDefinition).download(`Ficha_Resumen_Ejecutivo_${vigenciaStr}_Clasif_${clasifStr}.pdf`);
+
+        btnPdf.innerHTML = originalText;
+        btnPdf.disabled = false;
+
+        const toast = document.getElementById('toast-notification');
+        if (toast) {
+            toast.classList.remove('opacity-0', 'translate-y-20');
+            setTimeout(() => toast.classList.add('opacity-0', 'translate-y-20'), 3500);
+        }
+
+    } catch (err) {
+        console.error('Error generando PDF de Resumen:', err);
+        alert('Ocurrió un error al generar el PDF de resumen. Revisa la consola para más detalles.');
+        btnPdf.innerHTML = originalText;
+        btnPdf.disabled = false;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     try {
         const today = new Date();
@@ -1650,6 +2581,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = rawData.find(r => String(r['CONVENIO']) === currentConv);
             if(row) generateProfessionalPDF(row);
         });
+
+        const btnExportPlanPdf = document.getElementById('btn-export-plan-pdf');
+        if (btnExportPlanPdf) {
+            btnExportPlanPdf.addEventListener('click', () => {
+                generatePlanPDF();
+            });
+        }
+
+        const btnExportResumenPdf = document.getElementById('btn-export-resumen-pdf');
+        if (btnExportResumenPdf) {
+            btnExportResumenPdf.addEventListener('click', () => {
+                generateResumenPDF();
+            });
+        }
         
         document.getElementById('btn-first').addEventListener('click', () => { currentPage = 1; renderTable(); });
         document.getElementById('btn-prev').addEventListener('click', () => changePage(-1));
@@ -4547,12 +5492,36 @@ window.setMapMetric = function(val) {
 
 // Indicadores estratégicos del Plan de Desarrollo 2024-2027 con metas oficiales
 const indicadoresEstrategicos = {
-    "AEROPUERTOS O AERÓDROMOS MEJORADOS Y EN OPERACIÓN": { meta: 15,     unit: "und",   tipo: "und" },
-    "MUELLES O EMBARCADEROS MEJORADOS":                  { meta: 4,      unit: "und",   tipo: "und" },
-    "VÍAS TERCIARIAS MEJORADAS. (RVT)":                  { meta: 500,    unit: "km",    tipo: "km"  },
-    "ESPACIO PUBLICO":                                   { meta: 20000,  unit: "m²",    tipo: "m2"  },
-    "CABLES AÉREOS SOSTENIBLES CONSTRUIDOS Y OPERANDO":  { meta: 3,      unit: "und",   tipo: "und" },
-    "VÍA URBANA MEJORADA. (RVU)":                        { meta: 30,     unit: "km",    tipo: "km"  }
+    "AEROPUERTOS O AERÓDROMOS MEJORADOS Y EN OPERACIÓN": {
+        metas: { todos: 15, "2024": 0, "2025": 2, "2026": 8, "2027": 5 },
+        unit: "und",
+        tipo: "und"
+    },
+    "MUELLES O EMBARCADEROS MEJORADOS": {
+        metas: { todos: 4, "2024": 0, "2025": 2, "2026": 0, "2027": 2 },
+        unit: "und",
+        tipo: "und"
+    },
+    "VÍAS TERCIARIAS MEJORADAS. (RVT)": {
+        metas: { todos: 500, "2024": 50, "2025": 150, "2026": 100, "2027": 200 },
+        unit: "km",
+        tipo: "km"
+    },
+    "ESPACIO PUBLICO": {
+        metas: { todos: 100000, "2024": 10000, "2025": 25000, "2026": 30000, "2027": 35000 },
+        unit: "m²",
+        tipo: "m2"
+    },
+    "CABLES AÉREOS SOSTENIBLES CONSTRUIDOS Y OPERANDO": {
+        metas: { todos: 3, "2024": 0, "2025": 3, "2026": 3, "2027": 3 },
+        unit: "und",
+        tipo: "und"
+    },
+    "VÍA URBANA MEJORADA. (RVU)": {
+        metas: { todos: 30, "2024": 5, "2025": 10, "2026": 5, "2027": 10 },
+        unit: "km",
+        tipo: "km"
+    }
 };
 
 // Normalización ultra-robusta: elimina tildes, espacios extra, caracteres especiales
@@ -4628,6 +5597,46 @@ window.setPlanAnualMetric = function(val) {
     }
 };
 
+function getRowCompletionYear(row) {
+    let termStr = row['NUEVA FECHA DE TERMINACION'] || row['NUEVA FECHA DE TERMINACIÓN'] || row['NUEVA FECHA DE TERMINACIN'];
+    if (!termStr || String(termStr).trim() === '' || String(termStr).trim().toLowerCase() === 'sin cambios') {
+        termStr = row['FECHA DE TERMINACION'] || row['FECHA DE TERMINACIÓN'] || row['FECHA DE TERMINACIN'];
+    }
+    if (termStr) {
+        termStr = String(termStr).trim();
+        if (!isNaN(termStr) && termStr !== '') {
+            const serialNum = parseFloat(termStr);
+            if (serialNum > 30000) {
+                const dateVal = new Date((serialNum - 25569) * 86400 * 1000);
+                if (!isNaN(dateVal.getTime())) {
+                    return String(dateVal.getFullYear());
+                }
+            }
+        }
+        const parts = termStr.split('/');
+        if (parts.length === 3) {
+            const yearStr = parts[2].trim();
+            if (yearStr.length === 4 && !isNaN(yearStr)) {
+                return yearStr;
+            }
+        }
+        const dateVal = new Date(termStr);
+        if (!isNaN(dateVal.getTime())) {
+            return String(dateVal.getFullYear());
+        }
+    }
+    const vigencia = String(row['VIGENCIA'] || '').trim();
+    if (vigencia && !isNaN(vigencia)) {
+        return vigencia;
+    }
+    return null;
+}
+
+window.setPlanYearFilter = function(val) {
+    planYearFilter = val;
+    renderPlanTab();
+};
+
 function renderPlanTab() {
     let cumplidas = 0, proceso = 0, riesgo = 0;
     let inversionTotal = 0;
@@ -4687,22 +5696,28 @@ function renderPlanTab() {
             }
         }
 
+        // 1. Acumulación anual para el gráfico (basado en la fecha de finalización real, para todo el universo de datos)
+        const compYear = getRowCompletionYear(row);
+        if (compYear && avancePorAnio[compYear] !== undefined) {
+            if (planAnualFilter === 'todos-km') {
+                if (cfg.tipo === 'km') avancePorAnio[compYear] += cant;
+            } else if (planAnualFilter === 'todos-m2') {
+                if (cfg.tipo === 'm2') avancePorAnio[compYear] += cant;
+            } else {
+                if (ind === planAnualFilter) avancePorAnio[compYear] += cant;
+            }
+        }
+
+        // 2. Filtro de año de finalización real para las KPIs y Tarjetas
+        if (planYearFilter !== 'todos' && compYear !== planYearFilter) {
+            return;
+        }
+
         dataInd[ind].ejecutado += cant;
         dataInd[ind].convenios++;
 
         inversionTotal += parseNum(row['APORTE DEPARTAMENTO']) + parseNum(row['ADICION DEPARTAMENTO']);
         if (row['MUNICIPIO']) munis.add(String(row['MUNICIPIO']).trim());
-
-        const vig = String(row['VIGENCIA'] || '').trim();
-        if (avancePorAnio[vig] !== undefined) {
-            if (planAnualFilter === 'todos-km') {
-                if (cfg.tipo === 'km') avancePorAnio[vig] += cant;
-            } else if (planAnualFilter === 'todos-m2') {
-                if (cfg.tipo === 'm2') avancePorAnio[vig] += cant;
-            } else {
-                if (ind === planAnualFilter) avancePorAnio[vig] += cant;
-            }
-        }
     });
 
     // Calculate projection for 2027 if it has no actual data
@@ -4728,17 +5743,29 @@ function renderPlanTab() {
     Object.keys(indicadoresEstrategicos).forEach(ind => {
         const d = dataInd[ind];
         const cfg = indicadoresEstrategicos[ind];
-        const meta = cfg.meta;
+        const meta = cfg.metas[planYearFilter] !== undefined ? cfg.metas[planYearFilter] : 0;
+        const isNP = (meta === 0);
         const e = d.ejecutado;
-        const pct = meta > 0 ? Math.min((e / meta) * 100, 100) : 0;
-        const restante = Math.max(meta - e, 0);
+        
+        let pct = 0;
+        let restante = 0;
+        
+        if (isNP) {
+            pct = 0;
+            restante = 0;
+        } else {
+            pct = meta > 0 ? Math.min((e / meta) * 100, 100) : 0;
+            restante = Math.max(meta - e, 0);
+        }
 
-        if (pct >= 80) cumplidas++;
-        else if (pct >= 50) proceso++;
-        else riesgo++;
+        if (!isNP) {
+            if (pct >= 80) cumplidas++;
+            else if (pct >= 50) proceso++;
+            else riesgo++;
 
-        sumCumplimiento += pct;
-        countCumplimiento++;
+            sumCumplimiento += pct;
+            countCumplimiento++;
+        }
 
         let displayName = ind;
         if (ind.includes("AEROPUERTOS")) displayName = "Aeropuertos/Aeródromos";
@@ -4749,11 +5776,12 @@ function renderPlanTab() {
         else if (ind.includes("URBANA")) displayName = "Vía Urbana (RVU)";
 
         chartMetasLabels.push(displayName);
-        chartMetasPcts.push(parseFloat(pct.toFixed(1)));
+        chartMetasPcts.push(isNP ? 0 : parseFloat(pct.toFixed(1)));
         chartMetasRawInfo.push({
             achieved: e,
             target: meta,
-            unit: cfg.unit
+            unit: cfg.unit,
+            isNP: isNP
         });
 
         let colorClass = 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
@@ -4761,7 +5789,12 @@ function renderPlanTab() {
         let bgClass = 'bg-red-50/60 dark:bg-red-900/10';
         let chartColor = 'rgba(239, 68, 68, 0.85)';
         
-        if (pct >= 80)  { 
+        if (isNP) {
+            colorClass = 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-900/20 dark:text-slate-400 dark:border-slate-800';
+            barColor = 'bg-slate-300';
+            bgClass = 'bg-slate-50/60 dark:bg-slate-900/10';
+            chartColor = 'rgba(148, 163, 184, 0.5)';
+        } else if (pct >= 80)  { 
             colorClass = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'; 
             barColor = 'bg-emerald-500'; 
             bgClass = 'bg-emerald-50/60 dark:bg-emerald-900/10';
@@ -4780,21 +5813,25 @@ function renderPlanTab() {
             return Math.round(v) + ' und';
         };
 
-        const pctCls = pct >= 80 ? 'cumplida' : pct >= 50 ? 'proceso' : 'riesgo';
+        const pctCls = isNP ? 'np' : (pct >= 80 ? 'cumplida' : pct >= 50 ? 'proceso' : 'riesgo');
+        const badgeText = isNP ? 'NP' : `${pct.toFixed(1)}%`;
+        const metaText = isNP ? 'NP (No Prog.)' : fmtVal(meta);
+        const restanteText = isNP ? '-' : fmtVal(restante);
+
         container.innerHTML += `
             <div class="meta-card meta-${pctCls}">
                 <div class="meta-card-header">
                     <h4 class="meta-card-title">${ind}</h4>
-                    <span class="meta-pct-badge ${pctCls}">${pct.toFixed(1)}%</span>
+                    <span class="meta-pct-badge ${pctCls}">${badgeText}</span>
                 </div>
                 <div class="meta-progress-track">
-                    <div class="meta-progress-fill ${pctCls}" style="width:${Math.min(pct, 100)}%"></div>
+                    <div class="meta-progress-fill ${pctCls}" style="width:${isNP ? 0 : Math.min(pct, 100)}%"></div>
                 </div>
                 <div class="meta-card-footer">
                     <div style="display:flex;gap:12px;">
                         <div>
                             <p style="font-size:8px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;">Meta</p>
-                            <p style="font-size:12px;font-weight:800;color:#0F172A;">${fmtVal(meta)}</p>
+                            <p style="font-size:12px;font-weight:800;color:#0F172A;">${metaText}</p>
                         </div>
                         <div>
                             <p style="font-size:8px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;">${labelMetasMetric}</p>
@@ -4802,7 +5839,7 @@ function renderPlanTab() {
                         </div>
                         <div>
                             <p style="font-size:8px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;">Restante</p>
-                            <p style="font-size:12px;font-weight:800;color:#A90F09;">${fmtVal(restante)}</p>
+                            <p style="font-size:12px;font-weight:800;color:#A90F09;">${restanteText}</p>
                         </div>
                     </div>
                     <span class="meta-meta-text">${d.convenios} convenio(s)</span>
@@ -4874,6 +5911,10 @@ function renderPlanTab() {
                         label: function(context) {
                             const index = context.dataIndex;
                             const info = chartMetasRawInfo[index];
+                            if (info.isNP) {
+                                const rawAchieved = info.unit === 'm²' ? formatNumber(Math.round(info.achieved)) : info.achieved.toFixed(1);
+                                return ` No Programado (Ejecutado: ${rawAchieved} ${info.unit})`;
+                            }
                             const rawAchieved = info.unit === 'm²' ? formatNumber(Math.round(info.achieved)) : info.achieved.toFixed(1);
                             const rawTarget = info.unit === 'm²' ? formatNumber(Math.round(info.target)) : info.target;
                             return ` ${context.raw}% de cumplimiento (${rawAchieved} ${info.unit} de ${rawTarget} ${info.unit})`;

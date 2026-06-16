@@ -2528,6 +2528,7 @@ select.filter-control option { font-family: var(--font-base); }
 .meta-card.meta-cumplida { border-top: 3px solid #018D38; }
 .meta-card.meta-proceso  { border-top: 3px solid #F28E18; }
 .meta-card.meta-riesgo   { border-top: 3px solid #A90F09; }
+.meta-card.meta-np       { border-top: 3px solid #64748B; }
 
 .meta-card-header {
     display: flex;
@@ -2561,6 +2562,7 @@ select.filter-control option { font-family: var(--font-base); }
 .meta-pct-badge.cumplida { color: #15803D; background: #DCFCE7; border-color: #86EFAC; }
 .meta-pct-badge.proceso  { color: #92400E; background: #FEF3C7; border-color: #FCD34D; }
 .meta-pct-badge.riesgo   { color: #991B1B; background: #FEE2E2; border-color: #FCA5A5; }
+.meta-pct-badge.np       { color: #475569; background: #F1F5F9; border-color: #CBD5E1; }
 
 .meta-progress-track {
     width: 100%;
