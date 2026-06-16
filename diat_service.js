@@ -88,14 +88,44 @@ class DIATDataService {
             if (changes[id]) {
                 const mergedRow = { ...row };
                 
-                // Solo mezclar geolocalización, la información de estado, avances, observaciones, etc.
-                // debe venir estrictamente del Google Sheet (Excel maestro)
-                if (changes[id]['LATITUD'] !== undefined) {
-                    mergedRow['LATITUD'] = parseFloat(changes[id]['LATITUD']) || 0;
+                // Mezclar todos los campos locales actualizados
+                Object.keys(changes[id]).forEach(field => {
+                    mergedRow[field] = changes[id][field];
+                });
+
+                // Mapear campos con nombres alternativos utilizados en el frontend
+                if (changes[id]['LONGITUD EJECUTADA (m)'] !== undefined) {
+                    mergedRow['LONGITUD EJECUTADA'] = parseFloat(changes[id]['LONGITUD EJECUTADA (m)']) || 0;
                 }
-                if (changes[id]['LONGITUD'] !== undefined) {
-                    mergedRow['LONGITUD'] = parseFloat(changes[id]['LONGITUD']) || 0;
+                if (changes[id]['AREA EJECUTADA (m2)'] !== undefined) {
+                    mergedRow['AREA EJECUTADA (M2)'] = parseFloat(changes[id]['AREA EJECUTADA (m2)']) || 0;
                 }
+
+                // Recalcular avances físicos y financieros para que el frontend los muestre actualizados
+                const alcanceM = parseFloat(mergedRow['ALCANCE (m)'] || mergedRow['ALCANCE (M)']) || 0;
+                const alcanceM2 = parseFloat(mergedRow['ALCANCE (m2)'] || mergedRow['ALCANCE (M2)']) || 0;
+                const longitud = parseFloat(mergedRow['LONGITUD EJECUTADA']) || 0;
+                const area = parseFloat(mergedRow['AREA EJECUTADA (M2)']) || 0;
+
+                let pfis = 0;
+                if (alcanceM > 0) {
+                    pfis = (longitud / alcanceM) * 100;
+                } else if (alcanceM2 > 0) {
+                    pfis = (area / alcanceM2) * 100;
+                }
+                mergedRow['FISICO_NORM'] = pfis;
+                mergedRow['% EJECUCIÓN FÍSICA'] = pfis / 100;
+
+                const desembolsado = parseFloat(mergedRow['VALOR TOTAL DESEMBOLSADO']) || 0;
+                const adeudado = parseFloat(mergedRow['VALOR TOTAL AUTORIZADO DEPARTAMENTO']) || 0;
+
+                let pfin = 0;
+                if (desembolsado > 0) {
+                    pfin = (adeudado / desembolsado) * 100;
+                }
+                mergedRow['FINANCIERO_NORM'] = pfin;
+                mergedRow['% EJECUCIÓN FINANCIERA (RECURSOS DEPARTAMENTO)'] = pfin / 100;
+
                 return mergedRow;
             }
             return row;
@@ -134,28 +164,34 @@ class DIATDataService {
                 throw new Error(`Servidor retornó código ${response.status}`);
             }
         } catch (corsError) {
-            console.warn("Fallo en intento principal (posible bloqueo CORS o falta de nueva publicación de Apps Script). Reintentando en modo de compatibilidad sin CORS...", corsError);
-            
-            try {
-                // Intento 2: Modo no-cors (Modo compatible de una vía).
-                // Envía la petición HTTP de forma segura a Google pero no lee la respuesta, evitando bloqueos de CORS del navegador.
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: "POST",
-                    mode: "no-cors",
-                    headers: {
-                        "Content-Type": "text/plain"
-                    },
-                    body: JSON.stringify({
-                        convenioId: convenioId,
-                        updatedFields: updatedFields
-                    })
-                });
+            if (corsError instanceof TypeError) {
+                console.warn("Fallo en intento principal (posible bloqueo CORS o falta de nueva publicación de Apps Script). Reintentando en modo de compatibilidad sin CORS...", corsError);
                 
-                // En modo no-cors no podemos validar la respuesta, por lo que asumimos que se envió correctamente
-                isSuccess = true;
-            } catch (fallbackError) {
-                console.error("Fallo definitivo de red al sincronizar con Google Sheets:", fallbackError);
-                alert("Error crítico de red al sincronizar con Google Sheets. Verifica tu conexión.");
+                try {
+                    // Intento 2: Modo no-cors (Modo compatible de una vía).
+                    // Envía la petición HTTP de forma segura a Google pero no lee la respuesta, evitando bloqueos de CORS del navegador.
+                    await fetch(GOOGLE_SCRIPT_URL, {
+                        method: "POST",
+                        mode: "no-cors",
+                        headers: {
+                            "Content-Type": "text/plain"
+                        },
+                        body: JSON.stringify({
+                            convenioId: convenioId,
+                            updatedFields: updatedFields
+                        })
+                    });
+                    
+                    // En modo no-cors no podemos validar la respuesta, por lo que asumimos que se envió correctamente
+                    isSuccess = true;
+                } catch (fallbackError) {
+                    console.error("Fallo definitivo de red al sincronizar con Google Sheets:", fallbackError);
+                    alert("Error crítico de red al sincronizar con Google Sheets. Verifica tu conexión.");
+                    return false;
+                }
+            } else {
+                console.error("Error devuelto por la ejecución del script:", corsError);
+                alert("Error al actualizar convenio: " + corsError.message);
                 return false;
             }
         }
