@@ -641,7 +641,7 @@ async function generateProfessionalPDF(row) {
             return val;
         };
 
-        const formatCurrency = (val) => '$' + Number(val || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        const formatCurrency = (val) => '$ ' + Number(val || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
         // ===== 1. ASYNCHRONOUS CAPTURE OF LOGOS & MAPS =====
         const logoBase64 = await getBase64ImageFromURL('./assets/escudo_antioquia.png').catch(() => null);
@@ -662,122 +662,59 @@ async function generateProfessionalPDF(row) {
         const sysState = getSystemState(row['ESTADO CONVENIO']);
 
         // ===== 2. LAYOUT HELPERS =====
-        const estimateTextHeight = (text, fontSize, lineSpacing, colWidth) => {
-            if (!text) return 0;
-            // Poppins is relatively wide. Let's use 0.68 as a safe average character width factor
-            const avgCharWidth = fontSize * 0.68;
-            const charsPerLine = colWidth / avgCharWidth;
-            const paragraphs = String(text).split('\n');
-            let totalLines = 0;
-            paragraphs.forEach(p => {
-                const words = p.split(/\s+/);
-                let currentLineLength = 0;
-                let pLines = 1;
-                words.forEach(w => {
-                    if (currentLineLength + w.length + 1 > charsPerLine) {
-                        pLines++;
-                        currentLineLength = w.length;
-                    } else {
-                        currentLineLength += w.length + 1;
-                    }
-                });
-                totalLines += pLines;
-            });
-            return totalLines * (fontSize * lineSpacing);
-        };
-
-        const estimateTextLines = (text, fontSize, width) => {
-            if (!text) return 0;
-            const avgCharWidth = fontSize * 0.68;
-            const charsPerLine = width / avgCharWidth;
-            const paragraphs = String(text).split('\n');
-            let totalLines = 0;
-            paragraphs.forEach(p => {
-                const words = p.split(/\s+/);
-                let currentLineLength = 0;
-                let pLines = 1;
-                words.forEach(w => {
-                    if (currentLineLength + w.length + 1 > charsPerLine) {
-                        pLines++;
-                        currentLineLength = w.length;
-                    } else {
-                        currentLineLength += w.length + 1;
-                    }
-                });
-                totalLines += pLines;
-            });
-            return totalLines;
-        };
-
-        const estimateIconLabelHeight = (labelText, valueText, width) => {
-            const colWidth = width - 14; // Icon is 14pt wide
-            const valueLines = Math.max(1, Math.ceil(estimateTextLines(valueText, 8, colWidth)));
-            return 10 + (valueLines * 9.5) + 10; // increased safety margin to 10
-        };
-
-        const roundedCard = (w, h, bgColor, borderColor, content, padding = 12, r = 16, hasShadow = false) => {
-            const shapes = [];
-            if (hasShadow) {
-                shapes.push({
-                    type: 'rect',
-                    x: 2,
-                    y: 2,
-                    w: w,
-                    h: h,
-                    r: r,
-                    color: '#E2E8F0'
-                });
-                shapes.push({
-                    type: 'rect',
-                    x: 1,
-                    y: 1,
-                    w: w,
-                    h: h,
-                    r: r,
-                    color: '#F1F5F9'
-                });
-            }
-            shapes.push({
-                type: 'rect',
-                x: 0,
-                y: 0,
-                w: w,
-                h: h,
-                r: r,
-                color: bgColor,
-                lineColor: borderColor,
-                lineWidth: borderColor ? 1 : 0
-            });
+        // Minimal, dynamic card using standard pdfMake tables
+        const cleanCard = (content, bgColor = '#FFFFFF', borderColor = '#E2E8F0', padding = 10) => {
             return {
-                stack: [
-                    {
-                        canvas: shapes
-                    },
-                    {
-                        stack: content,
-                        margin: [padding, -h + padding, padding, 0]
-                    }
-                ],
-                width: w,
-                height: h
+                table: {
+                    widths: ['*'],
+                    body: [
+                        [{
+                            stack: Array.isArray(content) ? content : [content],
+                            margin: [padding, padding, padding, padding]
+                        }]
+                    ]
+                },
+                layout: {
+                    hLineWidth: () => borderColor ? 0.5 : 0,
+                    vLineWidth: () => borderColor ? 0.5 : 0,
+                    hLineColor: () => borderColor || 'transparent',
+                    vLineColor: () => borderColor || 'transparent',
+                    paddingLeft: () => 0,
+                    paddingRight: () => 0,
+                    paddingTop: () => 0,
+                    paddingBottom: () => 0
+                },
+                fillColor: bgColor
             };
         };
 
-        const iconLabel = (iconUnicode, labelText, valueText, isDark = false) => {
+        const iconLabel = (iconUnicode, labelText, valueText, isDark = false, isHighlighted = false) => {
             return {
                 columns: [
                     {
                         text: iconUnicode,
                         font: 'FontAwesome',
-                        fontSize: 9,
-                        color: isDark ? '#FFF200' : '#0B7A53',
+                        fontSize: isHighlighted ? 11 : 9,
+                        color: isDark ? '#A3E635' : (isHighlighted ? '#07543A' : '#0B7A53'),
                         width: 14,
-                        margin: [0, 1.5, 0, 0]
+                        margin: [0, isHighlighted ? 1 : 1.5, 0, 0]
                     },
                     {
                         stack: [
-                            { text: String(labelText).toUpperCase(), fontSize: 6.5, bold: true, color: isDark ? '#D9DEE5' : '#4B5563', letterSpacing: 0.5 },
-                            { text: String(valueText ?? '-'), fontSize: 8, color: isDark ? '#FFFFFF' : '#1E293B', bold: true, margin: [0, 1, 0, 0] }
+                            { 
+                                text: String(labelText).toUpperCase(), 
+                                fontSize: isHighlighted ? 7.5 : 6.5, 
+                                bold: true, 
+                                color: isDark ? '#D1D5DB' : (isHighlighted ? '#07543A' : '#64748B'), 
+                                letterSpacing: 0.5 
+                            },
+                            { 
+                                text: String(valueText ?? '-'), 
+                                fontSize: isHighlighted ? 11 : 8, 
+                                color: isDark ? '#FFFFFF' : (isHighlighted ? '#07543A' : '#1E293B'), 
+                                bold: true, 
+                                margin: [0, 1, 0, 0] 
+                            }
                         ],
                         width: '*'
                     }
@@ -786,11 +723,11 @@ async function generateProfessionalPDF(row) {
             };
         };
 
-        const progressBar = (pct, color, width = 220, height = 6) => {
+        const progressBar = (pct, color, width = 220, height = 5) => {
             const cappedPct = Math.max(0, Math.min(100, pct || 0));
             return {
                 canvas: [
-                    { type: 'rect', x: 0, y: 0, w: width, h: height, r: height / 2, color: '#E5E7EB' },
+                    { type: 'rect', x: 0, y: 0, w: width, h: height, r: height / 2, color: '#E2E8F0' },
                     { type: 'rect', x: 0, y: 0, w: (cappedPct / 100) * width, h: height, r: height / 2, color: color }
                 ],
                 margin: [0, 4, 0, 4]
@@ -798,15 +735,15 @@ async function generateProfessionalPDF(row) {
         };
 
         const progressCard = (title, pct, color) => {
-            return roundedCard(250, 64, '#FFFFFF', '#E2E8F0', [
+            return cleanCard([
                 {
                     columns: [
-                        { text: title.toUpperCase(), fontSize: 7, bold: true, color: '#4B5563', width: '*' },
+                        { text: title.toUpperCase(), fontSize: 7, bold: true, color: '#475569', width: '*' },
                         { text: `${(pct || 0).toFixed(1)}%`, fontSize: 11, bold: true, color: color, width: 'auto' }
                     ]
                 },
-                progressBar(pct, color, 226, 6)
-            ], 12, 18, true);
+                progressBar(pct, color, 215, 5)
+            ], '#FFFFFF', '#E2E8F0', 10);
         };
 
         // ===== 3. COMPILE ALERTS DYNAMICALLY =====
@@ -829,29 +766,29 @@ async function generateProfessionalPDF(row) {
                 const msLeft = termDate.getTime() - today.getTime();
                 const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
                 if (daysLeft <= 30) {
-                    alertsList.push({ title: 'Próximo a Terminar', desc: `Faltan ${daysLeft} días para la terminación (${termStr}).`, color: '#F59E0B' });
+                    alertsList.push({ title: 'Próximo a Terminar', desc: `Faltan ${daysLeft} días para la terminación (${termStr}).`, color: '#D97706' });
                 }
             }
             if (termDate && termDate < today) {
                 const msPassed = today.getTime() - termDate.getTime();
                 const monthsPassed = msPassed / (1000 * 60 * 60 * 24 * 30.43);
                 if (monthsPassed >= 24) {
-                    alertsList.push({ title: 'Riesgo Extremo: Pérdida de Competencia', desc: `Vencido hace ${monthsPassed.toFixed(1)} meses. Límite legal de competencia de 30 meses en riesgo extremo.`, color: '#A90F09' });
+                    alertsList.push({ title: 'Riesgo Extremo: Pérdida de Competencia', desc: `Vencido hace ${monthsPassed.toFixed(1)} meses. Límite legal de competencia de 30 meses en riesgo extremo.`, color: '#DC2626' });
                 } else {
-                    alertsList.push({ title: 'Vencido sin liquidar', desc: `El convenio finalizó el ${termStr} y sigue en estado abierto.`, color: '#A90F09' });
+                    alertsList.push({ title: 'Vencido sin liquidar', desc: `El convenio finalizó el ${termStr} y sigue en estado abierto.`, color: '#DC2626' });
                 }
             }
             if (financiero > fisico + 15) {
-                alertsList.push({ title: 'Desfase Financiero Crítico', desc: `Avance financiero (${financiero.toFixed(1)}%) supera al físico (${fisico.toFixed(1)}%) por más de 15%.`, color: '#3561AB' });
+                alertsList.push({ title: 'Desfase Financiero Crítico', desc: `Avance financiero (${financiero.toFixed(1)}%) supera al físico (${fisico.toFixed(1)}%) por más de 15%.`, color: '#2563EB' });
             }
             if (tieneFotos === 'NO' || photosList.length === 0) {
-                alertsList.push({ title: 'Sin Evidencia Fotográfica', desc: `El convenio no registra fotografías cargadas en el sistema.`, color: '#A90F09' });
+                alertsList.push({ title: 'Sin Evidencia Fotográfica', desc: `El convenio no registra fotografías cargadas en el sistema.`, color: '#DC2626' });
             }
             if (estStr.includes('suspendido') && suspMeses >= 3) {
-                alertsList.push({ title: 'Suspensión Prolongada', desc: `Acumula ${suspMeses} meses de suspensión.`, color: '#F59E0B' });
+                alertsList.push({ title: 'Suspensión Prolongada', desc: `Acumula ${suspMeses} meses de suspensión.`, color: '#D97706' });
             }
             if (estStr.includes('ejecución') && desembolsado === 0) {
-                alertsList.push({ title: 'Cero Desembolsos en Ejecución', desc: `Convenio en ejecución pero no hay desembolsos registrados.`, color: '#F59E0B' });
+                alertsList.push({ title: 'Cero Desembolsos en Ejecución', desc: `Convenio en ejecución pero no hay desembolsos registrados.`, color: '#D97706' });
             }
         }
 
@@ -902,7 +839,7 @@ async function generateProfessionalPDF(row) {
                 break;
             }
         }
-        if (!plazoInicial) plazoInicial = parseNum(row['PLAZO INICIAL'] || row['PLAZO_INICIAL'] || 0);
+        if (!plazoInicial) plazoInicial = parseNum(row['PLAZO INITIAL'] || row['PLAZO INITIAL'] || 0);
         const prorrogas = parseNum(row['PRORROGA (MESES)'] || row['PRÓRROGA (MESES)'] || row['PRRROGA (MESES)'] || 0);
         const suspensiones = parseNum(row['SUSPENSION(MESES)'] || row['SUSPENSIÓN(MESES)'] || row['SUSPENSIN(MESES)'] || 0);
         const plazoTotal = plazoInicial + prorrogas;
@@ -912,42 +849,17 @@ async function generateProfessionalPDF(row) {
 
         // Logo configuration
         const logoElement = logoBase64 
-            ? { image: logoBase64, width: 50, margin: [0, 2, 20, 0] } 
+            ? { image: logoBase64, width: 45, margin: [0, 2, 0, 0] } 
             : {
                 table: {
-                    widths: [50],
-                    body: [[{ text: 'GOB\nANT', fontSize: 10, bold: true, color: '#ffffff', fillColor: '#07543A', alignment: 'center', margin: [0, 10, 0, 10] }]]
+                    widths: [45],
+                    body: [[{ text: 'GOB\nANT', fontSize: 10, bold: true, color: '#ffffff', fillColor: '#07543A', alignment: 'center', margin: [0, 8, 0, 8] }]]
                 },
                 layout: 'noBorders',
-                margin: [0, 2, 20, 0]
+                margin: [0, 2, 0, 0]
               };
 
-        // Date helper for photos
-        const getPhotoDate = (stage) => {
-            const fInicio = getVal(['FECHA DE ACTA DE INICIO']) || getVal(['ACTA DE INICIO']) || getVal(['FECHA DE SUSCRIPC']);
-            const fTerminacion = row['NUEVA FECHA DE TERMINACION'] || row['FECHA DE TERMINACION'];
-            
-            if (stage === 'Antes') {
-                return fInicio || 'Fecha Inicial';
-            } else if (stage === 'Después' || stage === 'Despues') {
-                return fTerminacion || 'Fecha Final';
-            } else {
-                if (fInicio && fTerminacion) {
-                    const d1 = parseCOPDate(fInicio);
-                    const d2 = parseCOPDate(fTerminacion);
-                    if (d1 && d2) {
-                        const midTime = d1.getTime() + (d2.getTime() - d1.getTime()) / 2;
-                        return new Date(midTime).toLocaleDateString('es-CO');
-                    }
-                }
-                return 'En Ejecución';
-            }
-        };
-
-        // Dynamic height calculation for page 1 observations & alerts
         const obsText = row['OBSERVACIONES'] || 'Sin observaciones adicionales registradas por el supervisor en el sistema.';
-        const obsHeight = 24 + 18 + estimateTextHeight(obsText, 8, 1.3, 486) + 15; // increased baseline + safety margin
-
         const viasText = row['VIA_PRIORIZADA'] || 'No especificada';
         
         // Parse vias into an array
@@ -959,39 +871,29 @@ async function generateProfessionalPDF(row) {
         };
         const viasArray = parseVias(viasText);
         
-        let viasHeight = 24 + 18 + 15; // default height if empty
-        let viasContent = { text: 'No especificada', fontSize: 8, color: '#1E293B' };
+        let viasContent = { text: 'No especificada', fontSize: 8, color: '#334155' };
         
         if (viasArray.length > 0) {
             const colVias1 = [];
             const colVias2 = [];
             const colVias3 = [];
             
-            let h1 = 0, h2 = 0, h3 = 0;
-            
             viasArray.forEach((v, idx) => {
-                // width inside each column is around 146pt (155pt column - 8pt icon)
-                const itemH = estimateTextHeight(v, 7, 1.1, 146) + 4; // 4pt margin bottom
                 const viaBullet = {
                     columns: [
                         { text: '\uf0da', font: 'FontAwesome', fontSize: 6, color: '#0B7A53', width: 8, margin: [0, 1.5, 0, 0] },
-                        { text: v, fontSize: 7, color: '#1E293B', lineHeight: 1.1 }
+                        { text: v, fontSize: 7.5, color: '#334155', lineHeight: 1.1 }
                     ],
-                    margin: [0, 0, 0, 4]
+                    margin: [0, 0, 0, 3]
                 };
                 if (idx % 3 === 0) {
                     colVias1.push(viaBullet);
-                    h1 += itemH;
                 } else if (idx % 3 === 1) {
                     colVias2.push(viaBullet);
-                    h2 += itemH;
                 } else {
                     colVias3.push(viaBullet);
-                    h3 += itemH;
                 }
             });
-            
-            viasHeight = 24 + 18 + Math.max(h1, h2, h3) + 15; // padding + title + max column height + safety margin
             
             viasContent = {
                 columns: [
@@ -1003,85 +905,40 @@ async function generateProfessionalPDF(row) {
             };
         }
 
-        const rawObjeto = row['OBJETO'] || 'Sin descripción u objeto definido.';
-        const objetoText = rawObjeto;
-        const objetoLines = estimateTextLines(objetoText, 7, 300); // 300 width
-        const objetoSectionHeight = 8 + (objetoLines * 7.7) + 8; // 8pt title, 8pt margin bottom
-        
-        const supervisorHeight = estimateIconLabelHeight('Supervisor Responsable', row['SUPERVISOR'], 170);
-        const ejecutorHeight = estimateIconLabelHeight('Conveniante Ejecutor', row['CONVENIANTE EJECUTOR'], 170);
-        const inicioHeight = estimateIconLabelHeight('Fecha de Inicio', getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || 'N/A', 170);
-        
-        const convenioBannerHeight = 24 + 24 + Math.max(objetoSectionHeight, supervisorHeight + ejecutorHeight + inicioHeight) + 15;
-
-        const infoHeaderHeight = 8 + 10; // title + margin
-        const col1Height = estimateIconLabelHeight('Vigencia', row['VIGENCIA'], 114) +
-                           estimateIconLabelHeight('Clasificación', row['CLASIFICACIÓN'] || row['CLASIFICACI"N'], 114);
-                           
-        const col2Height = estimateIconLabelHeight('Municipio', row['MUNICIPIO'], 114) +
-                           estimateIconLabelHeight(labelContratado, valContratado, 114);
-                           
-        const col3Height = estimateIconLabelHeight('Subregión', getSubregion(row['MUNICIPIO']), 114) +
-                           estimateIconLabelHeight(labelEjecutado, valEjecutado, 114);
-                           
-        const col4Height = estimateIconLabelHeight('Indicador', row['INDICADOR'] ? (row['INDICADOR'].length > 40 ? row['INDICADOR'].substring(0, 40) + '...' : row['INDICADOR']) : 'N/A', 114) +
-                           estimateIconLabelHeight('Estado Actual', sysState.label, 114);
-                           
-        const infoGeneralHeight = 24 + infoHeaderHeight + Math.max(col1Height, col2Height, col3Height, col4Height) + 15;
-
-        console.log("PDF HEIGHT DEBUG:", {
-            infoGeneralHeight,
-            col1Height,
-            col2Height,
-            col3Height,
-            col4Height,
-            convenioBannerHeight,
-            objetoSectionHeight,
-            objetoLines,
-            supervisorHeight,
-            ejecutorHeight,
-            inicioHeight
-        });
+        const objetoText = row['OBJETO'] || 'Sin descripción u objeto definido.';
 
         let alertsStack = [];
-        let alertsCardHeight = 45 + 15; // with safety margin
         if (alertsList.length === 0) {
             alertsStack = [
                 {
                     columns: [
-                        { text: '\uf058', font: 'FontAwesome', fontSize: 10, color: '#0B7A53', width: 14 },
-                        { text: 'SIN ALERTAS DE RIESGO DEPARTAMENTAL', fontSize: 7.5, bold: true, color: '#0B7A53', letterSpacing: 0.5 }
+                        { text: '\uf058', font: 'FontAwesome', fontSize: 10, color: '#0F766E', width: 14 },
+                        { text: 'SIN ALERTAS DE RIESGO CONTRACTUAL DETECTADAS', fontSize: 7.5, bold: true, color: '#0F766E', letterSpacing: 0.5 }
                     ],
                     margin: [0, 0, 0, 4]
                 },
-                { text: 'El convenio no presenta retrasos, vencimientos ni advertencias contractuales activas.', fontSize: 8, color: '#4B5563' }
+                { text: 'El convenio no presenta retrasos, vencimientos ni advertencias de control vigentes.', fontSize: 7.5, color: '#334155' }
             ];
-            alertsCardHeight = 45 + 15;
         } else {
             alertsStack = [
                 {
                     columns: [
-                        { text: '\uf071', font: 'FontAwesome', fontSize: 10, color: '#EF4444', width: 14 },
-                        { text: 'ALERTAS DE RIESGO DETECTADAS', fontSize: 7.5, bold: true, color: '#EF4444', letterSpacing: 0.5 }
+                        { text: '\uf071', font: 'FontAwesome', fontSize: 10, color: '#B91C1C', width: 14 },
+                        { text: 'ALERTAS DE RIESGO DETECTADAS', fontSize: 7.5, bold: true, color: '#B91C1C', letterSpacing: 0.5 }
                     ],
                     margin: [0, 0, 0, 6]
                 }
             ];
-            let runningHeight = 24 + 18;
             alertsList.forEach((a, idx) => {
                 const isLast = idx === alertsList.length - 1;
-                const textHeight = estimateTextHeight(a.desc, 7.5, 1.2, 486);
-                runningHeight += 12 + textHeight + (isLast ? 0 : 6);
-                
                 alertsStack.push({
                     stack: [
-                        { text: a.title.toUpperCase(), fontSize: 7.5, bold: true, color: '#EF4444' },
-                        { text: a.desc, fontSize: 7.5, color: '#4B5563', margin: [0, 1, 0, 0] }
+                        { text: a.title.toUpperCase(), fontSize: 7.5, bold: true, color: '#B91C1C' },
+                        { text: a.desc, fontSize: 7.5, color: '#475569', margin: [0, 1, 0, 0] }
                     ],
-                    margin: [0, 0, 0, isLast ? 0 : 6]
+                    margin: [0, 0, 0, isLast ? 0 : 5]
                 });
             });
-            alertsCardHeight = runningHeight + 15; // with safety margin
         }
 
         // ===== 5. TIMELINE GENERATION (PAGE 2) =====
@@ -1104,12 +961,12 @@ async function generateProfessionalPDF(row) {
             const nodeBg = hasDate ? '#E6F3ED' : '#F1F5F9';
             
             const canvasItems = [
-                { type: 'circle', cx: 15, cy: 15, r: 8, color: nodeBg, lineColor: nodeColor, lineWidth: 1 },
-                { type: 'circle', cx: 15, cy: 15, r: 4, color: nodeColor }
+                { type: 'circle', cx: 15, cy: 15, r: 7, color: nodeBg, lineColor: nodeColor, lineWidth: 1 },
+                { type: 'circle', cx: 15, cy: 15, r: 3, color: nodeColor }
             ];
             
             if (!isLast) {
-                canvasItems.unshift({ type: 'line', x1: 15, y1: 15, x2: 15, y2: 45, lineWidth: 1.5, lineColor: '#D9DEE5', dash: { length: 3, space: 3 } });
+                canvasItems.unshift({ type: 'line', x1: 15, y1: 15, x2: 15, y2: 45, lineWidth: 1.2, lineColor: '#E2E8F0', dash: { length: 3, space: 3 } });
             }
 
             timelineContent.push({
@@ -1117,22 +974,22 @@ async function generateProfessionalPDF(row) {
                     {
                         width: 30,
                         canvas: canvasItems,
-                        height: 40
+                        height: 38
                     },
                     {
-                        width: 100,
+                        width: 110,
                         stack: [
-                            { text: s.title.toUpperCase(), fontSize: 7, bold: true, color: '#4B5563' },
-                            { text: s.date, fontSize: 8.5, bold: true, color: hasDate ? '#07543A' : '#64748B', margin: [0, 2, 0, 0] }
+                            { text: s.title.toUpperCase(), fontSize: 7, bold: true, color: '#64748B' },
+                            { text: s.date, fontSize: 8.5, bold: true, color: hasDate ? '#07543A' : '#64748B', margin: [0, 1, 0, 0] }
                         ],
-                        margin: [0, 8, 0, 0]
+                        margin: [0, 6, 0, 0]
                     },
                     {
                         width: '*',
                         stack: [
-                            { text: s.desc, fontSize: 7.5, color: '#4B5563', lineHeight: 1.2 }
+                            { text: s.desc, fontSize: 7.5, color: '#475569', lineHeight: 1.2 }
                         ],
-                        margin: [0, 8, 0, 0]
+                        margin: [0, 6, 0, 0]
                     }
                 ],
                 margin: [0, 0, 0, 2]
@@ -1154,10 +1011,10 @@ async function generateProfessionalPDF(row) {
                     }]]
                 },
                 layout: {
-                    hLineWidth: () => 1,
-                    vLineWidth: () => 1,
-                    hLineColor: () => '#cbd5e1',
-                    vLineColor: () => '#cbd5e1',
+                    hLineWidth: () => 0.5,
+                    vLineWidth: () => 0.5,
+                    hLineColor: () => '#E2E8F0',
+                    vLineColor: () => '#E2E8F0',
                     hLineDash: () => ({ length: 4, space: 4 }),
                     vLineDash: () => ({ length: 4, space: 4 })
                 },
@@ -1166,54 +1023,53 @@ async function generateProfessionalPDF(row) {
             });
         } else {
             const buildPhotoCard = (photoObj, isHorizontal) => {
-                const w = isHorizontal ? 250 : 163.3;
+                const w = isHorizontal ? 252.5 : 165;
                 const imgH = isHorizontal ? 150 : 220;
-                const footerHeight = 16;
-                const cardHeight = imgH + footerHeight;
                 
-                let stageColor = '#4B5563';
-                if (photoObj.stage === 'Antes') stageColor = '#4B5563';
-                else if (photoObj.stage === 'Durante') stageColor = '#F59E0B';
-                else if (photoObj.stage === 'Después' || photoObj.stage === 'Despues') stageColor = '#0B7A53';
+                let stageColor = '#475569';
+                if (photoObj.stage === 'Antes') stageColor = '#64748B';
+                else if (photoObj.stage === 'Durante') stageColor = '#D97706';
+                else if (photoObj.stage === 'Después' || photoObj.stage === 'Despues') stageColor = '#059669';
                 
                 return {
-                    stack: [
-                        {
-                            canvas: [
+                    table: {
+                        widths: [w],
+                        body: [
+                            [
                                 {
-                                    type: 'rect',
-                                    x: 0,
-                                    y: 0,
-                                    w: w,
-                                    h: cardHeight,
-                                    r: 12,
-                                    color: '#FFFFFF',
-                                    lineColor: '#D9DEE5',
-                                    lineWidth: 1
+                                    image: photoObj.base64,
+                                    width: w,
+                                    height: imgH,
+                                    cover: {
+                                        width: w,
+                                        height: imgH,
+                                        valign: 'center',
+                                        align: 'center'
+                                    }
+                                }
+                            ],
+                            [
+                                {
+                                    text: photoObj.stage.toUpperCase(),
+                                    fontSize: 7,
+                                    bold: true,
+                                    color: stageColor,
+                                    alignment: 'center',
+                                    margin: [0, 4, 0, 4],
+                                    fillColor: '#F8FAFC'
                                 }
                             ]
-                        },
-                        {
-                            image: photoObj.base64,
-                            cover: {
-                                width: w - 2,
-                                height: imgH - 1,
-                                valign: 'center',
-                                align: 'center'
-                            },
-                            alignment: 'center',
-                            margin: [1, -cardHeight + 1, 1, 0]
-                        },
-                        {
-                            text: photoObj.stage.toUpperCase(),
-                            fontSize: 7,
-                            bold: true,
-                            color: stageColor,
-                            alignment: 'center',
-                            margin: [0, 4, 0, 0]
-                        }
-                    ],
-                    width: w,
+                        ]
+                    },
+                    layout: {
+                        hLineWidth: (i) => i === 1 ? 0.5 : 0,
+                        vLineWidth: () => 0,
+                        hLineColor: () => '#E2E8F0',
+                        paddingLeft: () => 0,
+                        paddingRight: () => 0,
+                        paddingTop: () => 0,
+                        paddingBottom: () => 0
+                    },
                     margin: [0, 4, 0, 8]
                 };
             };
@@ -1226,7 +1082,7 @@ async function generateProfessionalPDF(row) {
                 if (horizChunk.length > 0) {
                     const columns = horizChunk.map(p => buildPhotoCard(p, true));
                     while (columns.length < 2) {
-                        columns.push({ text: '', width: 250 });
+                        columns.push({ text: '', width: 252.5 });
                     }
                     photoRows.push({
                         columns: columns,
@@ -1242,7 +1098,7 @@ async function generateProfessionalPDF(row) {
                 if (vertChunk.length > 0) {
                     const columns = vertChunk.map(p => buildPhotoCard(p, false));
                     while (columns.length < 3) {
-                        columns.push({ text: '', width: 163.3 });
+                        columns.push({ text: '', width: 165 });
                     }
                     photoRows.push({
                         columns: columns,
@@ -1255,6 +1111,179 @@ async function generateProfessionalPDF(row) {
             }
             photoGalleryContent.push(...photoRows);
         }
+
+        // ===== 7. CONSTRUCT CLEAN CARDS FOR PAGE 1 =====
+        const progressSection = {
+            columns: [
+                { stack: [ progressCard('Avance Físico Real', row['FISICO_NORM'] || 0, '#0B7A53') ], width: '50%' },
+                { stack: [ progressCard('Avance Financiero Ejecutado', row['FINANCIERO_NORM'] || 0, '#3561AB') ], width: '50%' }
+            ],
+            columnGap: 10,
+            margin: [0, 0, 0, 10]
+        };
+
+        const convenioBanner = cleanCard([
+            {
+                columns: [
+                    { text: 'CONVENIO N°', fontSize: 7.5, bold: true, color: '#A3E635', letterSpacing: 0.8, width: 'auto', margin: [0, 4, 8, 0] },
+                    { text: row['CONVENIO'] || 'S/N', fontSize: 15, bold: true, color: '#FFFFFF', width: '*' }
+                ],
+                margin: [0, 0, 0, 8]
+            },
+            {
+                columns: [
+                    {
+                        width: '*',
+                        stack: [
+                            { text: 'OBJETO DEL CONVENIO', fontSize: 6.5, bold: true, color: '#A3E635', letterSpacing: 0.5 },
+                            { text: objetoText, fontSize: 7.5, color: '#FFFFFF', margin: [0, 2, 0, 0], lineHeight: 1.15 }
+                        ]
+                    },
+                    {
+                        width: 175,
+                        stack: [
+                            iconLabel('\uf508', 'Supervisor Responsable', row['SUPERVISOR'] || 'Sin Asignar', true),
+                            iconLabel('\uf2b5', 'Conveniante Ejecutor', row['CONVENIANTE EJECUTOR'] || 'N/A', true),
+                            iconLabel('\uf073', 'Fecha de Inicio', getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || 'N/A', true)
+                        ],
+                        margin: [10, 0, 0, 0]
+                    }
+                ],
+                columnGap: 12
+            }
+        ], '#07543A', null, 12);
+
+        const widgetContratado = iconLabel('\uf548', labelContratado, valContratado, false, true);
+        widgetContratado.margin = [0, 0, 0, 0];
+        const cardContratado = cleanCard([widgetContratado], '#F0FDF4', '#BBF7D0', 8);
+
+        const widgetEjecutado = iconLabel('\uf548', labelEjecutado, valEjecutado, false, true);
+        widgetEjecutado.margin = [0, 0, 0, 0];
+        const cardEjecutado = cleanCard([widgetEjecutado], '#F0FDF4', '#BBF7D0', 8);
+
+        const infoGeneralCard = cleanCard([
+            { text: 'INFORMACIÓN GENERAL', fontSize: 8, bold: true, color: '#07543A', letterSpacing: 0.5, margin: [0, 0, 0, 10] },
+            {
+                columns: [
+                    {
+                        width: '*',
+                        stack: [
+                            iconLabel('\uf073', 'Vigencia', row['VIGENCIA']),
+                            iconLabel('\uf02c', 'Clasificación', row['CLASIFICACIÓN'] || row['CLASIFICACI"N'])
+                        ]
+                    },
+                    {
+                        width: '*',
+                        stack: [
+                            iconLabel('\uf3c5', 'Municipio', row['MUNICIPIO']),
+                            iconLabel('\uf279', 'Subregión', getSubregion(row['MUNICIPIO']))
+                        ]
+                    },
+                    {
+                        width: '*',
+                        stack: [
+                            iconLabel('\uf201', 'Indicador', row['INDICADOR'] ? (row['INDICADOR'].length > 40 ? row['INDICADOR'].substring(0, 40) + '...' : row['INDICADOR']) : 'N/A'),
+                            iconLabel('\uf05a', 'Estado Actual', sysState.label)
+                        ]
+                    }
+                ],
+                columnGap: 12,
+                margin: [0, 0, 0, 10]
+            },
+            {
+                columns: [
+                    {
+                        width: '*',
+                        stack: [cardContratado]
+                    },
+                    {
+                        width: '*',
+                        stack: [cardEjecutado]
+                    }
+                ],
+                columnGap: 10
+            }
+        ], '#FFFFFF', '#E2E8F0', 12);
+
+        const viasCard = cleanCard([
+            {
+                columns: [
+                    { text: '\uf018', font: 'FontAwesome', fontSize: 9, color: '#0B7A53', width: 14, margin: [0, 1.5, 0, 0] },
+                    { text: 'VÍAS PRIORIZADAS', fontSize: 7.5, bold: true, color: '#0B7A53', letterSpacing: 0.5 }
+                ],
+                margin: [0, 0, 0, 6]
+            },
+            viasContent
+        ], '#FFFFFF', '#E2E8F0', 12);
+
+        const obsCard = cleanCard([
+            {
+                columns: [
+                    { text: '\uf075', font: 'FontAwesome', fontSize: 9, color: '#0B7A53', width: 14, margin: [0, 1.5, 0, 0] },
+                    { text: 'OBSERVACIONES TÉCNICAS DE SUPERVISIÓN', fontSize: 7.5, bold: true, color: '#0B7A53', letterSpacing: 0.5 }
+                ],
+                margin: [0, 0, 0, 6]
+            },
+            { text: obsText, fontSize: 7.5, color: '#334155', alignment: 'justify', lineHeight: 1.3 }
+        ], '#FFFFFF', '#E2E8F0', 12);
+
+        const alertsCard = cleanCard(
+            alertsStack,
+            alertsList.length === 0 ? '#F0FDF4' : '#FEF2F2',
+            alertsList.length === 0 ? '#BBF7D0' : '#FCA5A5',
+            12
+        );
+
+        const inversionCard = cleanCard([
+            {
+                table: {
+                    widths: ['*', 150],
+                    body: [
+                        [
+                            { text: 'INVERSIÓN TOTAL', fontSize: 9, bold: true, color: '#07543A', margin: [5, 5, 5, 5] },
+                            { text: formatCurrency((row['APORTE DEPARTAMENTO'] || 0) + (row['APORTE MUNICIPIO'] || 0) + (row['ADICION DEPARTAMENTO'] || 0) + (row['ADICION MUNICIPIO'] || 0)), fontSize: 9.5, bold: true, color: '#07543A', alignment: 'right', margin: [5, 5, 5, 5] }
+                        ],
+                        [
+                            { text: 'APORTE DEPARTAMENTO', fontSize: 8.5, bold: true, color: '#0B7A53', fillColor: '#F0FDF4', margin: [5, 5, 5, 5] },
+                            { text: formatCurrency(row['APORTE DEPARTAMENTO']), fontSize: 8.5, bold: true, color: '#0B7A53', fillColor: '#F0FDF4', alignment: 'right', margin: [5, 5, 5, 5] }
+                        ],
+                        [
+                            { text: 'APORTE MUNICIPIO', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
+                            { text: formatCurrency(row['APORTE MUNICIPIO']), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
+                        ],
+                        [
+                            { text: 'ADICIÓN DEPARTAMENTO', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
+                            { text: formatCurrency(row['ADICION DEPARTAMENTO']), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
+                        ],
+                        [
+                            { text: 'ADICIÓN MUNICIPIO', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
+                            { text: formatCurrency(row['ADICION MUNICIPIO']), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
+                        ],
+                        [
+                            { text: 'TOTAL DESEMBOLSADO', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
+                            { text: formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), fontSize: 8, bold: true, color: '#3561AB', alignment: 'right', margin: [5, 5, 5, 5] }
+                        ],
+                        [
+                            { text: 'TOTAL AUTORIZADO DEPARTAMENTO', fontSize: 8.5, bold: true, color: '#0B7A53', fillColor: '#F0FDF4', margin: [5, 5, 5, 5] },
+                            { text: formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO'] || row['VALOR TOTAL AUTORIZADO']), fontSize: 8.5, bold: true, color: '#0B7A53', fillColor: '#F0FDF4', alignment: 'right', margin: [5, 5, 5, 5] }
+                        ]
+                    ]
+                },
+                layout: {
+                    hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 0 : 0.5,
+                    vLineWidth: () => 0,
+                    hLineColor: () => '#E2E8F0'
+                }
+            }
+        ], '#FFFFFF', '#E2E8F0', 8);
+
+        const plazoInicialCard = cleanCard([
+            iconLabel('\uf073', 'Plazo Inicial', `${plazoInicial} Meses`)
+        ], '#F8FAFC', '#E2E8F0', 8);
+
+        const plazoTotalCard = cleanCard([
+            iconLabel('\uf073', 'Plazo Total Vigente', `${plazoTotal} Meses`)
+        ], '#F0FDF4', '#BBF7D0', 8);
 
         const docDefinition = {
             pageSize: 'A4',
@@ -1280,244 +1309,85 @@ async function generateProfessionalPDF(row) {
             content: [
                 {
                     columns: [
-                        logoElement,
+                        {
+                            stack: [ logoElement ],
+                            width: 60
+                        },
                         {
                             stack: [
-                                { text: 'DIRECCIÓN DE INFRAESTRUCTURA Y APOYO TERRITORIAL', fontSize: 8.5, bold: true, color: '#64748B', letterSpacing: 0.8 },
-                                { text: 'Secretaría de Infraestructura Física', fontSize: 16, bold: true, color: '#0B7A53', margin: [0, 2, 0, 2] },
-                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 19, bold: true, color: '#07543A' }
+                                { text: 'DIRECCIÓN DE INFRAESTRUCTURA Y APOYO TERRITORIAL', fontSize: 8, bold: true, color: '#64748B', letterSpacing: 0.8, lineHeight: 0.95 },
+                                { text: 'Secretaría de Infraestructura Física', fontSize: 13, bold: true, color: '#0B7A53', margin: [0, 1, 0, 1], lineHeight: 0.95 },
+                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 16, bold: true, color: '#07543A', lineHeight: 0.95 }
                             ],
                             width: '*',
                             margin: [0, 2, 0, 0]
                         },
                         {
-                            width: 120,
+                            width: 130,
                             stack: [
-                                roundedCard(120, 38, '#FFFFFF', '#E2E8F0', [
-                                    { text: 'ESTADO DEL CONVENIO', fontSize: 6, bold: true, color: '#64748B', alignment: 'center', margin: [0, 2, 0, 4] },
+                                cleanCard([
+                                    { text: 'ESTADO DEL CONVENIO', fontSize: 7, bold: true, color: '#64748B', alignment: 'center', margin: [0, 0, 0, 3] },
                                     {
                                         text: [
-                                            { text: '\u2022 ', fontSize: 12, color: sysState.hex, bold: true },
-                                            { text: sysState.label.toUpperCase(), fontSize: 8, bold: true, color: sysState.hex }
+                                            { text: '\u2022 ', fontSize: 13, color: sysState.hex, bold: true },
+                                            { text: sysState.label.toUpperCase(), fontSize: 10, bold: true, color: sysState.hex }
                                         ],
                                         alignment: 'center'
                                     }
-                                ], 8, 18)
-                            ]
+                                ], '#FFFFFF', '#E2E8F0', 8)
+                            ],
+                            margin: [0, 2, 0, 0]
                         }
                     ],
-                    margin: [0, 0, 0, 15]
+                    margin: [0, 0, 0, 10]
                 },
-                { canvas: [{ type: 'rect', x: 0, y: 0, w: 510, h: 2, r: 0, color: '#0B7A53' }], margin: [0, 8, 0, 18] },
-                {
-                    columns: [
-                        { stack: [ progressCard('Avance Físico Real', row['FISICO_NORM'] || 0, '#0B7A53') ], width: '50%' },
-                        { stack: [ progressCard('Avance Financiero Ejecutado', row['FINANCIERO_NORM'] || 0, '#3561AB') ], width: '50%' }
-                    ],
-                    columnGap: 10,
-                    margin: [0, 0, 0, 18]
-                },
-                // Green CONVENIO banner (full-width)
-                {
-                    stack: [
-                        roundedCard(510, convenioBannerHeight, '#07543A', null, [
-                            {
-                                columns: [
-                                    { text: 'CONVENIO', fontSize: 7, bold: true, color: '#A3E635', letterSpacing: 0.8, width: 'auto', margin: [0, 4, 10, 0] },
-                                    { text: row['CONVENIO'] || 'S/N', fontSize: 18, bold: true, color: '#FFFFFF', width: '*' }
-                                ],
-                                margin: [0, 0, 0, 8]
-                            },
-                            {
-                                columns: [
-                                    {
-                                        width: 300,
-                                        stack: [
-                                            { text: 'OBJETO DEL CONVENIO', fontSize: 6.5, bold: true, color: '#A3E635', letterSpacing: 0.5 },
-                                            { text: objetoText, fontSize: 7, color: '#FFFFFF', margin: [0, 1, 0, 0], lineHeight: 1.1 }
-                                        ]
-                                    },
-                                    {
-                                        width: 170,
-                                        stack: [
-                                            iconLabel('\uf508', 'Supervisor Responsable', row['SUPERVISOR'] || 'Sin Asignar', true),
-                                            iconLabel('\uf2b5', 'Conveniante Ejecutor', row['CONVENIANTE EJECUTOR'] || 'N/A', true),
-                                            iconLabel('\uf073', 'Fecha de Inicio', getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || 'N/A', true)
-                                        ]
-                                    }
-                                ],
-                                columnGap: 16
-                            }
-                        ], 12, 24)
-                    ],
-                    margin: [0, 0, 0, 15],
-                    unbreakable: true
-                },
-                // INFORMACIÓN GENERAL card (full-width, 4 columns)
-                {
-                    stack: [
-                        roundedCard(510, infoGeneralHeight, '#FFFFFF', '#E2E8F0', [
-                            { text: 'INFORMACIÓN GENERAL', fontSize: 8, bold: true, color: '#07543A', letterSpacing: 0.5, margin: [0, 0, 0, 10] },
-                            {
-                                columns: [
-                                    {
-                                        width: 114,
-                                        stack: [
-                                            iconLabel('\uf073', 'Vigencia', row['VIGENCIA']),
-                                            iconLabel('\uf02c', 'Clasificación', row['CLASIFICACIÓN'] || row['CLASIFICACI"N'])
-                                        ]
-                                    },
-                                    {
-                                        width: 114,
-                                        stack: [
-                                            iconLabel('\uf3c5', 'Municipio', row['MUNICIPIO']),
-                                            iconLabel('\uf548', labelContratado, valContratado)
-                                        ]
-                                    },
-                                    {
-                                        width: 114,
-                                        stack: [
-                                            iconLabel('\uf279', 'Subregión', getSubregion(row['MUNICIPIO'])),
-                                            iconLabel('\uf548', labelEjecutado, valEjecutado)
-                                        ]
-                                    },
-                                    {
-                                        width: 114,
-                                        stack: [
-                                            iconLabel('\uf201', 'Indicador', row['INDICADOR'] ? (row['INDICADOR'].length > 40 ? row['INDICADOR'].substring(0, 40) + '...' : row['INDICADOR']) : 'N/A'),
-                                            iconLabel('\uf05a', 'Estado Actual', sysState.label)
-                                        ]
-                                    }
-                                ],
-                                columnGap: 10
-                            }
-                        ], 12, 18, true)
-                    ],
-                    margin: [0, 0, 0, 15],
-                    unbreakable: true
-                },
-                {
-                    stack: [
-                        roundedCard(510, viasHeight, '#FFFFFF', '#E2E8F0', [
-                            {
-                                columns: [
-                                    { text: '\uf018', font: 'FontAwesome', fontSize: 10, color: '#0B7A53', width: 14, margin: [0, 1.5, 0, 0] },
-                                    { text: 'VÍAS PRIORIZADAS', fontSize: 7.5, bold: true, color: '#0B7A53', letterSpacing: 0.5 }
-                                ],
-                                margin: [0, 0, 0, 6]
-                            },
-                            viasContent
-                        ], 12, 18, true)
-                    ],
-                    margin: [0, 0, 0, 15],
-                    unbreakable: true
-                },
-                {
-                    stack: [
-                        roundedCard(510, obsHeight, '#FFFFFF', '#E2E8F0', [
-                            {
-                                columns: [
-                                    { text: '\uf075', font: 'FontAwesome', fontSize: 10, color: '#0B7A53', width: 14, margin: [0, 1.5, 0, 0] },
-                                    { text: 'OBSERVACIONES TÉCNICAS DE SUPERVISIÓN', fontSize: 7.5, bold: true, color: '#0B7A53', letterSpacing: 0.5 }
-                                ],
-                                margin: [0, 0, 0, 6]
-                            },
-                            { text: obsText, fontSize: 8, color: '#1E293B', alignment: 'justify', lineHeight: 1.3 }
-                        ], 12, 18, true)
-                    ],
-                    margin: [0, 0, 0, 15],
-                    unbreakable: true
-                },
-                {
-                    stack: [
-                        roundedCard(510, alertsCardHeight, alertsList.length === 0 ? '#E6F3ED' : '#FEF2F2', alertsList.length === 0 ? '#A3D5BE' : '#FCA5A5', alertsStack, 12, 18)
-                    ],
-                    margin: [0, 0, 0, 0],
-                    unbreakable: true
-                },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#0B7A53' }], margin: [0, 5, 0, 12] },
+                progressSection,
+                convenioBanner,
+                { text: '', margin: [0, 0, 0, 10] },
+                infoGeneralCard,
+                { text: '', margin: [0, 0, 0, 10] },
+                viasCard,
+                { text: '', margin: [0, 0, 0, 10] },
+                obsCard,
+                { text: '', margin: [0, 0, 0, 10] },
+                alertsCard,
+                
+                // Page 2
                 {
                     pageBreak: 'before',
                     columns: [
-                        { text: 'RESUMEN EJECUTIVO DE INVERSIÓN', fontSize: 13, bold: true, color: '#07543A', width: '*' },
-                        { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 10, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 3, 0, 0] }
+                        { text: 'RESUMEN EJECUTIVO DE INVERSIÓN', fontSize: 12, bold: true, color: '#07543A', width: '*' },
+                        { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 9, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 2, 0, 0] }
                     ],
-                    margin: [0, 0, 0, 8]
+                    margin: [0, 0, 0, 6]
                 },
-                { canvas: [{ type: 'rect', x: 0, y: 0, w: 510, h: 2, r: 0, color: '#0B7A53' }], margin: [0, 0, 0, 15] },
-                {
-                    stack: [
-                        roundedCard(510, 200, '#FFFFFF', '#D9DEE5', [
-                            {
-                                table: {
-                                    widths: ['*', 150],
-                                    body: [
-                                        [
-                                            { text: 'INVERSIÓN TOTAL', fontSize: 10, bold: true, color: '#07543A', margin: [8, 8, 8, 8] },
-                                            { text: formatCurrency((row['APORTE DEPARTAMENTO'] || 0) + (row['APORTE MUNICIPIO'] || 0) + (row['ADICION DEPARTAMENTO'] || 0) + (row['ADICION MUNICIPIO'] || 0)), fontSize: 10.5, bold: true, color: '#07543A', alignment: 'right', margin: [8, 8, 8, 8] }
-                                        ],
-                                        [
-                                            { text: 'APORTE DEPARTAMENTO', fontSize: 9.5, bold: true, color: '#0B7A53', fillColor: '#E6F3ED', margin: [8, 8, 8, 8] },
-                                            { text: formatCurrency(row['APORTE DEPARTAMENTO']), fontSize: 10, bold: true, color: '#0B7A53', fillColor: '#E6F3ED', alignment: 'right', margin: [8, 8, 8, 8] }
-                                        ],
-                                        [
-                                            { text: 'APORTE MUNICIPIO', fontSize: 9, bold: false, color: '#4B5563', margin: [8, 6, 8, 6] },
-                                            { text: formatCurrency(row['APORTE MUNICIPIO']), fontSize: 9.5, bold: true, color: '#1E293B', alignment: 'right', margin: [8, 6, 8, 6] }
-                                        ],
-                                        [
-                                            { text: 'ADICIÓN DEPARTAMENTO', fontSize: 9, bold: false, color: '#4B5563', margin: [8, 6, 8, 6] },
-                                            { text: formatCurrency(row['ADICION DEPARTAMENTO']), fontSize: 9.5, bold: true, color: '#1E293B', alignment: 'right', margin: [8, 6, 8, 6] }
-                                        ],
-                                        [
-                                            { text: 'ADICIÓN MUNICIPIO', fontSize: 9, bold: false, color: '#4B5563', margin: [8, 6, 8, 6] },
-                                            { text: formatCurrency(row['ADICION MUNICIPIO']), fontSize: 9.5, bold: true, color: '#1E293B', alignment: 'right', margin: [8, 6, 8, 6] }
-                                        ],
-                                        [
-                                            { text: 'TOTAL DESEMBOLSADO', fontSize: 9, bold: false, color: '#4B5563', margin: [8, 6, 8, 6] },
-                                            { text: formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), fontSize: 9.5, bold: true, color: '#3561AB', alignment: 'right', margin: [8, 6, 8, 6] }
-                                        ],
-                                        [
-                                            { text: 'TOTAL AUTORIZADO DEPARTAMENTO', fontSize: 9.5, bold: true, color: '#0B7A53', fillColor: '#E6F3ED', margin: [8, 8, 8, 8] },
-                                            { text: formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO'] || row['VALOR TOTAL AUTORIZADO']), fontSize: 10, bold: true, color: '#0B7A53', fillColor: '#E6F3ED', alignment: 'right', margin: [8, 8, 8, 8] }
-                                        ]
-                                    ]
-                                },
-                                layout: {
-                                    hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 0 : 0.5,
-                                    vLineWidth: () => 0,
-                                    hLineColor: () => '#E2E8F0'
-                                }
-                            }
-                        ], 12)
-                    ],
-                    margin: [0, 0, 0, 20]
-                },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#0B7A53' }], margin: [0, 0, 0, 12] },
+                inversionCard,
+                
                 {
                     columns: [
-                        { text: 'LÍNEA DE TIEMPO Y EVENTOS CONTRACTUALES', fontSize: 13, bold: true, color: '#07543A', width: '*' },
-                        { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 10, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 3, 0, 0] }
+                        { text: 'LÍNEA DE TIEMPO Y EVENTOS CONTRACTUALES', fontSize: 12, bold: true, color: '#07543A', width: '*' },
+                        { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 9, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 2, 0, 0] }
                     ],
-                    margin: [0, 15, 0, 8]
+                    margin: [0, 15, 0, 6]
                 },
-                { canvas: [{ type: 'rect', x: 0, y: 0, w: 510, h: 2, r: 0, color: '#0B7A53' }], margin: [0, 0, 0, 15] },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#0B7A53' }], margin: [0, 0, 0, 12] },
                 {
                     stack: timelineContent,
-                    margin: [0, 0, 0, 20]
+                    margin: [0, 0, 0, 15]
                 },
                 {
                     columns: [
                         {
                             stack: [
-                                roundedCard(250, 48, '#F5F7FA', '#D9DEE5', [
-                                    iconLabel('\uf073', 'Plazo Inicial', `${plazoInicial} Meses`)
-                                ], 10)
+                                plazoInicialCard
                             ],
                             width: '50%'
                         },
                         {
                             stack: [
-                                roundedCard(250, 48, '#E6F3ED', '#A3D5BE', [
-                                    iconLabel('\uf073', 'Plazo Total Vigente', `${plazoTotal} Meses`)
-                                ], 10)
+                                plazoTotalCard
                             ],
                             width: '50%'
                         }
@@ -1525,15 +1395,17 @@ async function generateProfessionalPDF(row) {
                     columnGap: 10,
                     margin: [0, 0, 0, 0]
                 },
+                
+                // Page 3
                 {
                     pageBreak: 'before',
                     columns: [
-                        { text: 'REGISTRO FOTOGRÁFICO DE OBRA', fontSize: 13, bold: true, color: '#07543A', width: '*' },
-                        { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 10, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 3, 0, 0] }
+                        { text: 'REGISTRO FOTOGRÁFICO DE OBRA', fontSize: 12, bold: true, color: '#07543A', width: '*' },
+                        { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 9, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 2, 0, 0] }
                     ],
-                    margin: [0, 0, 0, 8]
+                    margin: [0, 0, 0, 6]
                 },
-                { canvas: [{ type: 'rect', x: 0, y: 0, w: 510, h: 2, r: 0, color: '#0B7A53' }], margin: [0, 0, 0, 15] },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#0B7A53' }], margin: [0, 0, 0, 12] },
                 {
                     stack: photoGalleryContent
                 }
@@ -2086,75 +1958,208 @@ async function generateResumenPDF() {
         const filtersText = activeFilters.length > 0 ? activeFilters.join(' | ') : 'NINGUNO (MOSTRANDO TODOS LOS CONVENIOS)';
 
         // 2. Perform calculations mirroring updateKPIs()
-        let activos = 0, porLiquidar = 0, sumInv = 0, sumDes = 0, sumAut = 0;
+        let activos = 0, porLiquidar = 0, suspendidos = 0, sumInv = 0, sumDes = 0, sumAut = 0;
         let totLonCon = 0, totLonEje = 0;
+        let totAreCon = 0, totAreEje = 0;
         
         filteredData.forEach(r => {
             const est = String(r['ESTADO CONVENIO'] || '').toLowerCase();
+            const estNorm = est.normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+            
             if(est.includes('ejecuci')) activos++;
             if(est.includes('por liquidar')) porLiquidar++; 
+            if(estNorm.includes('suspendido') || estNorm.includes('riesgo medio') || estNorm.includes('medio')) suspendidos++;
+            
             sumInv += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
             sumDes += r['VALOR TOTAL DESEMBOLSADO'] || 0;
             sumAut += r['VALOR TOTAL AUTORIZADO'] || 0;
             
             totLonCon += r['ALCANCE (M)'] || 0;
             totLonEje += r['LONGITUD EJECUTADA'] || 0;
+            totAreCon += r['ALCANCE (M2)'] || 0;
+            totAreEje += r['AREA EJECUTADA (M2)'] || 0;
         });
 
         // 3. Fetch institutional logo
         const logoBase64 = await getBase64ImageFromURL('./assets/escudo_antioquia.png').catch(() => null);
 
-        // 4. Generate the horizontal execution bar chart in km dynamically
-        const canvas = document.createElement('canvas');
-        canvas.width = 500;
-        canvas.height = 110;
-        const ctx = canvas.getContext('2d');
-        const textColor = '#475569'; 
-        const gridColor = 'rgba(15, 23, 42, 0.06)';
+        // 4. Generate native pdfMake vector chart for a premium, clean presentation
+        const maxVal = Math.max(totLonCon, totLonEje);
+        const chartHeight = 80;
+        
+        const hContratado = maxVal > 0 ? (totLonCon / maxVal) * chartHeight : 0;
+        const hEjecutado = maxVal > 0 ? (totLonEje / maxVal) * chartHeight : 0;
 
-        const offscreenChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Ejecución Física (km)'],
-                datasets: [
-                    { label: 'Contratado', data: [parseFloat((totLonCon / 1000).toFixed(2))], backgroundColor: '#94A3B8', borderRadius: 4, barThickness: 16 },
-                    { label: 'Ejecutado', data: [parseFloat((totLonEje / 1000).toFixed(2))], backgroundColor: '#018D38', borderRadius: 4, barThickness: 16 }
+        const valConKm = (totLonCon / 1000).toFixed(2);
+        const valEjeKm = (totLonEje / 1000).toFixed(2);
+        const pctEje = totLonCon > 0 ? ((totLonEje / totLonCon) * 100).toFixed(1) : '0.0';
+
+        // Generate financial comparative vector chart
+        const maxFin = Math.max(sumInv, sumAut);
+        const hInversion = maxFin > 0 ? (sumInv / maxFin) * chartHeight : 0;
+        const hAutorizado = maxFin > 0 ? (sumAut / maxFin) * chartHeight : 0;
+        const pctAut = sumInv > 0 ? ((sumAut / sumInv) * 100).toFixed(1) : '0.0';
+        const formatShortCurrency = (val) => {
+            if (val === 0) return '$0';
+            return '$' + Math.round(val / 1000000).toLocaleString('es-CO') + ' M';
+        };
+
+        const chartSection = {
+            table: {
+                widths: ['*', 10, '*'],
+                body: [
+                    [
+                        // Vial Chart Column
+                        {
+                            stack: [
+                                { text: 'RELACIÓN DE ALCANCE VIAL: CONTRATADO VS EJECUTADO', fontSize: 7, bold: true, color: '#0B5640', alignment: 'center', margin: [0, 0, 0, 10] },
+                                {
+                                    columns: [
+                                        // Y-axis labels
+                                        {
+                                            stack: [
+                                                { text: `${(maxVal / 1000).toFixed(1)} km`, fontSize: 5.5, color: '#94A3B8', alignment: 'right', margin: [0, 2, 0, 0] },
+                                                { text: `${(maxVal / 2000).toFixed(1)} km`, fontSize: 5.5, color: '#94A3B8', alignment: 'right', margin: [0, 32, 0, 0] },
+                                                { text: '0 km', fontSize: 5.5, color: '#94A3B8', alignment: 'right', margin: [0, 32, 0, 0] }
+                                            ],
+                                            width: 32
+                                        },
+                                        // Canvas
+                                        {
+                                            canvas: [
+                                                // Gridlines
+                                                { type: 'line', x1: 0, y1: 5, x2: 160, y2: 5, lineWidth: 0.5, lineColor: '#E2E8F0' },
+                                                { type: 'line', x1: 0, y1: 45, x2: 160, y2: 45, lineWidth: 0.5, lineColor: '#E2E8F0' },
+                                                { type: 'line', x1: 0, y1: 85, x2: 160, y2: 85, lineWidth: 1, lineColor: '#CBD5E1' },
+                                                // Track 1
+                                                { type: 'rect', x: 29, y: 5, w: 22, h: 80, color: '#F1F5F9', r: 3 },
+                                                // Track 2
+                                                { type: 'rect', x: 129, y: 5, w: 22, h: 80, color: '#F1F5F9', r: 3 },
+                                                // Fill 1
+                                                { type: 'rect', x: 29, y: 5 + (80 - hContratado), w: 22, h: Math.max(hContratado, 1), color: '#64748B', r: 3 },
+                                                // Fill 2
+                                                { type: 'rect', x: 129, y: 5 + (80 - hEjecutado), w: 22, h: Math.max(hEjecutado, 1), color: '#018D38', r: 3 }
+                                            ],
+                                            width: 180
+                                        }
+                                    ],
+                                    alignment: 'center',
+                                    margin: [0, 0, 0, 10]
+                                },
+                                // Labels Row
+                                {
+                                    columns: [
+                                        { text: '', width: 32 },
+                                        {
+                                            stack: [
+                                                { text: 'CONTRATADO', fontSize: 8.5, bold: true, color: '#64748B', alignment: 'center' },
+                                                { text: `${valConKm} km`, fontSize: 10, bold: true, color: '#64748B', alignment: 'center', margin: [0, 1, 0, 0] }
+                                            ],
+                                            width: 80
+                                        },
+                                        {
+                                            stack: [
+                                                { text: 'EJECUTADO', fontSize: 8.5, bold: true, color: '#018D38', alignment: 'center' },
+                                                { text: `${valEjeKm} km (${pctEje}%)`, fontSize: 10, bold: true, color: '#018D38', alignment: 'center', margin: [0, 1, 0, 0] }
+                                            ],
+                                            width: 120
+                                        }
+                                    ]
+                                }
+                            ],
+                            fillColor: '#F8FAFC',
+                            margin: [8, 8, 8, 8],
+                            border: [true, true, true, true]
+                        },
+                        // Spacer
+                        {
+                            text: '',
+                            border: [false, false, false, false]
+                        },
+                        // Financial Chart Column
+                        {
+                            stack: [
+                                { text: 'COMPARATIVO FINANCIERO: INVERSIÓN VS AUTORIZADO DEPARTAMENTO', fontSize: 7, bold: true, color: '#0B5640', alignment: 'center', margin: [0, 0, 0, 10] },
+                                {
+                                    columns: [
+                                        // Y-axis labels
+                                        {
+                                            stack: [
+                                                { text: formatShortCurrency(maxFin), fontSize: 5.5, color: '#94A3B8', alignment: 'right', margin: [0, 2, 0, 0] },
+                                                { text: formatShortCurrency(maxFin / 2), fontSize: 5.5, color: '#94A3B8', alignment: 'right', margin: [0, 32, 0, 0] },
+                                                { text: '$0', fontSize: 5.5, color: '#94A3B8', alignment: 'right', margin: [0, 32, 0, 0] }
+                                            ],
+                                            width: 32
+                                        },
+                                        // Canvas
+                                        {
+                                            canvas: [
+                                                // Gridlines
+                                                { type: 'line', x1: 0, y1: 5, x2: 160, y2: 5, lineWidth: 0.5, lineColor: '#E2E8F0' },
+                                                { type: 'line', x1: 0, y1: 45, x2: 160, y2: 45, lineWidth: 0.5, lineColor: '#E2E8F0' },
+                                                { type: 'line', x1: 0, y1: 85, x2: 160, y2: 85, lineWidth: 1, lineColor: '#CBD5E1' },
+                                                // Track 1
+                                                { type: 'rect', x: 29, y: 5, w: 22, h: 80, color: '#F1F5F9', r: 3 },
+                                                // Track 2
+                                                { type: 'rect', x: 129, y: 5, w: 22, h: 80, color: '#F1F5F9', r: 3 },
+                                                // Fill 1
+                                                { type: 'rect', x: 29, y: 5 + (80 - hInversion), w: 22, h: Math.max(hInversion, 1), color: '#8B4A97', r: 3 },
+                                                // Fill 2
+                                                { type: 'rect', x: 129, y: 5 + (80 - hAutorizado), w: 22, h: Math.max(hAutorizado, 1), color: '#0B5640', r: 3 }
+                                            ],
+                                            width: 180
+                                        }
+                                    ],
+                                    alignment: 'center',
+                                    margin: [0, 0, 0, 10]
+                                },
+                                // Labels Row
+                                {
+                                    columns: [
+                                        { text: '', width: 32 },
+                                        {
+                                            stack: [
+                                                { text: 'INVERSIÓN', fontSize: 8.5, bold: true, color: '#8B4A97', alignment: 'center' },
+                                                { text: formatCurrency(sumInv), fontSize: 10, bold: true, color: '#8B4A97', alignment: 'center', margin: [0, 1, 0, 0] }
+                                            ],
+                                            width: 80
+                                        },
+                                        {
+                                            stack: [
+                                                { text: 'AUTORIZADO', fontSize: 8.5, bold: true, color: '#0B5640', alignment: 'center' },
+                                                { text: `${formatCurrency(sumAut)} (${pctAut}%)`, fontSize: 10, bold: true, color: '#0B5640', alignment: 'center', margin: [0, 1, 0, 0] }
+                                            ],
+                                            width: 120
+                                        }
+                                    ]
+                                }
+                            ],
+                            fillColor: '#F8FAFC',
+                            margin: [8, 8, 8, 8],
+                            border: [true, true, true, true]
+                        }
+                    ]
                 ]
             },
-            options: {
-                indexAxis: 'y',
-                responsive: false,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: { font: { size: 10, family: 'Poppins', weight: 'bold' }, color: textColor }
-                    }
-                },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        grid: { color: gridColor },
-                        ticks: { color: textColor, font: { size: 9, family: 'Poppins' } }
-                    },
-                    y: {
-                        grid: { display: false },
-                        ticks: { color: textColor, font: { size: 10, weight: 'bold', family: 'Poppins' } }
-                    }
-                }
-            }
-        });
-
-        const chartBase64 = offscreenChart.toBase64Image();
-        offscreenChart.destroy();
+            layout: {
+                hLineWidth: () => 1,
+                vLineWidth: () => 1,
+                hLineColor: () => '#E2E8F0',
+                vLineColor: () => '#E2E8F0',
+                paddingLeft: () => 0,
+                paddingRight: () => 0,
+                paddingTop: () => 0,
+                paddingBottom: () => 0
+            },
+            margin: [0, 0, 0, 12]
+        };
 
         // 5. Build the detailed convenios table
         const tableBody = [
             // Header Row
             [
                 { text: 'CONVENIO', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5 },
-                { text: 'MUNICIPIO', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5 },
-                { text: 'CLASIFICACIÓN', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5 },
+                { text: 'CONVENIENTE EJECUTOR', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5 },
                 { text: 'SUPERVISOR', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5 },
                 { text: 'ESTADO', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5, alignment: 'center' },
                 { text: 'AV. FÍSICO', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5, alignment: 'right' },
@@ -2164,8 +2169,8 @@ async function generateResumenPDF() {
 
         if (filteredData.length === 0) {
             tableBody.push([
-                { text: 'No se encontraron convenios con los filtros seleccionados.', colSpan: 7, alignment: 'center', fontSize: 8, italics: true },
-                {}, {}, {}, {}, {}, {}
+                { text: 'No se encontraron convenios con los filtros seleccionados.', colSpan: 6, alignment: 'center', fontSize: 8, italics: true },
+                {}, {}, {}, {}, {}
             ]);
         } else {
             filteredData.forEach(r => {
@@ -2189,10 +2194,24 @@ async function generateResumenPDF() {
                     badgeBg = '#E8F0FE';
                 }
 
+                // Check executing party and municipality
+                const muniStr = String(r['MUNICIPIO'] || 'N/A').trim().toUpperCase();
+                const ejecStr = String(r['CONVENIANTE EJECUTOR'] || '').trim().toUpperCase();
+                let muniCellContent = {};
+                if (ejecStr && ejecStr !== muniStr && ejecStr !== 'N/A') {
+                    muniCellContent = {
+                        stack: [
+                            { text: String(r['CONVENIANTE EJECUTOR']), fontSize: 7.5, bold: true },
+                            { text: String(r['MUNICIPIO']), fontSize: 6.5, color: '#64748B', margin: [0, 1, 0, 0] }
+                        ]
+                    };
+                } else {
+                    muniCellContent = { text: String(r['MUNICIPIO'] || ''), fontSize: 7.5 };
+                }
+
                 tableBody.push([
                     { text: String(r['CONVENIO'] || ''), fontSize: 7.5, bold: true },
-                    { text: String(r['MUNICIPIO'] || ''), fontSize: 7.5 },
-                    { text: String(r['CLASIFICACIÓN'] || r['CLASIFICACI"N'] || ''), fontSize: 7 },
+                    muniCellContent,
                     { text: String(r['SUPERVISOR'] || 'SIN ASIGNAR'), fontSize: 7 },
                     { text: sysState.label, fontSize: 7, bold: true, color: badgeColor, fillColor: badgeBg, alignment: 'center' },
                     { text: pfis.toFixed(1) + '%', fontSize: 7.5, alignment: 'right', bold: true },
@@ -2263,187 +2282,111 @@ async function generateResumenPDF() {
                             ]
                         ]
                     },
-                    layout: {
-                        defaultBorder: false
-                    },
                     margin: [0, 0, 0, 10]
                 },
-                // KPI Summary Grid (3 columns)
+                // KPI Summary Grid (4 columns, single row)
                 {
                     columns: [
-                        // Col 1
+                        // Col 1: TOTAL CONVENIOS
                         {
-                            stack: [
-                                {
-                                    table: {
-                                        widths: ['*'],
-                                        body: [
-                                            [
-                                                {
-                                                    stack: [
-                                                        { text: 'TOTAL CONVENIOS', fontSize: 6.5, bold: true, color: '#64748B' },
-                                                        { text: String(filteredData.length), fontSize: 13, bold: true, color: '#1E293B', margin: [0, 1, 0, 0] }
-                                                    ],
-                                                    fillColor: '#F8FAFC'
-                                                }
-                                            ]
-                                        ]
-                                    },
-                                    layout: {
-                                        hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#E2E8F0', vLineColor: () => '#E2E8F0',
-                                        paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
-                                    },
-                                    margin: [0, 0, 0, 4]
-                                },
-                                {
-                                    table: {
-                                        widths: ['*'],
-                                        body: [
-                                            [
-                                                {
-                                                    stack: [
-                                                        { text: 'INVERSIÓN TOTAL (DEPTO)', fontSize: 6.5, bold: true, color: '#8B4A97' },
-                                                        { text: formatCurrency(sumInv), fontSize: 11, bold: true, color: '#8B4A97', margin: [0, 1, 0, 0] }
-                                                    ],
-                                                    fillColor: '#FDF4FF'
-                                                }
-                                            ]
-                                        ]
-                                    },
-                                    layout: {
-                                        hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#F3E8FF', vLineColor: () => '#F3E8FF',
-                                        paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
-                                    }
-                                }
-                            ],
-                            margin: [0, 0, 4, 0]
+                            table: {
+                                widths: ['*'],
+                                body: [
+                                    [
+                                        {
+                                            stack: [
+                                                { text: 'TOTAL CONVENIOS', fontSize: 6.5, bold: true, color: '#64748B' },
+                                                { text: String(filteredData.length), fontSize: 13, bold: true, color: '#1E293B', margin: [0, 1, 0, 0] }
+                                            ],
+                                            fillColor: '#F8FAFC'
+                                        }
+                                    ]
+                                ]
+                            },
+                            layout: {
+                                hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#E2E8F0', vLineColor: () => '#E2E8F0',
+                                paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                            },
+                            margin: [0, 0, 2, 0]
                         },
-                        // Col 2
+                        // Col 2: EN EJECUCIÓN
                         {
-                            stack: [
-                                {
-                                    table: {
-                                        widths: ['*'],
-                                        body: [
-                                            [
-                                                {
-                                                    stack: [
-                                                        { text: 'EN EJECUCIÓN', fontSize: 6.5, bold: true, color: '#018D38' },
-                                                        { text: String(activos), fontSize: 13, bold: true, color: '#018D38', margin: [0, 1, 0, 0] }
-                                                    ],
-                                                    fillColor: '#E6F4EA'
-                                                }
-                                            ]
-                                        ]
-                                    },
-                                    layout: {
-                                        hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#CEEAD6', vLineColor: () => '#CEEAD6',
-                                        paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
-                                    },
-                                    margin: [0, 0, 0, 4]
-                                },
-                                {
-                                    table: {
-                                        widths: ['*'],
-                                        body: [
-                                            [
-                                                {
-                                                    stack: [
-                                                        { text: 'DESEMBOLSADO', fontSize: 6.5, bold: true, color: '#3561AB' },
-                                                        { text: formatCurrency(sumDes), fontSize: 11, bold: true, color: '#3561AB', margin: [0, 1, 0, 0] }
-                                                    ],
-                                                    fillColor: '#E8F0FE'
-                                                }
-                                            ]
-                                        ]
-                                    },
-                                    layout: {
-                                        hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#D2E3FC', vLineColor: () => '#D2E3FC',
-                                        paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
-                                    }
-                                }
-                            ],
-                            margin: [4, 0, 4, 0]
+                            table: {
+                                widths: ['*'],
+                                body: [
+                                    [
+                                        {
+                                            stack: [
+                                                { text: 'EN EJECUCIÓN', fontSize: 6.5, bold: true, color: '#018D38' },
+                                                { text: String(activos), fontSize: 13, bold: true, color: '#018D38', margin: [0, 1, 0, 0] }
+                                            ],
+                                            fillColor: '#E6F4EA'
+                                        }
+                                    ]
+                                ]
+                            },
+                            layout: {
+                                hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#CEEAD6', vLineColor: () => '#CEEAD6',
+                                paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                            },
+                            margin: [2, 0, 2, 0]
                         },
-                        // Col 3
+                        // Col 3: SUSPENDIDOS
                         {
-                            stack: [
-                                {
-                                    table: {
-                                        widths: ['*'],
-                                        body: [
-                                            [
-                                                {
-                                                    stack: [
-                                                        { text: 'POR LIQUIDAR', fontSize: 6.5, bold: true, color: '#C2410C' },
-                                                        { text: String(porLiquidar), fontSize: 13, bold: true, color: '#C2410C', margin: [0, 1, 0, 0] }
-                                                    ],
-                                                    fillColor: '#FFEFE0'
-                                                }
-                                            ]
-                                        ]
-                                    },
-                                    layout: {
-                                        hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#FFD8A8', vLineColor: () => '#FFD8A8',
-                                        paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
-                                    },
-                                    margin: [0, 0, 0, 4]
-                                },
-                                {
-                                    table: {
-                                        widths: ['*'],
-                                        body: [
-                                            [
-                                                {
-                                                    stack: [
-                                                        { text: 'AUTORIZADO', fontSize: 6.5, bold: true, color: '#0B5640' },
-                                                        { text: formatCurrency(sumAut), fontSize: 11, bold: true, color: '#0B5640', margin: [0, 1, 0, 0] }
-                                                    ],
-                                                    fillColor: '#E6F4EA'
-                                                }
-                                            ]
-                                        ]
-                                    },
-                                    layout: {
-                                        hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#CEEAD6', vLineColor: () => '#CEEAD6',
-                                        paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
-                                    }
-                                }
-                            ],
-                            margin: [4, 0, 0, 0]
+                            table: {
+                                widths: ['*'],
+                                body: [
+                                    [
+                                        {
+                                            stack: [
+                                                { text: 'SUSPENDIDOS', fontSize: 6.5, bold: true, color: '#C5221F' },
+                                                { text: String(suspendidos), fontSize: 13, bold: true, color: '#C5221F', margin: [0, 1, 0, 0] }
+                                            ],
+                                            fillColor: '#FCE8E6'
+                                        }
+                                    ]
+                                ]
+                            },
+                            layout: {
+                                hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#FAD2CF', vLineColor: () => '#FAD2CF',
+                                paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                            },
+                            margin: [2, 0, 2, 0]
+                        },
+                        // Col 4: POR LIQUIDAR
+                        {
+                            table: {
+                                widths: ['*'],
+                                body: [
+                                    [
+                                        {
+                                            stack: [
+                                                { text: 'POR LIQUIDAR', fontSize: 6.5, bold: true, color: '#C2410C' },
+                                                { text: String(porLiquidar), fontSize: 13, bold: true, color: '#C2410C', margin: [0, 1, 0, 0] }
+                                            ],
+                                            fillColor: '#FFEFE0'
+                                        }
+                                    ]
+                                ]
+                            },
+                            layout: {
+                                hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#FFD8A8', vLineColor: () => '#FFD8A8',
+                                paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                            },
+                            margin: [2, 0, 0, 0]
                         }
                     ],
                     margin: [0, 0, 0, 12]
                 },
-                // Physical Execution Horizontal Bar Chart
-                {
-                    table: {
-                        widths: ['*'],
-                        body: [
-                            [
-                                {
-                                    stack: [
-                                        { text: 'CUMPLIMIENTO FÍSICO GLOBAL (KM)', fontSize: 7, bold: true, color: '#475569', alignment: 'center', margin: [0, 0, 0, 2] },
-                                        { image: chartBase64, width: 480, alignment: 'center' }
-                                    ],
-                                    fillColor: '#FFFFFF'
-                                }
-                            ]
-                        ]
-                    },
-                    layout: {
-                        hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#E2E8F0', vLineColor: () => '#E2E8F0',
-                        paddingLeft: () => 6, paddingRight: () => 6, paddingTop: () => 6, paddingBottom: () => 4
-                    },
-                    margin: [0, 0, 0, 12]
-                },
+                // Premium Charts Section (Alcance Vial and Comparativo Financiero side-by-side)
+                chartSection,
                 // Detailed Table Header
                 { text: `LISTADO DETALLADO DE CONVENIOS FILTRADOS (${filteredData.length})`, fontSize: 7.5, bold: true, color: '#475569', letterSpacing: 0.5, margin: [0, 0, 0, 4] },
                 // Detailed Table
                 {
                     table: {
                         headerRows: 1,
-                        widths: ['auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto'],
+                        widths: ['auto', '*', 'auto', 'auto', 70, 80],
                         body: tableBody
                     },
                     layout: {
@@ -3102,11 +3045,18 @@ function renderTable() {
             }
         }
 
-        let ejecutorHTML = '';
+        let municipioColHTML = '';
         const municipioStrRow = String(row['MUNICIPIO'] || 'N/A').trim().toUpperCase();
         const ejecutorStrRow = String(row['CONVENIANTE EJECUTOR'] || '').trim().toUpperCase();
         if (ejecutorStrRow && ejecutorStrRow !== municipioStrRow && ejecutorStrRow !== 'N/A') {
-            ejecutorHTML = `<span style="display:block;margin-top:3px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;" title="Conveniente Ejecutor"><i class="fa-solid fa-building-user" style="margin-right:3px;"></i>${row['CONVENIANTE EJECUTOR']}</span>`;
+            municipioColHTML = `
+                <div style="font-size:11px;font-weight:700;color:#0F172A;line-height:1.2;" title="Conveniente Ejecutor">${row['CONVENIANTE EJECUTOR']}</div>
+                <span style="display:block;margin-top:3px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;" title="Municipio">
+                    <i class="fa-solid fa-location-dot" style="margin-right:3px;"></i>${row['MUNICIPIO'] || 'N/A'}
+                </span>
+            `;
+        } else {
+            municipioColHTML = `<span class="municipio-chip">${row['MUNICIPIO'] || 'N/A'}</span>`;
         }
 
         tr.innerHTML = `
@@ -3117,8 +3067,7 @@ function renderTable() {
                 </div>
             </td>
             <td class="px-5 py-3">
-                <span class="municipio-chip">${row['MUNICIPIO'] || 'N/A'}</span>
-                ${ejecutorHTML}
+                ${municipioColHTML}
             </td>
             <td class="px-5 py-3">
                 <div style="width:200px;">
