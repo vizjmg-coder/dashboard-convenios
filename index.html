@@ -12,15 +12,16 @@
             theme: {
                 extend: {
                     fontFamily: { 
-                        poppins: ['Poppins', 'sans-serif'],
-                        inter: ['Poppins', 'sans-serif']
+                        poppins: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+                        inter: ['Inter', 'sans-serif'],
+                        headline: ['Plus Jakarta Sans', 'sans-serif']
                     },
                     colors: {
                         institutional: {
-                            primary: '#0B5640',
-                            light: '#018D38',
-                            pale: 'rgba(11, 86, 64, 0.08)',
-                            accent: '#3561AB'
+                            primary: '#1A6B3C',
+                            light: '#22924F',
+                            pale: 'rgba(26, 107, 60, 0.07)',
+                            accent: '#3B82F6'
                         }
                     },
                     gridTemplateColumns: {
@@ -30,7 +31,7 @@
             }
         }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/2.2.1/chartjs-plugin-annotation.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -42,8 +43,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-omnivore/0.3.4/leaflet-omnivore.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
     <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+    <!-- Turf.js para disolver municipios en subregiones y contorno del departamento -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="premium.css">
 </head>
 <body class="font-poppins antialiased overflow-hidden" style="background-color:#F8FAFC;color:#1E293B;">
 
@@ -113,12 +117,15 @@
                 </nav>
             </div>
 
-            <!-- Botón de Iniciar Sesión en la parte inferior -->
+            <!-- Badge Versión Beta -->
             <div class="sidebar-bottom">
-                <button type="button" id="btn-login-trigger" class="sidebar-upload-btn outline-none focus:outline-none" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);">
-                    <i class="fa-solid fa-right-to-bracket"></i>
-                    Iniciar Sesión
-                </button>
+                <div class="sidebar-version-badge">
+                    <i class="fa-solid fa-code-branch"></i>
+                    <div>
+                        <span style="display:block; font-size:10px; font-weight:700; color:rgba(255,255,255,0.85); text-transform:uppercase; letter-spacing:0.06em;">Versión Beta</span>
+                        <span style="display:block; font-size:9px; color:rgba(255,255,255,0.40);">DIAT Dashboard v2.0</span>
+                    </div>
+                </div>
                 <input type="file" id="file-upload" accept=".xlsx, .xls, .csv" class="hidden" />
             </div>
         </aside>
@@ -145,41 +152,6 @@
                     <div class="header-date-badge hidden md:flex">
                         <i class="fa-regular fa-calendar-check" style="color:#0B5640;"></i>
                         Corte: <span id="fecha-actualizacion" class="ml-1 font-bold" style="color:#0F172A;">Cargando...</span>
-                    </div>
-
-                    <!-- Actualizaciones de datos -->
-                    <div class="relative">
-                        <button id="btn-updates" class="header-icon-btn" title="Actualizaciones recientes">
-                            <i class="fa-solid fa-rotate"></i>
-                            <span id="updates-badge" class="header-badge hidden"></span>
-                        </button>
-                        <div id="updates-dropdown" class="updates-dropdown hidden">
-                            <div class="updates-header">
-                                <h4><i class="fa-solid fa-rotate mr-2"></i>Actualizaciones Recientes</h4>
-                                <p id="updates-subtitle">Historial de cambios al cargar los datos</p>
-                            </div>
-                            <div id="updates-list" class="updates-list">
-                                <div class="update-item" style="text-align:center;padding:24px 20px;">
-                                    <i class="fa-solid fa-database" style="font-size:24px;color:#E2E8F0;margin-bottom:8px;display:block;"></i>
-                                    <p style="font-size:11px;color:#94A3B8;font-weight:500;">Carga un archivo Excel para ver el historial de actualizaciones</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Alertas / Notificaciones -->
-                    <div class="relative">
-                        <button id="btn-nav-alerts" class="header-icon-btn" title="Alertas">
-                            <i class="fa-solid fa-bell"></i>
-                            <span id="nav-alerts-badge" class="header-badge hidden"></span>
-                        </button>
-                        <div id="nav-alerts-dropdown" class="nav-alerts-dropdown hidden" style="position:absolute;right:0;top:calc(100% + 10px);width:340px;background:#fff;border:1.5px solid #E2E8F0;border-radius:20px;box-shadow:0 24px 60px rgba(15,23,42,0.10);z-index:100;overflow:hidden;">
-                            <div style="padding:14px 18px 12px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;background:#F8FAFC;">
-                                <h4 style="font-size:11px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;">Notificaciones</h4>
-                                <span id="nav-alerts-count" style="font-size:10px;font-weight:700;background:#E2E8F0;color:#64748B;padding:2px 8px;border-radius:99px;">0</span>
-                            </div>
-                            <div id="nav-alerts-list" class="max-h-80 overflow-y-auto custom-scrollbar"></div>
-                        </div>
                     </div>
 
                     <div style="width:1px;height:24px;background:#E2E8F0;"></div>
@@ -231,11 +203,19 @@
             <!-- SECCIÓN DE FILTROS -->
             <section class="filter-section">
                 <div class="filter-section-header">
-                    <div class="filter-section-title">
-                        <i class="fa-solid fa-filter"></i>
-                        Filtros de Búsqueda
+                    <div class="flex items-center gap-2">
+                        <div class="filter-section-title">
+                            <i class="fa-solid fa-filter"></i>
+                            Filtros de Búsqueda
+                        </div>
+                        <span id="active-filters-badge" class="hidden px-2 py-0.5 text-[10px] font-extrabold bg-teal-50 text-teal-800 rounded-full border border-teal-200/50">0 activos</span>
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex items-center gap-2">
+                        <button id="btn-toggle-filters" class="btn-filter-toggle flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider transition-all border border-slate-200/60">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span>Filtros Avanzados</span>
+                            <i class="fa-solid fa-chevron-down transition-transform duration-200" id="btn-toggle-filters-icon"></i>
+                        </button>
                         <button id="btn-export-resumen-pdf" class="btn-pdf">
                             <i class="fa-solid fa-file-pdf"></i> Exportar Ficha PDF
                         </button>
@@ -244,40 +224,41 @@
                         </button>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-4">
-                    <div>
-                        <label class="filter-label">Vigencia</label>
-                        <select id="filter-vigencia" class="filter-control"></select>
+                <div id="filter-panel-collapsible" class="filter-panel-collapsible">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-4 pt-2">
+                        <div>
+                            <label class="filter-label">Vigencia</label>
+                            <select id="filter-vigencia" class="filter-control"></select>
+                        </div>
+                        <div>
+                            <label class="filter-label">Supervisor</label>
+                            <select id="filter-supervisor" class="filter-control"></select>
+                        </div>
+                        <div>
+                            <label class="filter-label">Indicador</label>
+                            <select id="filter-indicador" class="filter-control"></select>
+                        </div>
+                        <div>
+                            <label class="filter-label">Clasificación</label>
+                            <select id="filter-clasificacion" class="filter-control"></select>
+                        </div>
+                        <div>
+                            <label class="filter-label">Municipio</label>
+                            <select id="filter-municipio" class="filter-control"></select>
+                        </div>
+                        <div>
+                            <label class="filter-label">Subregión</label>
+                            <select id="filter-subregion" class="filter-control"></select>
+                        </div>
+                        <div>
+                            <label class="filter-label">Estado</label>
+                            <select id="filter-estado" class="filter-control"></select>
+                        </div>
+                        <div>
+                            <label class="filter-label">N° Convenio</label>
+                            <select id="filter-convenio-num" class="filter-control"></select>
+                        </div>
                     </div>
-                    <div>
-                        <label class="filter-label">Supervisor</label>
-                        <select id="filter-supervisor" class="filter-control"></select>
-                    </div>
-                    <div>
-                        <label class="filter-label">Indicador</label>
-                        <select id="filter-indicador" class="filter-control"></select>
-                    </div>
-                    <div>
-                        <label class="filter-label">Clasificación</label>
-                        <select id="filter-clasificacion" class="filter-control"></select>
-                    </div>
-                    <div>
-                        <label class="filter-label">Municipio</label>
-                        <select id="filter-municipio" class="filter-control"></select>
-                    </div>
-                    <div>
-                        <label class="filter-label">Subregión</label>
-                        <select id="filter-subregion" class="filter-control"></select>
-                    </div>
-                    <div>
-                        <label class="filter-label">Estado</label>
-                        <select id="filter-estado" class="filter-control"></select>
-                    </div>
-                    <div>
-                        <label class="filter-label">N° Convenio</label>
-                        <select id="filter-convenio-num" class="filter-control"></select>
-                    </div>
-                    <!-- Campo Búsqueda Libre eliminado según spec -->
                 </div>
             </section>
 
@@ -458,24 +439,63 @@
                         </button>
                     </div>
                     <div class="flex flex-col items-center justify-center flex-1 gap-4 w-full">
-                        <div class="relative w-44 h-44 xl:w-48 xl:h-48 shrink-0"><canvas id="chart-estado"></canvas></div>
+                        <div class="relative w-52 h-52 xl:w-56 xl:h-56 shrink-0"><canvas id="chart-estado"></canvas></div>
                         <div id="chart-estado-legend" class="w-full flex flex-col gap-2 overflow-y-auto custom-scrollbar max-h-40 pr-1"></div>
                     </div>
                 </div>
 
                 <!-- EJECUCIÓN FÍSICA -->
                 <div class="chart-card lg:col-span-4 relative group flex flex-col">
-                    <div class="flex justify-between items-start mb-4 pb-3" style="border-bottom:1px solid #E2E8F0;">
+                    <div class="flex justify-between items-center mb-4 pb-3" style="border-bottom:1px solid #E2E8F0;">
                         <div>
                             <h3 class="chart-title" style="display:flex;align-items:center;gap:6px;">
-                                <i class="fa-solid fa-ruler-combined" style="color:#3561AB;"></i> Ejecución Física
+                                <i class="fa-solid fa-ruler-combined" style="color:#1A6B3C;"></i> Ejecución Física
                             </h3>
                             <p class="chart-subtitle">Volumen total de obra</p>
                         </div>
+                        <!-- Radial Progress Ring -->
+                        <div class="relative w-11 h-11 flex items-center justify-center shrink-0">
+                            <svg class="w-full h-full transform -rotate-90">
+                                <circle cx="22" cy="22" r="17" stroke="#E2E8F0" stroke-width="3.5" fill="transparent" />
+                                <circle id="radial-progress-circle" cx="22" cy="22" r="17" stroke="#1A6B3C" stroke-width="3.5" fill="transparent" 
+                                    stroke-dasharray="106.8" stroke-dashoffset="106.8" stroke-linecap="round" class="transition-all duration-1000 ease-out" />
+                            </svg>
+                            <span id="radial-progress-text" class="absolute text-[9px] font-black text-slate-700">0%</span>
+                        </div>
                     </div>
                     <div class="flex-1 flex flex-col w-full justify-between">
-                        <div class="relative w-full mb-4 flex-1" style="min-height:180px;">
-                            <canvas id="chart-ejecucion"></canvas>
+                        <div class="flex-1 flex flex-col justify-center py-8">
+                            <!-- Contenedor de la barra de progreso horizontal prominente -->
+                            <div class="relative w-full">
+                                <!-- Textos y Porcentaje -->
+                                <div class="flex justify-between items-end mb-3">
+                                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span class="w-3 h-3 rounded-full bg-[#10B981] inline-block animate-pulse"></span> Ejecutado
+                                    </span>
+                                    <div class="text-right">
+                                        <span id="progress-percentage-val" class="text-3xl font-black text-[#1A6B3C] leading-none">0%</span>
+                                        <span class="text-[9px] font-extrabold text-slate-400 block mt-0.5 uppercase tracking-wider">Avance Físico</span>
+                                    </div>
+                                </div>
+
+                                <!-- La barra física -->
+                                <div class="w-full bg-slate-100 rounded-[20px] overflow-hidden border border-slate-200/40 relative shadow-inner" style="height: 52px;">
+                                    <!-- Relleno de Ejecutado -->
+                                    <div id="progress-bar-fill" class="h-full rounded-[20px] transition-all duration-1000 ease-out flex items-center justify-end pr-5 relative overflow-hidden" style="width: 0%; background: linear-gradient(90deg, #1A6B3C, #10B981); box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);">
+                                        <!-- Efecto de brillo/animación de fondo -->
+                                        <div class="absolute inset-0 opacity-10 bg-[linear-gradient(45deg,rgba(255,255,255,.15)_25%,transparent_25%,transparent_50%,rgba(255,255,255,.15)_50%,rgba(255,255,255,.15)_75%,transparent_75%,transparent)] bg-[length:1.2rem_1.2rem] animate-[progress-bar-stripes_1s_linear_infinite]"></div>
+                                        <!-- Texto interno en la barra -->
+                                        <span id="progress-bar-inner-text" class="text-white text-[12px] font-black tracking-wider z-10 drop-shadow-md"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Indicadores de Contratado / Restante abajo -->
+                                <div class="flex justify-between items-center mt-3">
+                                    <span class="text-[10px] font-bold text-slate-400">Inicio (0%)</span>
+                                    <span id="progress-remaining-text" class="text-[10px] font-extrabold text-[#1A6B3C] bg-emerald-50 border border-emerald-100/40 px-3 py-1 rounded-full">Falta: --</span>
+                                    <span id="progress-total-text" class="text-[10px] font-extrabold text-slate-600 bg-slate-100 border border-slate-200/40 px-3 py-1 rounded-full">Contratado: --</span>
+                                </div>
+                            </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3 mt-auto shrink-0">
                             <div id="btn-metric-longitud" class="cursor-pointer transition-all duration-200" style="background:#F0FDFA;padding:14px;border-radius:14px;border:1.5px solid rgba(1, 141, 56,0.2);text-align:center;" onclick="toggleFisicoMetric('longitud')">
@@ -708,23 +728,35 @@
             <!-- FILTROS MAPA -->
             <section class="filter-section">
                 <div class="filter-section-header">
-                    <div class="filter-section-title">
-                        <i class="fa-solid fa-map"></i>
-                        Filtros del Mapa
+                    <div class="flex items-center gap-2">
+                        <div class="filter-section-title">
+                            <i class="fa-solid fa-map"></i>
+                            Filtros del Mapa
+                        </div>
+                        <span id="map-active-filters-badge" class="hidden px-2 py-0.5 text-[10px] font-extrabold bg-teal-50 text-teal-800 rounded-full border border-teal-200/50">0 activos</span>
                     </div>
-                    <button id="btn-map-reset" class="btn-reset">
-                        <i class="fa-solid fa-eraser"></i> Limpiar Filtros
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-toggle-map-filters" class="btn-filter-toggle flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider transition-all border border-slate-200/60">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span>Filtros Avanzados</span>
+                            <i class="fa-solid fa-chevron-down transition-transform duration-200" id="btn-toggle-map-filters-icon"></i>
+                        </button>
+                        <button id="btn-map-reset" class="btn-reset">
+                            <i class="fa-solid fa-eraser"></i> Limpiar Filtros
+                        </button>
+                    </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-4">
-                    <div><label class="filter-label">Vigencia</label><select id="map-filter-vigencia" class="filter-control"></select></div>
-                    <div><label class="filter-label">Supervisor</label><select id="map-filter-supervisor" class="filter-control"></select></div>
-                    <div><label class="filter-label">Indicador</label><select id="map-filter-indicador" class="filter-control"></select></div>
-                    <div><label class="filter-label">Clasificación</label><select id="map-filter-clasificacion" class="filter-control"></select></div>
-                    <div><label class="filter-label">Municipio</label><select id="map-filter-municipio" class="filter-control"></select></div>
-                    <div><label class="filter-label">Subregión</label><select id="map-filter-subregion" class="filter-control"></select></div>
-                    <div><label class="filter-label">Estado</label><select id="map-filter-estado" class="filter-control"></select></div>
-                    <div><label class="filter-label">N° Convenio</label><select id="map-filter-convenio-num" class="filter-control"></select></div>
+                <div id="map-filter-panel-collapsible" class="filter-panel-collapsible">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-4 pt-2">
+                        <div><label class="filter-label">Vigencia</label><select id="map-filter-vigencia" class="filter-control"></select></div>
+                        <div><label class="filter-label">Supervisor</label><select id="map-filter-supervisor" class="filter-control"></select></div>
+                        <div><label class="filter-label">Indicador</label><select id="map-filter-indicador" class="filter-control"></select></div>
+                        <div><label class="filter-label">Clasificación</label><select id="map-filter-clasificacion" class="filter-control"></select></div>
+                        <div><label class="filter-label">Municipio</label><select id="map-filter-municipio" class="filter-control"></select></div>
+                        <div><label class="filter-label">Subregión</label><select id="map-filter-subregion" class="filter-control"></select></div>
+                        <div><label class="filter-label">Estado</label><select id="map-filter-estado" class="filter-control"></select></div>
+                        <div><label class="filter-label">N° Convenio</label><select id="map-filter-convenio-num" class="filter-control"></select></div>
+                    </div>
                 </div>
             </section>
 
@@ -768,14 +800,19 @@
             <div class="hidden"><h3 id="kpi-map-area">0</h3></div>
 
             <!-- MAPA PRINCIPAL -->
-            <div class="bg-white flex flex-col overflow-hidden relative" style="border:1.5px solid #E2E8F0;border-radius:20px;box-shadow:0 8px 24px rgba(15,23,42,0.06);height:700px;">
+            <div id="map-wrapper" class="map-container-wrapper bg-white flex flex-col overflow-hidden relative" style="border:1.5px solid #E2E8F0;border-radius:20px;box-shadow:0 8px 24px rgba(15,23,42,0.06);height:780px;transition: all 0.3s ease;">
                 <div class="flex justify-between items-center shrink-0 z-10" style="padding:16px 20px;border-bottom:1.5px solid #E2E8F0;background:#F8FAFC;">
                     <h2 style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:8px;">
                         <i class="fa-solid fa-map" style="color:#0B5640;"></i> Mapa Interactivo de Antioquia
                     </h2>
-                    <span id="main-map-loading" class="hidden" style="font-size:11px;font-weight:700;color:#64748B;">
-                        <i class="fa-solid fa-spinner fa-spin mr-1"></i> Sincronizando KMLs...
-                    </span>
+                    <div class="flex items-center gap-3">
+                        <span id="main-map-loading" class="hidden" style="font-size:11px;font-weight:700;color:#64748B;">
+                            <i class="fa-solid fa-spinner fa-spin mr-1"></i> Sincronizando KMLs...
+                        </span>
+                        <button id="btn-map-fullscreen" type="button" class="btn-icon-soft" title="Pantalla Completa" style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:#fff;border:1.5px solid #E2E8F0;color:#64748B;cursor:pointer;transition:all 0.2s;">
+                            <i class="fa-solid fa-expand"></i>
+                        </button>
+                    </div>
                 </div>
                 <div id="main-map" class="flex-1 w-full z-0 relative" style="background:#F1F5F9;">
                     <!-- Buscador Interactivo MapLibre GL -->
@@ -823,18 +860,18 @@
                             </label>
                             <div class="layer-group-label">División Territorial</div>
                             <label class="layer-item">
-                                <input type="checkbox" id="layer-chk-subregiones" checked>
+                                <input type="checkbox" id="layer-chk-subregiones">
                                 <span class="layer-dot" style="background:#a78bfa"></span>
                                 <span class="layer-name"><i class="fa-solid fa-draw-polygon"></i> Subregiones</span>
                             </label>
                             <label class="layer-item">
-                                <input type="checkbox" id="layer-chk-municipios" checked>
+                                <input type="checkbox" id="layer-chk-municipios">
                                 <span class="layer-dot" style="background:#94a3b8"></span>
                                 <span class="layer-name"><i class="fa-solid fa-border-all"></i> Municipios</span>
                             </label>
                             <div class="layer-group-label">Vista 3D</div>
                             <label class="layer-item">
-                                <input type="checkbox" id="layer-chk-terrain" checked>
+                                <input type="checkbox" id="layer-chk-terrain">
                                 <span class="layer-dot" style="background:#78716c"></span>
                                 <span class="layer-name"><i class="fa-solid fa-mountain"></i> Terreno 3D</span>
                             </label>

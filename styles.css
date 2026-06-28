@@ -2745,3 +2745,193 @@ select.filter-control option { font-family: var(--font-base); }
 }
 
 
+/* ============================================================
+   NUEVOS ESTILOS: FILTROS COLAPSABLES Y BUSCADORES DE MUNICIPIOS
+   ============================================================ */
+
+/* 1. Panel de Filtros Colapsable */
+.filter-panel-collapsible {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, padding 0.35s ease;
+    padding-bottom: 0;
+}
+
+.filter-panel-collapsible.expanded {
+    max-height: 600px;
+    opacity: 1;
+    padding-bottom: 8px;
+}
+
+/* Animación de rotación del chevron en el botón de filtros */
+.btn-filter-toggle.active i:last-child {
+    transform: rotate(180deg);
+}
+
+/* 2. Componente de Dropdown con Buscador Personalizado */
+.custom-select-container {
+    position: relative;
+    width: 100%;
+}
+
+.custom-select-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: left;
+    outline: none;
+}
+
+.custom-select-trigger:focus,
+.custom-select-container.active .custom-select-trigger {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-glow);
+    background-color: #FFFFFF;
+}
+
+.custom-select-trigger .trigger-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90%;
+}
+
+.custom-select-trigger i {
+    font-size: 10px;
+    color: var(--color-text-secondary);
+    transition: transform var(--transition-fast);
+}
+
+.custom-select-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 100%;
+    min-width: 220px;
+    background: #FFFFFF;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px) scale(0.97);
+    transition: opacity 0.15s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.15s;
+}
+
+.custom-select-container.active .custom-select-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+.custom-select-search-wrapper {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--color-border);
+    position: relative;
+}
+
+.custom-select-search-wrapper i {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    font-size: 11px;
+}
+
+.custom-select-search-input {
+    width: 100%;
+    padding: 6px 10px 6px 26px;
+    font-size: 11.5px;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    outline: none;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    transition: all var(--transition-fast);
+}
+
+.custom-select-search-input:focus {
+    border-color: var(--color-primary);
+    background-color: #FFFFFF;
+}
+
+.custom-select-options {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+
+.custom-select-option {
+    padding: 8px 14px;
+    font-size: 12px;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.custom-select-option:hover {
+    background-color: var(--color-primary-pale);
+    color: var(--color-primary);
+}
+
+.custom-select-option.selected {
+    background-color: rgba(1, 141, 56, 0.08);
+    color: var(--color-primary-light);
+    font-weight: 600;
+}
+
+.custom-select-option.selected::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 10px;
+    color: var(--color-primary-light);
+}
+
+.custom-select-no-results {
+    padding: 12px;
+    text-align: center;
+    font-size: 11.5px;
+    color: var(--color-text-muted);
+    font-style: italic;
+}
+
+/* 3. Micro-interacciones de KPI Cards */
+.kpi-card {
+    transition: transform var(--transition-bounce), box-shadow var(--transition-bounce), border-color var(--transition-base) !important;
+}
+
+.kpi-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: var(--shadow-lg) !important;
+    border-color: var(--color-primary-light) !important;
+}
+
+/* 4. Pantalla Completa para el Mapa */
+.map-container-wrapper.fullscreen {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    background: #FFFFFF;
+}

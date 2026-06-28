@@ -83,37 +83,38 @@ function getSystemState(estado) {
     
     if (est.includes('ejecutado')) return {
         badgeClass: 'badge-ejecutado',
-        hex: '#3561AB', 
+        hex: '#2563EB', 
         label: 'Ejecutado'
     };
     if (est.includes('ejecucion')) return {
         badgeClass: 'badge-ejecucion',
-        hex: '#018D38', 
+        hex: '#10B981', 
         label: 'En Ejecución'
     };
     if (est.includes('proximo') || est.includes('finalizar')) return {
         badgeClass: 'badge-proximo',
-        hex: '#F28E18', 
+        hex: '#F59E0B', 
         label: 'Próximo a finalizar'
     };
     if (est.includes('suspendido') || est.includes('riesgo medio') || est.includes('medio')) return {
         badgeClass: 'badge-suspendido',
-        hex: '#8B4A97', 
+        hex: '#8B5CF6', 
         label: 'Suspendido'
     };
     if (est.includes('por liquidar') || est.includes('riesgo alto') || est.includes('alto') || est.includes('riesgo')) return {
         badgeClass: 'badge-por-liquidar',
-        hex: '#F28E18', 
+        hex: '#F59E0B', 
         label: 'Por Liquidar'
     };
     if (est.includes('liquidado')) return {
         badgeClass: 'badge-liquidado',
-        hex: '#3561AB', 
+        hex: '#3B82F6', 
         label: 'Liquidado'
     };
     
-    return { badgeClass: 'badge-default', hex: '#64748b', label: String(estado).toUpperCase() };
+    return { badgeClass: 'badge-default', hex: '#9CA3AF', label: String(estado).toUpperCase() };
 }
+
 
 // Función para copiar coordenadas al portapapeles
 window.copyCoord = function(inputId, btn) {
@@ -1115,8 +1116,8 @@ async function generateProfessionalPDF(row) {
         // ===== 7. CONSTRUCT CLEAN CARDS FOR PAGE 1 =====
         const progressSection = {
             columns: [
-                { stack: [ progressCard('Avance Físico Real', row['FISICO_NORM'] || 0, '#0B7A53') ], width: '50%' },
-                { stack: [ progressCard('Avance Financiero Ejecutado', row['FINANCIERO_NORM'] || 0, '#3561AB') ], width: '50%' }
+                { stack: [ progressCard('Avance Físico Real', row['FISICO_NORM'] || 0, '#1A6B3C') ], width: '50%' },
+                { stack: [ progressCard('Avance Financiero Ejecutado', row['FINANCIERO_NORM'] || 0, '#3B82F6') ], width: '50%' }
             ],
             columnGap: 10,
             margin: [0, 0, 0, 10]
@@ -1151,7 +1152,7 @@ async function generateProfessionalPDF(row) {
                 ],
                 columnGap: 12
             }
-        ], '#07543A', null, 12);
+        ], '#1A6B3C', null, 12);
 
         const widgetContratado = iconLabel('\uf548', labelContratado, valContratado, false, true);
         widgetContratado.margin = [0, 0, 0, 0];
@@ -1162,7 +1163,7 @@ async function generateProfessionalPDF(row) {
         const cardEjecutado = cleanCard([widgetEjecutado], '#F0FDF4', '#BBF7D0', 8);
 
         const infoGeneralCard = cleanCard([
-            { text: 'INFORMACIÓN GENERAL', fontSize: 8, bold: true, color: '#07543A', letterSpacing: 0.5, margin: [0, 0, 0, 10] },
+            { text: 'INFORMACIÓN GENERAL', fontSize: 8, bold: true, color: '#1A6B3C', letterSpacing: 0.5, margin: [0, 0, 0, 10] },
             {
                 columns: [
                     {
@@ -1208,8 +1209,8 @@ async function generateProfessionalPDF(row) {
         const viasCard = cleanCard([
             {
                 columns: [
-                    { text: '\uf018', font: 'FontAwesome', fontSize: 9, color: '#0B7A53', width: 14, margin: [0, 1.5, 0, 0] },
-                    { text: 'VÍAS PRIORIZADAS', fontSize: 7.5, bold: true, color: '#0B7A53', letterSpacing: 0.5 }
+                    { text: '\uf018', font: 'FontAwesome', fontSize: 9, color: '#1A6B3C', width: 14, margin: [0, 1.5, 0, 0] },
+                    { text: 'VÍAS PRIORIZADAS', fontSize: 7.5, bold: true, color: '#1A6B3C', letterSpacing: 0.5 }
                 ],
                 margin: [0, 0, 0, 6]
             },
@@ -1219,8 +1220,8 @@ async function generateProfessionalPDF(row) {
         const obsCard = cleanCard([
             {
                 columns: [
-                    { text: '\uf075', font: 'FontAwesome', fontSize: 9, color: '#0B7A53', width: 14, margin: [0, 1.5, 0, 0] },
-                    { text: 'OBSERVACIONES TÉCNICAS DE SUPERVISIÓN', fontSize: 7.5, bold: true, color: '#0B7A53', letterSpacing: 0.5 }
+                    { text: '\uf075', font: 'FontAwesome', fontSize: 9, color: '#1A6B3C', width: 14, margin: [0, 1.5, 0, 0] },
+                    { text: 'OBSERVACIONES TÉCNICAS DE SUPERVISIÓN', fontSize: 7.5, bold: true, color: '#1A6B3C', letterSpacing: 0.5 }
                 ],
                 margin: [0, 0, 0, 6]
             },
@@ -1240,12 +1241,12 @@ async function generateProfessionalPDF(row) {
                     widths: ['*', 150],
                     body: [
                         [
-                            { text: 'INVERSIÓN TOTAL', fontSize: 9, bold: true, color: '#07543A', margin: [5, 5, 5, 5] },
-                            { text: formatCurrency((row['APORTE DEPARTAMENTO'] || 0) + (row['APORTE MUNICIPIO'] || 0) + (row['ADICION DEPARTAMENTO'] || 0) + (row['ADICION MUNICIPIO'] || 0)), fontSize: 9.5, bold: true, color: '#07543A', alignment: 'right', margin: [5, 5, 5, 5] }
+                            { text: 'INVERSIÓN TOTAL', fontSize: 9, bold: true, color: '#1A6B3C', margin: [5, 5, 5, 5] },
+                            { text: formatCurrency((row['APORTE DEPARTAMENTO'] || 0) + (row['APORTE MUNICIPIO'] || 0) + (row['ADICION DEPARTAMENTO'] || 0) + (row['ADICION MUNICIPIO'] || 0)), fontSize: 9.5, bold: true, color: '#1A6B3C', alignment: 'right', margin: [5, 5, 5, 5] }
                         ],
                         [
-                            { text: 'APORTE DEPARTAMENTO', fontSize: 8.5, bold: true, color: '#0B7A53', fillColor: '#F0FDF4', margin: [5, 5, 5, 5] },
-                            { text: formatCurrency(row['APORTE DEPARTAMENTO']), fontSize: 8.5, bold: true, color: '#0B7A53', fillColor: '#F0FDF4', alignment: 'right', margin: [5, 5, 5, 5] }
+                            { text: 'APORTE DEPARTAMENTO', fontSize: 8.5, bold: true, color: '#1A6B3C', fillColor: '#F0FDF4', margin: [5, 5, 5, 5] },
+                            { text: formatCurrency(row['APORTE DEPARTAMENTO']), fontSize: 8.5, bold: true, color: '#1A6B3C', fillColor: '#F0FDF4', alignment: 'right', margin: [5, 5, 5, 5] }
                         ],
                         [
                             { text: 'APORTE MUNICIPIO', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
@@ -1261,11 +1262,11 @@ async function generateProfessionalPDF(row) {
                         ],
                         [
                             { text: 'TOTAL DESEMBOLSADO', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
-                            { text: formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), fontSize: 8, bold: true, color: '#3561AB', alignment: 'right', margin: [5, 5, 5, 5] }
+                            { text: formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), fontSize: 8, bold: true, color: '#3B82F6', alignment: 'right', margin: [5, 5, 5, 5] }
                         ],
                         [
-                            { text: 'TOTAL AUTORIZADO DEPARTAMENTO', fontSize: 8.5, bold: true, color: '#0B7A53', fillColor: '#F0FDF4', margin: [5, 5, 5, 5] },
-                            { text: formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO'] || row['VALOR TOTAL AUTORIZADO']), fontSize: 8.5, bold: true, color: '#0B7A53', fillColor: '#F0FDF4', alignment: 'right', margin: [5, 5, 5, 5] }
+                            { text: 'TOTAL AUTORIZADO DEPARTAMENTO', fontSize: 8.5, bold: true, color: '#1A6B3C', fillColor: '#F0FDF4', margin: [5, 5, 5, 5] },
+                            { text: formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO'] || row['VALOR TOTAL AUTORIZADO']), fontSize: 8.5, bold: true, color: '#1A6B3C', fillColor: '#F0FDF4', alignment: 'right', margin: [5, 5, 5, 5] }
                         ]
                     ]
                 },
@@ -1316,8 +1317,8 @@ async function generateProfessionalPDF(row) {
                         {
                             stack: [
                                 { text: 'DIRECCIÓN DE INFRAESTRUCTURA Y APOYO TERRITORIAL', fontSize: 8, bold: true, color: '#64748B', letterSpacing: 0.8, lineHeight: 0.95 },
-                                { text: 'Secretaría de Infraestructura Física', fontSize: 13, bold: true, color: '#0B7A53', margin: [0, 1, 0, 1], lineHeight: 0.95 },
-                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 16, bold: true, color: '#07543A', lineHeight: 0.95 }
+                                { text: 'Secretaría de Infraestructura Física', fontSize: 13, bold: true, color: '#1A6B3C', margin: [0, 1, 0, 1], lineHeight: 0.95 },
+                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 16, bold: true, color: '#1A6B3C', lineHeight: 0.95 }
                             ],
                             width: '*',
                             margin: [0, 2, 0, 0]
@@ -1341,7 +1342,7 @@ async function generateProfessionalPDF(row) {
                     ],
                     margin: [0, 0, 0, 10]
                 },
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#0B7A53' }], margin: [0, 5, 0, 12] },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#1A6B3C' }], margin: [0, 5, 0, 12] },
                 progressSection,
                 convenioBanner,
                 { text: '', margin: [0, 0, 0, 10] },
@@ -1357,22 +1358,22 @@ async function generateProfessionalPDF(row) {
                 {
                     pageBreak: 'before',
                     columns: [
-                        { text: 'RESUMEN EJECUTIVO DE INVERSIÓN', fontSize: 12, bold: true, color: '#07543A', width: '*' },
+                        { text: 'RESUMEN EJECUTIVO DE INVERSIÓN', fontSize: 12, bold: true, color: '#1A6B3C', width: '*' },
                         { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 9, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 2, 0, 0] }
                     ],
                     margin: [0, 0, 0, 6]
                 },
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#0B7A53' }], margin: [0, 0, 0, 12] },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#1A6B3C' }], margin: [0, 0, 0, 12] },
                 inversionCard,
                 
                 {
                     columns: [
-                        { text: 'LÍNEA DE TIEMPO Y EVENTOS CONTRACTUALES', fontSize: 12, bold: true, color: '#07543A', width: '*' },
+                        { text: 'LÍNEA DE TIEMPO Y EVENTOS CONTRACTUALES', fontSize: 12, bold: true, color: '#1A6B3C', width: '*' },
                         { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 9, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 2, 0, 0] }
                     ],
                     margin: [0, 15, 0, 6]
                 },
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#0B7A53' }], margin: [0, 0, 0, 12] },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#1A6B3C' }], margin: [0, 0, 0, 12] },
                 {
                     stack: timelineContent,
                     margin: [0, 0, 0, 15]
@@ -1400,12 +1401,12 @@ async function generateProfessionalPDF(row) {
                 {
                     pageBreak: 'before',
                     columns: [
-                        { text: 'REGISTRO FOTOGRÁFICO DE OBRA', fontSize: 12, bold: true, color: '#07543A', width: '*' },
+                        { text: 'REGISTRO FOTOGRÁFICO DE OBRA', fontSize: 12, bold: true, color: '#1A6B3C', width: '*' },
                         { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 9, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 2, 0, 0] }
                     ],
                     margin: [0, 0, 0, 6]
                 },
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#0B7A53' }], margin: [0, 0, 0, 12] },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#1A6B3C' }], margin: [0, 0, 0, 12] },
                 {
                     stack: photoGalleryContent
                 }
@@ -1574,7 +1575,7 @@ async function generatePlanPDF() {
                         } : { text: '' },
                         {
                             stack: [
-                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 10, bold: true, color: '#0B5640', letterSpacing: 0.5 },
+                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 10, bold: true, color: '#1A6B3C', letterSpacing: 0.5 },
                                 { text: 'SECRETARÍA DE INFRAESTRUCTURA FÍSICA', fontSize: 7.5, bold: true, color: '#64748B' },
                                 { text: 'Dirección de Infraestructura y Apoyo Territorial (DIAT)', fontSize: 7, color: '#94A3B8' }
                             ],
@@ -1583,7 +1584,7 @@ async function generatePlanPDF() {
                         },
                         {
                             stack: [
-                                { text: 'FICHA TÉCNICA DE PLAN DE DESARROLLO', fontSize: 9, bold: true, color: '#0B5640', alignment: 'right' },
+                                { text: 'FICHA TÉCNICA DE PLAN DE DESARROLLO', fontSize: 9, bold: true, color: '#1A6B3C', alignment: 'right' },
                                 { text: 'INDICADORES ESTRATÉGICOS', fontSize: 7.5, bold: true, color: '#64748B', alignment: 'right' },
                                 { text: `Generado: ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'})}`, fontSize: 7, color: '#94A3B8', alignment: 'right' }
                             ],
@@ -1594,7 +1595,7 @@ async function generatePlanPDF() {
                 },
                 // Divider Line
                 {
-                    canvas: [{ type: 'line', x1: 0, y1: 0, x2: 542, y2: 0, lineWidth: 1.5, lineColor: '#0B5640' }],
+                    canvas: [{ type: 'line', x1: 0, y1: 0, x2: 542, y2: 0, lineWidth: 1.5, lineColor: '#1A6B3C' }],
                     margin: [0, 0, 0, 10]
                 },
                 // Active Filters Context Callout
@@ -1608,11 +1609,11 @@ async function generatePlanPDF() {
                                         {
                                             columns: [
                                                 { text: `PERIODO DE METAS EVALUADAS: ${yearFilterText.toUpperCase()}`, bold: true, fontSize: 8, color: '#0F172A' },
-                                                { text: `MÉTRICA BASE: ${metricText.toUpperCase()}`, bold: true, fontSize: 8, color: '#0B5640', alignment: 'right' }
+                                                { text: `MÉTRICA BASE: ${metricText.toUpperCase()}`, bold: true, fontSize: 8, color: '#1A6B3C', alignment: 'right' }
                                             ]
                                         }
                                     ],
-                                    fillColor: '#F0FDF4',
+                                    fillColor: '#E8F5EE',
                                     border: [false, false, false, false],
                                     margin: [8, 6, 8, 6]
                                 }
@@ -1635,11 +1636,11 @@ async function generatePlanPDF() {
                                     [
                                         {
                                             stack: [
-                                                { text: 'AVANCE PROMEDIO GLOBAL', fontSize: 7, bold: true, color: '#0B5640', letterSpacing: 0.5 },
-                                                { text: `${promedio}%`, fontSize: 32, bold: true, color: '#0B5640', margin: [0, 2, 0, 2], letterSpacing: -1 },
-                                                { text: 'Cumplimiento promedio acumulado de metas programadas', fontSize: 6.5, color: '#0F766E', leading: 1.2 }
+                                                { text: 'AVANCE PROMEDIO GLOBAL', fontSize: 7, bold: true, color: '#1A6B3C', letterSpacing: 0.5 },
+                                                { text: `${promedio}%`, fontSize: 32, bold: true, color: '#1A6B3C', margin: [0, 2, 0, 2], letterSpacing: -1 },
+                                                { text: 'Cumplimiento promedio acumulado de metas programadas', fontSize: 6.5, color: '#1A6B3C', leading: 1.2 }
                                             ],
-                                            fillColor: '#E6F4EA',
+                                            fillColor: '#E8F5EE',
                                             padding: 10
                                         }
                                     ]
@@ -1648,8 +1649,8 @@ async function generatePlanPDF() {
                             layout: {
                                 hLineWidth: () => 1,
                                 vLineWidth: () => 1,
-                                hLineColor: () => '#CEEAD6',
-                                vLineColor: () => '#CEEAD6',
+                                hLineColor: () => '#C5D9CB',
+                                vLineColor: () => '#C5D9CB',
                                 paddingLeft: () => 10,
                                 paddingRight: () => 10,
                                 paddingTop: () => 8,
@@ -1670,17 +1671,17 @@ async function generatePlanPDF() {
                                                     [
                                                         {
                                                             stack: [
-                                                                { text: 'CUMPLIDAS (>=80%)', fontSize: 6.5, bold: true, color: '#137333' },
-                                                                { text: String(cumplidas), fontSize: 14, bold: true, color: '#137333', margin: [0, 2, 0, 0] }
+                                                                { text: 'CUMPLIDAS (>=80%)', fontSize: 6.5, bold: true, color: '#10B981' },
+                                                                { text: String(cumplidas), fontSize: 14, bold: true, color: '#10B981', margin: [0, 2, 0, 0] }
                                                             ],
-                                                            fillColor: '#E6F4EA'
+                                                            fillColor: '#E8F5EE'
                                                         }
                                                     ]
                                                 ]
                                             },
                                             layout: {
                                                 hLineWidth: () => 1, vLineWidth: () => 1,
-                                                hLineColor: () => '#CEEAD6', vLineColor: () => '#CEEAD6',
+                                                hLineColor: () => '#C5D9CB', vLineColor: () => '#C5D9CB',
                                                 paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
                                             },
                                             margin: [0, 0, 4, 0]
@@ -1693,8 +1694,8 @@ async function generatePlanPDF() {
                                                     [
                                                         {
                                                             stack: [
-                                                                { text: 'EN PROCESO (50-80%)', fontSize: 6.5, bold: true, color: '#B45309' },
-                                                                { text: String(proceso), fontSize: 14, bold: true, color: '#B45309', margin: [0, 2, 0, 0] }
+                                                                { text: 'EN PROCESO (50-80%)', fontSize: 6.5, bold: true, color: '#F59E0B' },
+                                                                { text: String(proceso), fontSize: 14, bold: true, color: '#F59E0B', margin: [0, 2, 0, 0] }
                                                             ],
                                                             fillColor: '#FFF9DB'
                                                         }
@@ -1716,8 +1717,8 @@ async function generatePlanPDF() {
                                                     [
                                                         {
                                                             stack: [
-                                                                { text: 'EN RIESGO (<50%)', fontSize: 6.5, bold: true, color: '#C5221F' },
-                                                                { text: String(riesgo), fontSize: 14, bold: true, color: '#C5221F', margin: [0, 2, 0, 0] }
+                                                                { text: 'EN RIESGO (<50%)', fontSize: 6.5, bold: true, color: '#EF4444' },
+                                                                { text: String(riesgo), fontSize: 14, bold: true, color: '#EF4444', margin: [0, 2, 0, 0] }
                                                             ],
                                                             fillColor: '#FCE8E6'
                                                         }
@@ -1801,12 +1802,12 @@ async function generatePlanPDF() {
                         body: [
                             // Table Header Row
                             [
-                                { text: 'INDICADOR ESTRATÉGICO', bold: true, color: '#FFFFFF', fillColor: '#0B5640', fontSize: 7.5 },
-                                { text: 'META', bold: true, color: '#FFFFFF', fillColor: '#0B5640', fontSize: 7.5, alignment: 'right' },
-                                { text: metricText.toUpperCase().split('/')[1] || metricText.toUpperCase(), bold: true, color: '#FFFFFF', fillColor: '#0B5640', fontSize: 7.5, alignment: 'right' },
-                                { text: 'RESTANTE', bold: true, color: '#FFFFFF', fillColor: '#0B5640', fontSize: 7.5, alignment: 'right' },
-                                { text: '% AVANCE', bold: true, color: '#FFFFFF', fillColor: '#0B5640', fontSize: 7.5, alignment: 'center' },
-                                { text: 'CONVENIOS', bold: true, color: '#FFFFFF', fillColor: '#0B5640', fontSize: 7.5, alignment: 'center' }
+                                { text: 'INDICADOR ESTRATÉGICO', bold: true, color: '#FFFFFF', fillColor: '#1A6B3C', fontSize: 7.5 },
+                                { text: 'META', bold: true, color: '#FFFFFF', fillColor: '#1A6B3C', fontSize: 7.5, alignment: 'right' },
+                                { text: metricText.toUpperCase().split('/')[1] || metricText.toUpperCase(), bold: true, color: '#FFFFFF', fillColor: '#1A6B3C', fontSize: 7.5, alignment: 'right' },
+                                { text: 'RESTANTE', bold: true, color: '#FFFFFF', fillColor: '#1A6B3C', fontSize: 7.5, alignment: 'right' },
+                                { text: '% AVANCE', bold: true, color: '#FFFFFF', fillColor: '#1A6B3C', fontSize: 7.5, alignment: 'center' },
+                                { text: 'CONVENIOS', bold: true, color: '#FFFFFF', fillColor: '#1A6B3C', fontSize: 7.5, alignment: 'center' }
                             ],
                             // Dynamic rows
                             ...indicatorsList.map((item, index) => {
@@ -1822,24 +1823,24 @@ async function generatePlanPDF() {
                                 const restanteText = isNP ? '-' : fmtVal(item.restante);
                                 const pctText = isNP ? 'NP' : `${item.pct.toFixed(1)}%`;
                                 
-                                let badgeColor = '#C5221F'; // Red
+                                let badgeColor = '#EF4444'; // Red
                                 let badgeBg = '#FCE8E6';
                                 if (isNP) {
                                     badgeColor = '#64748B'; // Slate
                                     badgeBg = '#F1F5F9';
                                 } else if (item.pct >= 80) {
-                                    badgeColor = '#137333'; // Green
-                                    badgeBg = '#E6F4EA';
+                                    badgeColor = '#10B981'; // Green
+                                    badgeBg = '#E8F5EE';
                                 } else if (item.pct >= 50) {
-                                    badgeColor = '#B45309'; // Yellow/Orange
+                                    badgeColor = '#F59E0B'; // Yellow/Orange
                                     badgeBg = '#FFF9DB';
                                 }
 
                                 return [
                                     { text: item.name, fontSize: 7.5, bold: true, color: '#334155' },
                                     { text: metaText, fontSize: 7.5, alignment: 'right', color: '#475569' },
-                                    { text: ejecutadoText, fontSize: 7.5, alignment: 'right', color: '#0B5640', bold: true },
-                                    { text: restanteText, fontSize: 7.5, alignment: 'right', color: '#A90F09' },
+                                    { text: ejecutadoText, fontSize: 7.5, alignment: 'right', color: '#1A6B3C', bold: true },
+                                    { text: restanteText, fontSize: 7.5, alignment: 'right', color: '#EF4444' },
                                     { 
                                         text: pctText, 
                                         fontSize: 7.5, 
@@ -1856,7 +1857,7 @@ async function generatePlanPDF() {
                     layout: {
                         hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 1 : 0.5,
                         vLineWidth: () => 0.5,
-                        hLineColor: (i) => i === 0 ? '#0B5640' : '#E2E8F0',
+                        hLineColor: (i) => i === 0 ? '#1A6B3C' : '#E2E8F0',
                         vLineColor: () => '#E2E8F0',
                         paddingLeft: () => 6,
                         paddingRight: () => 6,
@@ -2006,69 +2007,36 @@ async function generateResumenPDF() {
 
         const chartSection = {
             table: {
-                widths: ['*', 10, '*'],
+                widths: ['*', 12, '*'],
                 body: [
                     [
-                        // Vial Chart Column
+                        // Vial Chart Column (Barra de progreso horizontal apilada)
                         {
                             stack: [
-                                { text: 'RELACIÓN DE ALCANCE VIAL: CONTRATADO VS EJECUTADO', fontSize: 7, bold: true, color: '#0B5640', alignment: 'center', margin: [0, 0, 0, 10] },
+                                { text: 'RELACIÓN DE ALCANCE VIAL: CONTRATADO VS EJECUTADO', fontSize: 7, bold: true, color: '#1A6B3C', alignment: 'left', margin: [0, 2, 0, 8] },
                                 {
                                     columns: [
-                                        // Y-axis labels
-                                        {
-                                            stack: [
-                                                { text: `${(maxVal / 1000).toFixed(1)} km`, fontSize: 5.5, color: '#94A3B8', alignment: 'right', margin: [0, 2, 0, 0] },
-                                                { text: `${(maxVal / 2000).toFixed(1)} km`, fontSize: 5.5, color: '#94A3B8', alignment: 'right', margin: [0, 32, 0, 0] },
-                                                { text: '0 km', fontSize: 5.5, color: '#94A3B8', alignment: 'right', margin: [0, 32, 0, 0] }
-                                            ],
-                                            width: 32
-                                        },
-                                        // Canvas
-                                        {
-                                            canvas: [
-                                                // Gridlines
-                                                { type: 'line', x1: 0, y1: 5, x2: 160, y2: 5, lineWidth: 0.5, lineColor: '#E2E8F0' },
-                                                { type: 'line', x1: 0, y1: 45, x2: 160, y2: 45, lineWidth: 0.5, lineColor: '#E2E8F0' },
-                                                { type: 'line', x1: 0, y1: 85, x2: 160, y2: 85, lineWidth: 1, lineColor: '#CBD5E1' },
-                                                // Track 1
-                                                { type: 'rect', x: 29, y: 5, w: 22, h: 80, color: '#F1F5F9', r: 3 },
-                                                // Track 2
-                                                { type: 'rect', x: 129, y: 5, w: 22, h: 80, color: '#F1F5F9', r: 3 },
-                                                // Fill 1
-                                                { type: 'rect', x: 29, y: 5 + (80 - hContratado), w: 22, h: Math.max(hContratado, 1), color: '#64748B', r: 3 },
-                                                // Fill 2
-                                                { type: 'rect', x: 129, y: 5 + (80 - hEjecutado), w: 22, h: Math.max(hEjecutado, 1), color: '#018D38', r: 3 }
-                                            ],
-                                            width: 180
-                                        }
+                                        { text: 'AVANCE DE EJECUCIÓN', fontSize: 6, bold: true, color: '#10B981' },
+                                        { text: `${pctEje}%`, fontSize: 13, bold: true, color: '#10B981', alignment: 'right' }
                                     ],
-                                    alignment: 'center',
-                                    margin: [0, 0, 0, 10]
+                                    margin: [0, 0, 0, 4]
                                 },
-                                // Labels Row
+                                {
+                                    canvas: [
+                                        { type: 'rect', x: 0, y: 0, w: 230, h: 18, color: '#E2E8F0', r: 5 },
+                                        { type: 'rect', x: 0, y: 0, w: Math.round(230 * Math.min(Number(pctEje) / 100, 1)), h: 18, color: '#10B981', r: 5 }
+                                    ],
+                                    margin: [0, 0, 0, 6]
+                                },
                                 {
                                     columns: [
-                                        { text: '', width: 32 },
-                                        {
-                                            stack: [
-                                                { text: 'CONTRATADO', fontSize: 8.5, bold: true, color: '#64748B', alignment: 'center' },
-                                                { text: `${valConKm} km`, fontSize: 10, bold: true, color: '#64748B', alignment: 'center', margin: [0, 1, 0, 0] }
-                                            ],
-                                            width: 80
-                                        },
-                                        {
-                                            stack: [
-                                                { text: 'EJECUTADO', fontSize: 8.5, bold: true, color: '#018D38', alignment: 'center' },
-                                                { text: `${valEjeKm} km (${pctEje}%)`, fontSize: 10, bold: true, color: '#018D38', alignment: 'center', margin: [0, 1, 0, 0] }
-                                            ],
-                                            width: 120
-                                        }
+                                        { text: `Ejecutado: ${valEjeKm} km`, fontSize: 7.5, bold: true, color: '#10B981' },
+                                        { text: `Total Contratado: ${valConKm} km`, fontSize: 7.5, bold: true, color: '#64748B', alignment: 'right' }
                                     ]
                                 }
                             ],
                             fillColor: '#F8FAFC',
-                            margin: [8, 8, 8, 8],
+                            margin: [6, 6, 6, 6],
                             border: [true, true, true, true]
                         },
                         // Spacer
@@ -2076,66 +2044,33 @@ async function generateResumenPDF() {
                             text: '',
                             border: [false, false, false, false]
                         },
-                        // Financial Chart Column
+                        // Financial Chart Column (Barra de progreso horizontal apilada)
                         {
                             stack: [
-                                { text: 'COMPARATIVO FINANCIERO: INVERSIÓN VS AUTORIZADO DEPARTAMENTO', fontSize: 7, bold: true, color: '#0B5640', alignment: 'center', margin: [0, 0, 0, 10] },
+                                { text: 'COMPARATIVO FINANCIERO: INVERSIÓN VS AUTORIZADO', fontSize: 7, bold: true, color: '#1A6B3C', alignment: 'left', margin: [0, 2, 0, 8] },
                                 {
                                     columns: [
-                                        // Y-axis labels
-                                        {
-                                            stack: [
-                                                { text: formatShortCurrency(maxFin), fontSize: 5.5, color: '#94A3B8', alignment: 'right', margin: [0, 2, 0, 0] },
-                                                { text: formatShortCurrency(maxFin / 2), fontSize: 5.5, color: '#94A3B8', alignment: 'right', margin: [0, 32, 0, 0] },
-                                                { text: '$0', fontSize: 5.5, color: '#94A3B8', alignment: 'right', margin: [0, 32, 0, 0] }
-                                            ],
-                                            width: 32
-                                        },
-                                        // Canvas
-                                        {
-                                            canvas: [
-                                                // Gridlines
-                                                { type: 'line', x1: 0, y1: 5, x2: 160, y2: 5, lineWidth: 0.5, lineColor: '#E2E8F0' },
-                                                { type: 'line', x1: 0, y1: 45, x2: 160, y2: 45, lineWidth: 0.5, lineColor: '#E2E8F0' },
-                                                { type: 'line', x1: 0, y1: 85, x2: 160, y2: 85, lineWidth: 1, lineColor: '#CBD5E1' },
-                                                // Track 1
-                                                { type: 'rect', x: 29, y: 5, w: 22, h: 80, color: '#F1F5F9', r: 3 },
-                                                // Track 2
-                                                { type: 'rect', x: 129, y: 5, w: 22, h: 80, color: '#F1F5F9', r: 3 },
-                                                // Fill 1
-                                                { type: 'rect', x: 29, y: 5 + (80 - hInversion), w: 22, h: Math.max(hInversion, 1), color: '#8B4A97', r: 3 },
-                                                // Fill 2
-                                                { type: 'rect', x: 129, y: 5 + (80 - hAutorizado), w: 22, h: Math.max(hAutorizado, 1), color: '#0B5640', r: 3 }
-                                            ],
-                                            width: 180
-                                        }
+                                        { text: 'RECURSOS AUTORIZADOS SIF', fontSize: 6, bold: true, color: '#1A6B3C' },
+                                        { text: `${pctAut}%`, fontSize: 13, bold: true, color: '#1A6B3C', alignment: 'right' }
                                     ],
-                                    alignment: 'center',
-                                    margin: [0, 0, 0, 10]
+                                    margin: [0, 0, 0, 4]
                                 },
-                                // Labels Row
+                                {
+                                    canvas: [
+                                        { type: 'rect', x: 0, y: 0, w: 230, h: 18, color: '#E2E8F0', r: 5 },
+                                        { type: 'rect', x: 0, y: 0, w: Math.round(230 * Math.min(Number(pctAut) / 100, 1)), h: 18, color: '#1A6B3C', r: 5 }
+                                    ],
+                                    margin: [0, 0, 0, 6]
+                                },
                                 {
                                     columns: [
-                                        { text: '', width: 32 },
-                                        {
-                                            stack: [
-                                                { text: 'INVERSIÓN', fontSize: 8.5, bold: true, color: '#8B4A97', alignment: 'center' },
-                                                { text: formatCurrency(sumInv), fontSize: 10, bold: true, color: '#8B4A97', alignment: 'center', margin: [0, 1, 0, 0] }
-                                            ],
-                                            width: 80
-                                        },
-                                        {
-                                            stack: [
-                                                { text: 'AUTORIZADO', fontSize: 8.5, bold: true, color: '#0B5640', alignment: 'center' },
-                                                { text: `${formatCurrency(sumAut)} (${pctAut}%)`, fontSize: 10, bold: true, color: '#0B5640', alignment: 'center', margin: [0, 1, 0, 0] }
-                                            ],
-                                            width: 120
-                                        }
+                                        { text: `Autorizado: ${formatShortCurrency(sumAut)}`, fontSize: 7.5, bold: true, color: '#1A6B3C' },
+                                        { text: `Inversión: ${formatShortCurrency(sumInv)}`, fontSize: 7.5, bold: true, color: '#64748B', alignment: 'right' }
                                     ]
                                 }
                             ],
                             fillColor: '#F8FAFC',
-                            margin: [8, 8, 8, 8],
+                            margin: [6, 6, 6, 6],
                             border: [true, true, true, true]
                         }
                     ]
@@ -2158,12 +2093,12 @@ async function generateResumenPDF() {
         const tableBody = [
             // Header Row
             [
-                { text: 'CONVENIO', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5 },
-                { text: 'CONVENIENTE EJECUTOR', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5 },
-                { text: 'SUPERVISOR', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5 },
-                { text: 'ESTADO', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5, alignment: 'center' },
-                { text: 'AV. FÍSICO', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5, alignment: 'right' },
-                { text: 'AV. FINANCIERO', bold: true, fillColor: '#0B5640', color: '#FFFFFF', fontSize: 7.5, alignment: 'right' }
+                { text: 'CONVENIO', bold: true, fillColor: '#1A6B3C', color: '#FFFFFF', fontSize: 7.5 },
+                { text: 'CONVENIENTE EJECUTOR', bold: true, fillColor: '#1A6B3C', color: '#FFFFFF', fontSize: 7.5 },
+                { text: 'SUPERVISOR', bold: true, fillColor: '#1A6B3C', color: '#FFFFFF', fontSize: 7.5 },
+                { text: 'ESTADO', bold: true, fillColor: '#1A6B3C', color: '#FFFFFF', fontSize: 7.5, alignment: 'center' },
+                { text: 'AV. FÍSICO', bold: true, fillColor: '#1A6B3C', color: '#FFFFFF', fontSize: 7.5, alignment: 'right' },
+                { text: 'AV. FINANCIERO', bold: true, fillColor: '#1A6B3C', color: '#FFFFFF', fontSize: 7.5, alignment: 'right' }
             ]
         ];
 
@@ -2181,16 +2116,16 @@ async function generateResumenPDF() {
                 let badgeColor = '#64748B';
                 let badgeBg = '#F1F5F9';
                 if (sysState.badgeClass === 'badge-ejecutado' || sysState.badgeClass === 'badge-ejecucion') {
-                    badgeColor = '#137333';
-                    badgeBg = '#E6F4EA';
+                    badgeColor = '#10B981';
+                    badgeBg = '#E8F5EE';
                 } else if (sysState.badgeClass === 'badge-por-liquidar' || sysState.badgeClass === 'badge-proximo') {
-                    badgeColor = '#B45309';
+                    badgeColor = '#F59E0B';
                     badgeBg = '#FFF9DB';
                 } else if (sysState.badgeClass === 'badge-suspendido') {
-                    badgeColor = '#C5221F';
+                    badgeColor = '#EF4444';
                     badgeBg = '#FCE8E6';
                 } else if (sysState.badgeClass === 'badge-liquidado') {
-                    badgeColor = '#1A73E8';
+                    badgeColor = '#3B82F6';
                     badgeBg = '#E8F0FE';
                 }
 
@@ -2241,7 +2176,7 @@ async function generateResumenPDF() {
                         } : { text: '' },
                         {
                             stack: [
-                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 10, bold: true, color: '#0B5640', letterSpacing: 0.5 },
+                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 10, bold: true, color: '#1A6B3C', letterSpacing: 0.5 },
                                 { text: 'SECRETARÍA DE INFRAESTRUCTURA FÍSICA', fontSize: 7.5, bold: true, color: '#64748B' },
                                 { text: 'Dirección de Infraestructura y Apoyo Territorial (DIAT)', fontSize: 7, color: '#94A3B8' }
                             ],
@@ -2250,7 +2185,7 @@ async function generateResumenPDF() {
                         },
                         {
                             stack: [
-                                { text: 'REPORTE GERENCIAL CONSOLIDADO', fontSize: 9, bold: true, color: '#0B5640', alignment: 'right' },
+                                { text: 'REPORTE GERENCIAL CONSOLIDADO', fontSize: 9, bold: true, color: '#1A6B3C', alignment: 'right' },
                                 { text: 'RESUMEN EJECUTIVO', fontSize: 7.5, bold: true, color: '#64748B', alignment: 'right' },
                                 { text: `Generado: ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'})}`, fontSize: 7, color: '#94A3B8', alignment: 'right' }
                             ],
@@ -2261,7 +2196,7 @@ async function generateResumenPDF() {
                 },
                 // Divider Line
                 {
-                    canvas: [{ type: 'line', x1: 0, y1: 0, x2: 542, y2: 0, lineWidth: 1.5, lineColor: '#0B5640' }],
+                    canvas: [{ type: 'line', x1: 0, y1: 0, x2: 542, y2: 0, lineWidth: 1.5, lineColor: '#1A6B3C' }],
                     margin: [0, 0, 0, 10]
                 },
                 // Active Filters Context Callout
@@ -2273,7 +2208,7 @@ async function generateResumenPDF() {
                                 {
                                     stack: [
                                         { text: 'FILTROS DE BÚSQUEDA ACTIVOS', fontSize: 7, bold: true, color: '#94A3B8', letterSpacing: 0.05 },
-                                        { text: filtersText.toUpperCase(), bold: true, fontSize: 8, color: '#0B5640', margin: [0, 2, 0, 0] }
+                                        { text: filtersText.toUpperCase(), bold: true, fontSize: 8, color: '#1A6B3C', margin: [0, 2, 0, 0] }
                                     ],
                                     fillColor: '#F8FAFC',
                                     border: [false, false, false, false],
@@ -2548,8 +2483,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ['filter-search', 'filter-municipio', 'filter-supervisor', 'filter-indicador', 'filter-vigencia', 'filter-convenio-num', 'filter-clasificacion', 'filter-subregion', 'filter-estado'].forEach(id => {
             const el = document.getElementById(id);
             if (el) {
-                el.addEventListener('change', applyFilters);
-                if (id === 'filter-search') el.addEventListener('input', applyFilters);
+                el.addEventListener('change', () => {
+                    if (!window.isResettingFilters) applyFilters();
+                });
+                if (id === 'filter-search') {
+                    el.addEventListener('input', () => {
+                        if (!window.isResettingFilters) applyFilters();
+                    });
+                }
             }
         });
         
@@ -2952,9 +2893,15 @@ function applyFilters() {
 }
 
 function resetFilters() {
+    window.isResettingFilters = true;
     ['filter-search', 'filter-vigencia', 'filter-supervisor', 'filter-indicador', 'filter-municipio', 'filter-convenio-num', 'filter-clasificacion', 'filter-subregion', 'filter-estado'].forEach(id => {
-        if(document.getElementById(id)) document.getElementById(id).value = '';
+        const el = document.getElementById(id);
+        if (el) {
+            el.value = '';
+            el.dispatchEvent(new Event('change'));
+        }
     });
+    window.isResettingFilters = false;
     applyFilters();
 }
 
@@ -3441,34 +3388,33 @@ function updateCharts() {
         }
     }
     
-    // Gráfico de Ejecución (Barras)
-    const canvasEjecucion = document.getElementById('chart-ejecucion');
-    if (canvasEjecucion) {
+    // Gráfico de Ejecución (Barra de Progreso Personalizada Premium)
+    const progressBarFill = document.getElementById('progress-bar-fill');
+    if (progressBarFill) {
         window.activeFisicoMetric = window.activeFisicoMetric || 'longitud';
         
         let tCon = 0, tEje = 0;
-        let metricLabel = 'Longitud (m)';
-        let tooltipSuffix = ' m';
+        let unit = ' km';
         
         if (window.activeFisicoMetric === 'longitud') {
             filteredData.forEach(r => {
                 tCon += r['ALCANCE (M)'] || 0;
                 tEje += r['LONGITUD EJECUTADA'] || 0;
             });
-            metricLabel = 'Longitud (m)';
-            tooltipSuffix = ' m';
+            // Convertir a kilómetros para visualización en la barra prominente
+            tCon = tCon / 1000;
+            tEje = tEje / 1000;
+            unit = ' km';
         } else {
             filteredData.forEach(r => {
                 tCon += r['ALCANCE (M2)'] || 0;
                 tEje += r['AREA EJECUTADA (M2)'] || r['AREA_EJECUTADA'] || r['ÁREA EJECUTADA'] || 0;
             });
-            metricLabel = 'Área (m²)';
-            tooltipSuffix = ' m²';
+            unit = ' m²';
         }
         
-        const isDark = document.documentElement.classList.contains('dark');
-        const textColor = isDark ? '#94a3b8' : '#64748b';
-        const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.04)';
+        const pct = tCon > 0 ? (tEje / tCon) * 100 : 0;
+        const rest = Math.max(0, tCon - tEje);
         
         // Update highlight styling of the interactive boxes
         const btnLon = document.getElementById('btn-metric-longitud');
@@ -3509,40 +3455,41 @@ function updateCharts() {
             }
         }
         
-        if (charts['ejecucion']) charts['ejecucion'].destroy();
-        charts['ejecucion'] = new Chart(canvasEjecucion, {
-            type: 'bar',
-            data: {
-                labels: [metricLabel],
-                datasets: [
-                    { label: 'Contratado', data: [tCon], backgroundColor: '#94a3b8', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 },
-                    { label: 'Ejecutado', data: [tEje], backgroundColor: '#018D38', borderRadius: 6, barPercentage: 0.7, categoryPercentage: 0.8 }
-                ]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { 
-                    legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: {size: 10, family: 'Poppins'}, color: textColor } }, 
-                    tooltip: {
-                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-                        titleColor: isDark ? '#f8fafc' : '#0f172a',
-                        bodyColor: isDark ? '#cbd5e1' : '#475569',
-                        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.05)',
-                        borderWidth: 1,
-                        padding: 12,
-                        cornerRadius: 8,
-                        titleFont: {size: 11, family: 'Poppins'},
-                        bodyFont: {size: 13, weight: 'bold', family: 'Poppins'},
-                        callbacks: { label: (c) => ` ${c.dataset.label}: ${formatNumber(c.raw)}${tooltipSuffix}` }
-                    } 
-                },
-                scales: {
-                    x: { grid: { display: false }, ticks: { color: textColor, font: {family: 'Poppins', weight: 'bold', size: 10} } },
-                    y: { border: { display: false }, grid: { color: gridColor }, beginAtZero: true, ticks: { color: textColor, font: {family: 'Poppins', size: 10}, maxTicksLimit: 6, callback: (v) => formatNumber(v) } }
-                },
-                animation: { duration: 800, easing: 'easeOutQuart' }
-            }
-        });
+        // Actualizar elementos de la Barra de Progreso Prominente
+        const pctVal = document.getElementById('progress-percentage-val');
+        const innerText = document.getElementById('progress-bar-inner-text');
+        const remainingText = document.getElementById('progress-remaining-text');
+        const totalText = document.getElementById('progress-total-text');
+        
+        // Animación suave del ancho
+        progressBarFill.style.width = `${pct.toFixed(1)}%`;
+        if (pctVal) pctVal.textContent = `${pct.toFixed(1)}%`;
+        
+        if (innerText) {
+            // Mostrar texto interno si hay suficiente espacio en la barra
+            innerText.textContent = pct >= 20 
+                ? `${tEje.toLocaleString('es-CO', {minimumFractionDigits: 1, maximumFractionDigits: 1})}${unit} Ejecutados` 
+                : '';
+        }
+        
+        if (remainingText) {
+            remainingText.textContent = `Falta: ${rest.toLocaleString('es-CO', {minimumFractionDigits: 1, maximumFractionDigits: 1})}${unit}`;
+        }
+        
+        if (totalText) {
+            totalText.textContent = `Contratado: ${tCon.toLocaleString('es-CO', {minimumFractionDigits: 1, maximumFractionDigits: 1})}${unit}`;
+        }
+        
+        // Actualizar el Círculo de Progreso Radial (esquina superior derecha)
+        const radialCircle = document.getElementById('radial-progress-circle');
+        const radialText = document.getElementById('radial-progress-text');
+        if (radialCircle && radialText) {
+            // Circunferencia del círculo con radio 17 es 2 * Math.PI * 17 = 106.81
+            const circumference = 106.8;
+            const offset = circumference - (circumference * pct) / 100;
+            radialCircle.style.strokeDashoffset = Math.max(0, Math.min(circumference, offset));
+            radialText.textContent = `${Math.round(pct)}%`;
+        }
     }
 }
 
@@ -3953,13 +3900,13 @@ let currentMLPopup = null;   // Popup informativo activo en el mapa
 
 // Estado de visibilidad de capas
 let mlLayersState = {
-    municipios:   true,
-    subregiones:  true,
+    municipios:   false,
+    subregiones:  false,
     primaria:     true,
     secundaria:   true,
     terciaria:    true,
     tramosKml:    true,
-    terrain:      true
+    terrain:      false
 };
 
 // Colores simbología
@@ -4132,10 +4079,12 @@ async function renderMapTab() {
                         tileSize: 256
                     }
                 };
-                nextStyle.terrain = {
-                    source: 'terrainSource',
-                    exaggeration: 1
-                };
+                if (mlLayersState.terrain) {
+                    nextStyle.terrain = {
+                        source: 'terrainSource',
+                        exaggeration: 1
+                    };
+                }
 
                 nextStyle.sky = {
                     'atmosphere-blend': [
@@ -4151,7 +4100,7 @@ async function renderMapTab() {
                     id: 'hills',
                     type: 'hillshade',
                     source: 'hillshadeSource',
-                    layout: { visibility: 'visible' },
+                    layout: { visibility: mlLayersState.terrain ? 'visible' : 'none' },
                     paint: { 'hillshade-shadow-color': '#473B24' }
                 });
 
@@ -4244,15 +4193,72 @@ async function renderMapTab() {
                         });
 
 
+                    // --- DISOLVER MUNICIPIOS EN SUBREGIONES Y DEPARTAMENTO CON TURF.JS ---
+                    let subregionesFeatures = [];
+                    let antioquiaFeature = null;
+
+                    if (typeof turf !== 'undefined') {
+                        try {
+                            // 1. Crear polígonos disueltos por subregión
+                            for (const subName of Object.keys(antioquiaSubregiones)) {
+                                const subFeatures = mpioData.features.filter(f => f.properties._subregion === subName);
+                                if (subFeatures.length > 0) {
+                                    let unioned = JSON.parse(JSON.stringify(subFeatures[0]));
+                                    for (let i = 1; i < subFeatures.length; i++) {
+                                        try {
+                                            unioned = turf.union(unioned, subFeatures[i]);
+                                        } catch (e) {
+                                            console.warn(`Error disolviendo municipio ${subFeatures[i].properties.NOMBRE_MPI} en subregión ${subName}:`, e);
+                                        }
+                                    }
+                                    if (unioned) {
+                                        unioned.properties = { _subregion: subName };
+                                        subregionesFeatures.push(unioned);
+                                    }
+                                }
+                            }
+
+                            // 2. Crear polígono disuelto del Departamento completo
+                            if (subregionesFeatures.length > 0) {
+                                let deptUnioned = JSON.parse(JSON.stringify(subregionesFeatures[0]));
+                                for (let i = 1; i < subregionesFeatures.length; i++) {
+                                    try {
+                                        deptUnioned = turf.union(deptUnioned, subregionesFeatures[i]);
+                                    } catch (e) {
+                                        console.warn(`Error disolviendo subregión ${subregionesFeatures[i].properties._subregion} para departamento:`, e);
+                                    }
+                                }
+                                if (deptUnioned) {
+                                    deptUnioned.properties = { nombre: 'ANTIOQUIA' };
+                                    antioquiaFeature = deptUnioned;
+                                }
+                            }
+                        } catch (turfError) {
+                            console.error("Error al disolver con Turf.js:", turfError);
+                        }
+                    }
+
+                    // Registrar fuentes en el mapa
                     mlMap.addSource('municipios-src', { type: 'geojson', data: mpioData });
                     mlMpioData = mpioData;
 
-                    // Capa: relleno por subregión
+                    // Fuente para subregiones disueltas
+                    const subregionesGeoJSON = { type: 'FeatureCollection', features: subregionesFeatures };
+                    mlMap.addSource('subregiones-disueltas-src', { type: 'geojson', data: subregionesGeoJSON });
+
+                    // Fuente para departamento disuelto
+                    if (antioquiaFeature) {
+                        mlMap.addSource('antioquia-dpto-src', { type: 'geojson', data: antioquiaFeature });
+                    }
+
+                    // --- CAPAS DEL MAPA ---
+
+                    // 1. Capa: Relleno por subregión (usando las disueltas)
                     mlMap.addLayer({
                         id: 'subregiones-fill',
                         type: 'fill',
-                        source: 'municipios-src',
-                        layout: { visibility: 'visible' },
+                        source: 'subregiones-disueltas-src',
+                        layout: { visibility: mlLayersState.subregiones ? 'visible' : 'none' },
                         paint: {
                             'fill-color': [
                                 'match', ['get', '_subregion'],
@@ -4267,48 +4273,86 @@ async function renderMapTab() {
                                 'MAGDALENA MEDIO', '#ffa1a1',
                                 '#e2e8f0'
                             ],
-                            'fill-opacity': 0.5
+                            'fill-opacity': 0.4
                         }
                     });
 
-                    // Capa: contorno municipios
+                    // 2. Capa: Contorno de subregiones (líneas limpias sin relleno de fondo por defecto)
+                    mlMap.addLayer({
+                        id: 'subregiones-line',
+                        type: 'line',
+                        source: 'subregiones-disueltas-src',
+                        layout: { visibility: 'visible' },
+                        paint: {
+                            'line-color': '#1E293B', // Tono pizarra oscuro muy elegante
+                            'line-width': [
+                                'interpolate', ['linear'], ['zoom'],
+                                5, 1.2,
+                                8, 2.0,
+                                12, 3.0
+                            ],
+                            'line-opacity': 0.75
+                        }
+                    });
+
+                    // 3. Capa: Contorno exterior del departamento de Antioquia (línea verde encendida muy marcada)
+                    if (antioquiaFeature) {
+                        mlMap.addLayer({
+                            id: 'antioquia-dpto-line',
+                            type: 'line',
+                            source: 'antioquia-dpto-src',
+                            layout: { visibility: 'visible' },
+                            paint: {
+                                'line-color': '#00E676', // Verde encendido brillante (no se confunde con vías secundarias)
+                                'line-width': [
+                                    'interpolate', ['linear'], ['zoom'],
+                                    5, 2.8,
+                                    8, 4.0,
+                                    12, 6.0
+                                ],
+                                'line-opacity': 0.95
+                            }
+                        });
+
+                        // Sombra exterior para darle relieve premium de elevación
+                        mlMap.addLayer({
+                            id: 'antioquia-dpto-glow',
+                            type: 'line',
+                            source: 'antioquia-dpto-src',
+                            layout: { visibility: 'visible' },
+                            paint: {
+                                'line-color': '#00E676',
+                                'line-width': [
+                                    'interpolate', ['linear'], ['zoom'],
+                                    5, 6,
+                                    8, 10,
+                                    12, 15
+                                ],
+                                'line-opacity': 0.45,
+                                'line-blur': 4
+                            }
+                        }, 'antioquia-dpto-line');
+                    }
+
+                    // 4. Capa: contorno municipios (delicada, oculta al inicio)
                     mlMap.addLayer({
                         id: 'municipios-line',
                         type: 'line',
                         source: 'municipios-src',
-                        layout: { visibility: 'visible' },
+                        layout: { visibility: mlLayersState.municipios ? 'visible' : 'none' },
                         paint: {
                             'line-color': '#94a3b8',
                             'line-width': 0.4,
-                            'line-opacity': 0.7
+                            'line-opacity': 0.5
                         }
                     });
 
-                    // Capa: contorno subregiones (líneas negras gruesas)
-                    // Se implementa con una expresión de agrupación por subregión
-                    mlMap.addLayer({
-                        id: 'subregiones-line',
-                        type: 'line',
-                        source: 'municipios-src',
-                        layout: { visibility: 'visible' },
-                        paint: {
-                            'line-color': '#374151',
-                            'line-width': [
-                                'interpolate', ['linear'], ['zoom'],
-                                5, 0.8,
-                                8, 1.6,
-                                12, 2.5
-                            ],
-                            'line-opacity': 0.65
-                        }
-                    });
-
-                    // Capa: hover subregiones
+                    // 5. Capa: hover subregiones
                     mlMap.addLayer({
                         id: 'subregiones-fill-hover',
                         type: 'fill',
-                        source: 'municipios-src',
-                        layout: { visibility: 'visible' },
+                        source: 'subregiones-disueltas-src',
+                        layout: { visibility: mlLayersState.subregiones ? 'visible' : 'none' },
                         paint: {
                             'fill-color': ['case', ['boolean', ['feature-state', 'blink'], false], '#ffee55', '#3561AB'],
                             'fill-opacity': ['case',
@@ -4319,14 +4363,14 @@ async function renderMapTab() {
                         }
                     });
 
-                    // Etiquetas de municipios
+                    // 6. Etiquetas de municipios (ocultas al inicio)
                     mlMap.addLayer({
                         id: 'municipios-labels',
                         type: 'symbol',
                         source: 'municipios-src',
                         minzoom: 9,
                         layout: {
-                            visibility: 'visible',
+                            visibility: mlLayersState.municipios ? 'visible' : 'none',
                             'text-field': ['get', 'NOMBRE_MPI'],
                             'text-size': ['interpolate', ['linear'], ['zoom'], 9, 9, 13, 12],
                             'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
@@ -4719,7 +4763,7 @@ function toggleMLLayer(layerKey, isVisible) {
 
     const layerMap = {
         municipios:  ['municipios-line', 'municipios-labels'],
-        subregiones: ['subregiones-fill', 'subregiones-line', 'subregiones-fill-hover'],
+        subregiones: ['subregiones-fill', 'subregiones-fill-hover'],
         primaria:    ['vial-primaria-glow', 'vial-primaria', 'vial-primaria-hover'],
         secundaria:  ['vial-secundaria', 'vial-secundaria-hover'],
         terciaria:   ['vial-terciaria', 'vial-terciaria-hover'],
@@ -7709,6 +7753,339 @@ function renderSupervisorAlertas(supervisorRows) {
         `;
     }
 }
+
+// ============================================================
+// LÓGICA DE FILTROS COLAPSABLES Y BUSCADORES DE MUNICIPIOS
+// ============================================================
+
+// 1. Inicialización de Dropdowns con Buscador Integrado (Vanilla JS)
+function initSearchableDropdown(selectId, placeholder = "Seleccionar...") {
+    const nativeSelect = document.getElementById(selectId);
+    if (!nativeSelect) return;
+
+    // Evitar doble inicialización
+    if (nativeSelect.dataset.customSelectInitialized) return;
+    nativeSelect.dataset.customSelectInitialized = "true";
+
+    // Ocultar select nativo
+    nativeSelect.style.display = 'none';
+
+    // Crear contenedor
+    const container = document.createElement('div');
+    container.className = 'custom-select-container';
+    nativeSelect.parentNode.insertBefore(container, nativeSelect.nextSibling);
+
+    // Crear disparador (Trigger)
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'custom-select-trigger';
+    trigger.innerHTML = `
+        <span class="trigger-text">${placeholder}</span>
+        <i class="fa-solid fa-chevron-down"></i>
+    `;
+    container.appendChild(trigger);
+
+    // Crear panel desplegable
+    const dropdown = document.createElement('div');
+    dropdown.className = 'custom-select-dropdown';
+    dropdown.innerHTML = `
+        <div class="custom-select-search-wrapper">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" class="custom-select-search-input" placeholder="Buscar..." autocomplete="off">
+        </div>
+        <div class="custom-select-options"></div>
+    `;
+    container.appendChild(dropdown);
+
+    const searchInput = dropdown.querySelector('.custom-select-search-input');
+    const optionsContainer = dropdown.querySelector('.custom-select-options');
+
+    // Función para reconstruir las opciones
+    function rebuildOptions() {
+        optionsContainer.innerHTML = '';
+        const options = Array.from(nativeSelect.options);
+        
+        if (options.length === 0) {
+            optionsContainer.innerHTML = `<div class="custom-select-no-results">No hay opciones disponibles</div>`;
+            return;
+        }
+
+        options.forEach(opt => {
+            const optionEl = document.createElement('div');
+            optionEl.className = 'custom-select-option';
+            if (opt.selected) {
+                optionEl.classList.add('selected');
+                trigger.querySelector('.trigger-text').textContent = opt.textContent;
+            }
+            optionEl.dataset.value = opt.value;
+            optionEl.textContent = opt.textContent;
+
+            optionEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                // Actualizar valor en select nativo
+                nativeSelect.value = opt.value;
+                
+                // Actualizar clases de selección
+                dropdown.querySelectorAll('.custom-select-option').forEach(el => el.classList.remove('selected'));
+                optionEl.classList.add('selected');
+                
+                // Actualizar texto del disparador
+                trigger.querySelector('.trigger-text').textContent = opt.textContent;
+                
+                // Cerrar desplegable
+                container.classList.remove('active');
+                
+                // Disparar evento change en el select nativo para activar filtros del dashboard
+                nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+
+            optionsContainer.appendChild(optionEl);
+        });
+    }
+
+    // Inicializar opciones
+    rebuildOptions();
+
+    // Observar cambios en los <option> del select nativo (poblado dinámico de datos)
+    const observer = new MutationObserver((mutations) => {
+        rebuildOptions();
+    });
+    observer.observe(nativeSelect, { childList: true });
+
+    // Sincronizar hacia atrás (si el select cambia por código, ej. Limpiar Filtros)
+    nativeSelect.addEventListener('change', () => {
+        const selectedOpt = nativeSelect.options[nativeSelect.selectedIndex];
+        if (selectedOpt) {
+            trigger.querySelector('.trigger-text').textContent = selectedOpt.textContent;
+            dropdown.querySelectorAll('.custom-select-option').forEach(el => {
+                if (el.dataset.value === nativeSelect.value) {
+                    el.classList.add('selected');
+                } else {
+                    el.classList.remove('selected');
+                }
+            });
+        } else {
+            trigger.querySelector('.trigger-text').textContent = placeholder;
+            dropdown.querySelectorAll('.custom-select-option').forEach(el => el.classList.remove('selected'));
+        }
+    });
+
+    // Abrir/Cerrar el desplegable
+    trigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Cerrar otros dropdowns abiertos
+        document.querySelectorAll('.custom-select-container').forEach(c => {
+            if (c !== container) c.classList.remove('active');
+        });
+        
+        container.classList.toggle('active');
+        if (container.classList.contains('active')) {
+            searchInput.value = '';
+            filterOptions('');
+            setTimeout(() => searchInput.focus(), 50);
+        }
+    });
+
+    // Filtrar opciones al escribir
+    function filterOptions(query) {
+        const cleanQuery = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").trim();
+        const optionElements = optionsContainer.querySelectorAll('.custom-select-option');
+        let visibleCount = 0;
+
+        optionElements.forEach(el => {
+            const text = el.textContent.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+            if (text.includes(cleanQuery)) {
+                el.style.display = 'flex';
+                visibleCount++;
+            } else {
+                el.style.display = 'none';
+            }
+        });
+
+        const noRes = optionsContainer.querySelector('.custom-select-no-results');
+        if (noRes) noRes.remove();
+
+        if (visibleCount === 0) {
+            const noResultsEl = document.createElement('div');
+            noResultsEl.className = 'custom-select-no-results';
+            noResultsEl.textContent = 'No se encontraron resultados';
+            optionsContainer.appendChild(noResultsEl);
+        }
+    }
+
+    searchInput.addEventListener('input', (e) => {
+        filterOptions(e.target.value);
+    });
+
+    // Cerrar al hacer clic fuera del componente
+    document.addEventListener('click', (e) => {
+        if (!container.contains(e.target)) {
+            container.classList.remove('active');
+        }
+    });
+}
+
+// 2. Controladores de Eventos de la Interfaz y Filtros Activos
+document.addEventListener('DOMContentLoaded', () => {
+    // Alternancia de Filtros Avanzados (Resumen)
+    const btnToggleFilters = document.getElementById('btn-toggle-filters');
+    const filterPanel = document.getElementById('filter-panel-collapsible');
+    
+    if (btnToggleFilters && filterPanel) {
+        btnToggleFilters.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isExpanded = filterPanel.classList.toggle('expanded');
+            btnToggleFilters.classList.toggle('active', isExpanded);
+        });
+    }
+
+    // Alternancia de Filtros Avanzados (Mapa)
+    const btnToggleMapFilters = document.getElementById('btn-toggle-map-filters');
+    const mapFilterPanel = document.getElementById('map-filter-panel-collapsible');
+    
+    if (btnToggleMapFilters && mapFilterPanel) {
+        btnToggleMapFilters.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isExpanded = mapFilterPanel.classList.toggle('expanded');
+            btnToggleMapFilters.classList.toggle('active', isExpanded);
+        });
+    }
+
+    // Inicializar dropdowns con buscador personalizados
+    initSearchableDropdown('filter-municipio', 'Seleccionar Municipio...');
+    initSearchableDropdown('filter-supervisor', 'Seleccionar Supervisor...');
+    initSearchableDropdown('map-filter-municipio', 'Seleccionar Municipio...');
+    initSearchableDropdown('map-filter-supervisor', 'Seleccionar Supervisor...');
+
+    // Contador de filtros activos
+    const mainFilters = [
+        'filter-vigencia', 'filter-supervisor', 'filter-indicador', 
+        'filter-clasificacion', 'filter-municipio', 'filter-subregion', 
+        'filter-estado', 'filter-convenio-num'
+    ];
+
+    const mapFilters = [
+        'map-filter-vigencia', 'map-filter-supervisor', 'map-filter-indicador', 
+        'map-filter-clasificacion', 'map-filter-municipio', 'map-filter-subregion', 
+        'map-filter-estado', 'map-filter-convenio-num'
+    ];
+
+    function updateActiveFiltersBadge() {
+        let activeCount = 0;
+        mainFilters.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.value && el.value !== '' && el.value !== 'todos' && el.value !== 'TODOS') {
+                activeCount++;
+            }
+        });
+        
+        const badge = document.getElementById('active-filters-badge');
+        if (badge) {
+            if (activeCount > 0) {
+                badge.textContent = `${activeCount} activo${activeCount > 1 ? 's' : ''}`;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+    }
+
+    function updateMapActiveFiltersBadge() {
+        let activeCount = 0;
+        mapFilters.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.value && el.value !== '' && el.value !== 'todos' && el.value !== 'TODOS') {
+                activeCount++;
+            }
+        });
+        
+        const badge = document.getElementById('map-active-filters-badge');
+        if (badge) {
+            if (activeCount > 0) {
+                badge.textContent = `${activeCount} activo${activeCount > 1 ? 's' : ''}`;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+    }
+
+    // Vincular cambio de filtros nativos para actualizar contadores
+    mainFilters.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', updateActiveFiltersBadge);
+    });
+
+    mapFilters.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', updateMapActiveFiltersBadge);
+    });
+
+    // Sincronizar botones de limpiar
+    const btnResetFilters = document.getElementById('btn-reset-filters');
+    if (btnResetFilters) {
+        btnResetFilters.addEventListener('click', () => {
+            setTimeout(updateActiveFiltersBadge, 50);
+        });
+    }
+
+    const btnMapReset = document.getElementById('btn-map-reset');
+    if (btnMapReset) {
+        btnMapReset.addEventListener('click', () => {
+            setTimeout(updateMapActiveFiltersBadge, 50);
+        });
+    }
+
+    // Alternancia de Pantalla Completa para el Mapa
+    const btnMapFullscreen = document.getElementById('btn-map-fullscreen');
+    const mapWrapper = document.getElementById('map-wrapper');
+    
+    if (btnMapFullscreen && mapWrapper) {
+        btnMapFullscreen.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isFullscreen = mapWrapper.classList.toggle('fullscreen');
+            
+            // Cambiar icono
+            const icon = btnMapFullscreen.querySelector('i');
+            if (icon) {
+                icon.className = isFullscreen ? 'fa-solid fa-compress' : 'fa-expand';
+                icon.classList.toggle('fa-expand', !isFullscreen);
+                icon.classList.toggle('fa-compress', isFullscreen);
+            }
+            
+            // Redimensionar MapLibre GL
+            if (mlMap) {
+                setTimeout(() => {
+                    mlMap.resize();
+                }, 100);
+            }
+        });
+        
+        // Cerrar con la tecla Esc
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && mapWrapper.classList.contains('fullscreen')) {
+                mapWrapper.classList.remove('fullscreen');
+                const icon = btnMapFullscreen.querySelector('i');
+                if (icon) {
+                    icon.className = 'fa-solid fa-expand';
+                }
+                if (mlMap) {
+                    setTimeout(() => {
+                        mlMap.resize();
+                    }, 100);
+                }
+            }
+        });
+    }
+
+    // Ejecución inicial
+    updateActiveFiltersBadge();
+    updateMapActiveFiltersBadge();
+});
+
 
 
 

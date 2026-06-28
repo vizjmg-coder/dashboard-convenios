@@ -1,0 +1,1341 @@
+/* ============================================================
+   PREMIUM DESIGN SYSTEM — DASHBOARD DIAT v3.0
+   Diseñador Web Senior — Gobernación de Antioquia
+   Sistema de Diseño Exclusivo Modo Claro
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+/* ============================================================
+   1. DESIGN TOKENS OVERRIDES
+   ============================================================ */
+:root {
+    /* Tipografía Premium */
+    --font-headline: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body:     'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-base:     'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    /* Paleta Institucional Refinada */
+    --color-primary:          #1A6B3C;
+    --color-primary-hover:    #155630;
+    --color-primary-light:    #22924F;
+    --color-primary-subtle:   #E8F5EE;
+    --color-primary-pale:     rgba(26, 107, 60, 0.07);
+    --color-primary-glow:     rgba(26, 107, 60, 0.15);
+
+    /* Canvas & Surfaces */
+    --color-bg:               #F2F6F3;
+    --color-canvas:           #F2F6F3;
+    --color-surface:          #FFFFFF;
+    --color-surface-hover:    #F7FAF8;
+    --color-surface-subtle:   #F0F4F1;
+
+    /* Textos Refinados */
+    --color-text-primary:     #0F1F14;
+    --color-text-secondary:   #4A6652;
+    --color-text-muted:       #7A9E84;
+    --color-text-placeholder: #A5C4AC;
+
+    /* Bordes */
+    --color-border:           #DDE9E1;
+    --color-border-strong:    #C5D9CB;
+
+    /* Sidebar */
+    --sidebar-bg-from:        #163D26;
+    --sidebar-bg-to:          #0D2718;
+    --sidebar-width:          240px;
+
+    /* Estados semánticos */
+    --color-success:          #10B981;
+    --color-success-bg:       rgba(16, 185, 129, 0.10);
+    --color-warning:          #F59E0B;
+    --color-warning-bg:       rgba(245, 158, 11, 0.10);
+    --color-danger:           #EF4444;
+    --color-danger-bg:        rgba(239, 68, 68, 0.10);
+    --color-info:             #3B82F6;
+    --color-info-bg:          rgba(59, 130, 246, 0.10);
+
+    /* Sombras de tono verde */
+    --shadow-xs:      0 1px 2px rgba(15, 42, 25, 0.04);
+    --shadow-sm:      0 1px 4px rgba(15, 42, 25, 0.04), 0 4px 12px rgba(15, 42, 25, 0.05);
+    --shadow-md:      0 2px 8px rgba(15, 42, 25, 0.05), 0 8px 28px rgba(15, 42, 25, 0.07);
+    --shadow-lg:      0 4px 16px rgba(15, 42, 25, 0.07), 0 16px 48px rgba(15, 42, 25, 0.09);
+    --shadow-premium: 0 1px 3px rgba(15, 42, 25, 0.04), 0 6px 20px rgba(15, 42, 25, 0.06);
+    --shadow-glow-primary: 0 4px 20px rgba(26, 107, 60, 0.22);
+
+    /* Radios de Esquinas */
+    --radius-xs:   4px;
+    --radius-sm:   8px;
+    --radius-md:   12px;
+    --radius-lg:   16px;
+    --radius-xl:   20px;
+    --radius-2xl:  24px;
+    --radius-full: 9999px;
+}
+
+/* ============================================================
+   2. BASE GLOBAL
+   ============================================================ */
+
+body {
+    background: var(--color-bg) !important;
+    background-image: none !important;
+    font-family: var(--font-body) !important;
+    color: var(--color-text-primary) !important;
+    font-size: 13px !important;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Tipografía global */
+h1, h2, h3, h4, h5, h6,
+.dashboard-title,
+.section-title,
+.filter-section-title,
+.layer-panel-title,
+.table-section h2,
+.kpi-value,
+.chart-title {
+    font-family: var(--font-headline) !important;
+}
+
+p, span, td, th, label, select, input, button, textarea,
+.filter-control, .alert-item-meta, .alert-item-tag,
+.tab-label, .sidebar-logo-text h2, .sidebar-logo-text p {
+    font-family: var(--font-body) !important;
+}
+
+/* ============================================================
+   3. LAYOUT — CARD ON CANVAS
+   ============================================================ */
+
+#app-layout {
+    background: var(--color-bg) !important;
+    gap: 0;
+    padding: 0;
+}
+
+/* Canvas de fondo con patrón sutil */
+#app-layout::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+        radial-gradient(ellipse at 20% 10%, rgba(26, 107, 60, 0.035) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 90%, rgba(26, 107, 60, 0.025) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+#main-content-container,
+main {
+    background: transparent !important;
+    flex: 1;
+}
+
+/* ============================================================
+   4. SIDEBAR PREMIUM — VERDE BOSQUE REFINADO
+   ============================================================ */
+
+.sidebar-nav {
+    background: linear-gradient(170deg, #1C4A2E 0%, #122E1D 60%, #0D2216 100%) !important;
+    width: var(--sidebar-width) !important;
+    min-width: var(--sidebar-width) !important;
+    border-radius: 0 !important;
+    box-shadow: 2px 0 20px rgba(0,0,0,0.15), inset -1px 0 0 rgba(255,255,255,0.04) !important;
+    padding: 28px 16px 20px !important;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Textura decorativa del sidebar */
+.sidebar-nav::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: -60px;
+    width: 260px; height: 260px;
+    background: radial-gradient(circle, rgba(34, 146, 79, 0.12) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.sidebar-nav::after {
+    content: '';
+    position: absolute;
+    bottom: -40px; right: -40px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(26, 107, 60, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+/* Logo del sidebar */
+.sidebar-logo-section {
+    border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+    margin-bottom: 24px !important;
+    padding-bottom: 20px !important;
+    position: relative;
+    z-index: 1;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    gap: 12px !important;
+}
+
+.sidebar-logo-ring {
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    border-radius: 14px !important;
+    width: 58px !important; 
+    height: 58px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
+}
+
+.sidebar-logo-ring img {
+    width: 44px !important;
+    height: 44px !important;
+    object-fit: contain !important;
+}
+
+.sidebar-logo-text h2 {
+    font-family: var(--font-headline) !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: #FFFFFF !important;
+    line-height: 1.4 !important;
+    letter-spacing: 0.01em !important;
+    margin: 0 !important;
+}
+
+.sidebar-logo-text p {
+    font-size: 8.5px !important;
+    font-weight: 500 !important;
+    color: rgba(255,255,255,0.45) !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    margin-top: 6px !important;
+}
+
+/* Navegación del sidebar */
+.sidebar-nav nav {
+    gap: 3px !important;
+    position: relative;
+    z-index: 1;
+}
+
+/* Tab buttons — inactivos */
+.tab-btn {
+    padding: 11px 14px !important;
+    border-radius: 10px !important;
+    font-size: 12.5px !important;
+    font-weight: 500 !important;
+    color: rgba(255,255,255,0.55) !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    transition: all 200ms ease !important;
+    letter-spacing: 0.01em !important;
+}
+
+/* Indicador lateral — ahora verde neón brillante */
+.tab-btn::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 50%;
+    transform: translateY(-50%) scaleY(0);
+    width: 3px; height: 50%;
+    background: #4ADE80;
+    border-radius: 0 4px 4px 0;
+    transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 10px rgba(74, 222, 128, 0.7);
+}
+
+.tab-btn.active::before {
+    transform: translateY(-50%) scaleY(1);
+}
+
+/* Tab activo — fondo semi-transparente suave */
+.tab-btn.active {
+    background: rgba(255,255,255,0.10) !important;
+    border-color: rgba(255,255,255,0.10) !important;
+    color: #FFFFFF !important;
+    box-shadow: none !important;
+}
+
+.tab-btn.active .tab-label {
+    font-weight: 600 !important;
+}
+
+.tab-btn:hover:not(.active) {
+    background: rgba(255,255,255,0.06) !important;
+    color: rgba(255,255,255,0.80) !important;
+}
+
+/* Punto de actividad */
+.active-dot {
+    background: #4ADE80 !important;
+    box-shadow: 0 0 8px rgba(74, 222, 128, 0.8) !important;
+    width: 6px !important;
+    height: 6px !important;
+}
+
+/* ============================================================
+   PROFILE CARD EN SIDEBAR
+   ============================================================ */
+
+.sidebar-profile-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+    text-align: center;
+}
+
+.sidebar-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #22924F, #1A6B3C);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: #FFFFFF;
+    font-family: var(--font-headline) !important;
+    border: 2px solid rgba(255,255,255,0.15);
+    letter-spacing: -0.02em;
+    flex-shrink: 0;
+}
+
+.sidebar-profile-name {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #FFFFFF;
+    font-family: var(--font-headline) !important;
+    line-height: 1.2;
+}
+
+.sidebar-profile-role {
+    font-size: 9.5px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* Badge versión beta */
+.sidebar-version-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    background: rgba(74, 222, 128, 0.08);
+    border: 1px solid rgba(74, 222, 128, 0.18);
+    border-radius: 10px;
+    position: relative;
+    z-index: 1;
+}
+
+.sidebar-version-badge span {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.65);
+    font-family: var(--font-body) !important;
+}
+
+.sidebar-version-badge i {
+    color: #4ADE80;
+    font-size: 11px;
+}
+
+/* ============================================================
+   5. HEADER PREMIUM
+   ============================================================ */
+
+header {
+    background: rgba(255,255,255,0.95) !important;
+    backdrop-filter: blur(20px) saturate(200%) !important;
+    border-bottom: 1px solid var(--color-border) !important;
+    box-shadow: 0 1px 0 rgba(15, 42, 25, 0.05) !important;
+    height: 60px !important;
+}
+
+.header-search-input {
+    background: var(--color-surface-subtle) !important;
+    border: 1.5px solid var(--color-border) !important;
+    border-radius: var(--radius-md) !important;
+    font-family: var(--font-body) !important;
+    font-size: 13px !important;
+    color: var(--color-text-primary) !important;
+    transition: all 200ms ease !important;
+}
+
+.header-search-input:focus {
+    border-color: var(--color-primary) !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 0 0 3px rgba(26, 107, 60, 0.12) !important;
+}
+
+.header-date-badge {
+    background: var(--color-surface-subtle) !important;
+    border: 1.5px solid var(--color-border) !important;
+    border-radius: var(--radius-full) !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: var(--color-text-secondary) !important;
+}
+
+.header-profile {
+    background: var(--color-surface-subtle) !important;
+    border: 1.5px solid var(--color-border) !important;
+    border-radius: var(--radius-full) !important;
+}
+
+.header-profile:hover {
+    border-color: var(--color-primary) !important;
+    background: var(--color-primary-subtle) !important;
+}
+
+/* ============================================================
+   6. KPI CARDS — NUEVO DISEÑO CON ICONO CIRCULAR
+   ============================================================ */
+
+.kpi-card {
+    background: #FFFFFF !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-xl) !important;
+    padding: 22px 22px 18px !important;
+    box-shadow: var(--shadow-sm) !important;
+    transition: transform 200ms ease, box-shadow 200ms ease !important;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Eliminar barra lateral de color */
+.kpi-card::after {
+    display: none !important;
+}
+
+/* Patrón decorativo sutil en KPI */
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: -20px; right: -20px;
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    opacity: 0.04;
+    background: currentColor;
+    pointer-events: none;
+}
+
+.kpi-card:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: var(--shadow-md) !important;
+    border-color: var(--color-border-strong) !important;
+}
+
+.kpi-label {
+    font-family: var(--font-body) !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.10em !important;
+    text-transform: uppercase !important;
+    color: var(--color-text-muted) !important;
+    margin-bottom: 8px !important;
+    display: block !important;
+}
+
+.kpi-value {
+    font-family: var(--font-headline) !important;
+    font-size: 26px !important;
+    font-weight: 800 !important;
+    color: var(--color-text-primary) !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.03em !important;
+}
+
+.kpi-value-large {
+    font-size: 19px !important;
+    letter-spacing: -0.02em !important;
+}
+
+/* Icono de KPI — rediseño circular tonal */
+.kpi-icon {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 17px !important;
+    flex-shrink: 0 !important;
+}
+
+/* Colores de iconos por categoría */
+.kpi-total .kpi-icon      { background: rgba(107, 114, 128, 0.10) !important; color: #6B7280 !important; }
+.kpi-ejecucion .kpi-icon  { background: rgba(16, 185, 129, 0.10) !important; color: #059669 !important; }
+.kpi-por-liquidar .kpi-icon { background: rgba(245, 158, 11, 0.10) !important; color: #D97706 !important; }
+.kpi-inversion .kpi-icon  { background: rgba(139, 74, 151, 0.10) !important; color: #7C3AED !important; }
+.kpi-desembolsado .kpi-icon { background: rgba(59, 130, 246, 0.10) !important; color: #2563EB !important; }
+.kpi-autorizado .kpi-icon { background: rgba(26, 107, 60, 0.10) !important; color: #1A6B3C !important; }
+
+/* Trend badges */
+.kpi-trend {
+    margin-top: 10px !important;
+    font-size: 10.5px !important;
+    font-weight: 600 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+
+.kpi-trend.up    { color: var(--color-success) !important; }
+.kpi-trend.down  { color: var(--color-danger) !important; }
+.kpi-trend.neutral { color: var(--color-text-muted) !important; }
+
+/* ============================================================
+   7. BADGES DE ESTADO — SISTEMA TONAL SIN BORDES
+   ============================================================ */
+
+.badge-estado {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    padding: 4px 10px !important;
+    border-radius: 99px !important;
+    font-family: var(--font-body) !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+    border: none !important;
+}
+
+.badge-por-liquidar {
+    background: rgba(245, 158, 11, 0.12) !important;
+    color: #B45309 !important;
+    border: none !important;
+}
+.badge-ejecucion {
+    background: rgba(16, 185, 129, 0.12) !important;
+    color: #059669 !important;
+    border: none !important;
+}
+.badge-liquidado,
+.badge-ejecutado {
+    background: rgba(59, 130, 246, 0.10) !important;
+    color: #2563EB !important;
+    border: none !important;
+}
+.badge-suspendido {
+    background: rgba(139, 92, 246, 0.10) !important;
+    color: #7C3AED !important;
+    border: none !important;
+}
+.badge-proximo {
+    background: rgba(245, 158, 11, 0.08) !important;
+    color: #92400E !important;
+    border: none !important;
+}
+.badge-default {
+    background: rgba(107, 114, 128, 0.10) !important;
+    color: #6B7280 !important;
+    border: none !important;
+}
+
+/* ============================================================
+   8. PANEL DE FILTROS — DISEÑO LIMPIO
+   ============================================================ */
+
+.filter-section {
+    background: #FFFFFF !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-xl) !important;
+    box-shadow: var(--shadow-sm) !important;
+    padding: 18px 22px !important;
+    position: relative !important;
+    overflow: visible !important; /* Permite que los dropdowns interactivos sobresalgan */
+    z-index: 40 !important; /* Eleva la sección de filtros por encima de los KPIs y gráficos de abajo */
+}
+
+.filter-panel-collapsible.expanded {
+    overflow: visible !important; /* Permite desplegar las opciones sobre otros elementos al expandirse */
+}
+
+/* Control del orden de apilamiento de los dropdowns en la misma fila */
+.custom-select-container {
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+.custom-select-container.active {
+    z-index: 50 !important; /* Eleva el selector abierto sobre sus hermanos y otros elementos */
+}
+
+.custom-select-dropdown {
+    position: absolute !important;
+    z-index: 100 !important;
+}
+
+.filter-section-title {
+    font-family: var(--font-body) !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.10em !important;
+    text-transform: uppercase !important;
+    color: var(--color-text-secondary) !important;
+}
+
+.filter-label {
+    font-family: var(--font-body) !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
+    color: var(--color-text-muted) !important;
+    margin-bottom: 6px !important;
+}
+
+.filter-control {
+    background: var(--color-surface-subtle) !important;
+    border: 1.5px solid var(--color-border) !important;
+    border-radius: var(--radius-md) !important;
+    font-family: var(--font-body) !important;
+    font-size: 13px !important;
+    color: var(--color-text-primary) !important;
+    transition: all 200ms ease !important;
+    padding: 9px 32px 9px 12px !important;
+}
+
+.filter-control:focus {
+    border-color: var(--color-primary) !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 0 0 3px rgba(26, 107, 60, 0.10) !important;
+}
+
+/* Custom select trigger (buscador) */
+.custom-select-trigger {
+    background: var(--color-surface-subtle) !important;
+    border: 1.5px solid var(--color-border) !important;
+    border-radius: var(--radius-md) !important;
+    font-family: var(--font-body) !important;
+    font-size: 13px !important;
+    padding: 9px 12px !important;
+    transition: all 200ms ease !important;
+}
+
+.custom-select-trigger:focus,
+.custom-select-trigger.active {
+    border-color: var(--color-primary) !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 0 0 3px rgba(26, 107, 60, 0.10) !important;
+}
+
+.custom-select-dropdown {
+    border: 1.5px solid var(--color-border) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-lg) !important;
+}
+
+/* Botón exportar */
+.btn-export-primary,
+button[id*="export"],
+.btn-export {
+    background: var(--color-primary) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: var(--radius-md) !important;
+    font-family: var(--font-body) !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    padding: 9px 16px !important;
+    box-shadow: 0 2px 8px rgba(26, 107, 60, 0.25) !important;
+    transition: all 200ms ease !important;
+    cursor: pointer;
+}
+
+button[id*="export"]:hover {
+    background: var(--color-primary-hover) !important;
+    box-shadow: 0 4px 14px rgba(26, 107, 60, 0.35) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* ============================================================
+   9. CHART CARDS — PANELES DE GRÁFICAS PREMIUM
+   ============================================================ */
+
+.chart-card {
+    background: #FFFFFF !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-xl) !important;
+    box-shadow: var(--shadow-sm) !important;
+    padding: 22px 22px 18px !important;
+    transition: box-shadow 200ms ease, transform 200ms ease !important;
+}
+
+.chart-card:hover {
+    box-shadow: var(--shadow-md) !important;
+    transform: translateY(-2px) !important;
+}
+
+.chart-title {
+    font-family: var(--font-headline) !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+    text-transform: none !important;
+    letter-spacing: -0.01em !important;
+}
+
+.chart-subtitle {
+    font-family: var(--font-body) !important;
+    font-size: 12px !important;
+    color: var(--color-text-muted) !important;
+    margin-top: 2px !important;
+    font-weight: 400 !important;
+}
+
+/* ============================================================
+   10. TABLA PREMIUM — JERARQUÍA VISUAL CLARA
+   ============================================================ */
+
+.table-section {
+    background: #FFFFFF !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-xl) !important;
+    box-shadow: var(--shadow-sm) !important;
+    overflow: hidden !important;
+}
+
+.table-section h2 {
+    font-family: var(--font-headline) !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+    letter-spacing: -0.01em !important;
+}
+
+.sticky-header th {
+    background: var(--color-surface-subtle) !important;
+    font-family: var(--font-body) !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    color: var(--color-text-muted) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    border-bottom: 1px solid var(--color-border) !important;
+    box-shadow: none !important;
+}
+
+.table-row-hover {
+    transition: background 150ms ease !important;
+}
+
+.table-row-hover:hover {
+    background: var(--color-surface-hover) !important;
+}
+
+.table-row-hover td {
+    font-family: var(--font-body) !important;
+    font-size: 13px !important;
+    color: var(--color-text-primary) !important;
+    border-bottom: 1px solid var(--color-border) !important;
+}
+
+/* Chip de municipio */
+.municipio-chip {
+    font-family: var(--font-body) !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    color: var(--color-text-secondary) !important;
+    background: var(--color-surface-subtle) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: 6px !important;
+    padding: 2px 8px !important;
+}
+
+/* Botón FICHA — outline premium */
+.btn-gestion {
+    background: transparent !important;
+    color: var(--color-primary) !important;
+    border: 1.5px solid var(--color-primary) !important;
+    border-radius: var(--radius-sm) !important;
+    font-family: var(--font-body) !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+    padding: 6px 12px !important;
+    box-shadow: none !important;
+    transition: all 200ms ease !important;
+    cursor: pointer;
+}
+
+.btn-gestion .icon-accent {
+    color: inherit !important;
+}
+
+.btn-gestion:hover {
+    background: var(--color-primary) !important;
+    color: #FFFFFF !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(26, 107, 60, 0.25) !important;
+}
+
+/* Progress bars refinadas */
+.progress-track {
+    height: 6px !important;
+    background: var(--color-border) !important;
+    border-radius: var(--radius-full) !important;
+}
+
+.progress-fisico {
+    background: linear-gradient(90deg, #1A6B3C, #22924F) !important;
+    border-radius: var(--radius-full) !important;
+}
+
+.progress-financiero {
+    background: linear-gradient(90deg, #2563EB, #60A5FA) !important;
+    border-radius: var(--radius-full) !important;
+}
+
+/* ============================================================
+   11. ALERTAS — CENTRO DE ALERTAS REFINADO
+   ============================================================ */
+
+.alert-filter-btn {
+    font-family: var(--font-body) !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    border-radius: 99px !important;
+    padding: 5px 12px !important;
+    border: 1.5px solid var(--color-border) !important;
+    background: var(--color-surface-subtle) !important;
+    color: var(--color-text-secondary) !important;
+    transition: all 200ms ease !important;
+    cursor: pointer;
+}
+
+.alert-filter-btn.active {
+    background: var(--color-primary) !important;
+    color: #FFFFFF !important;
+    border-color: var(--color-primary) !important;
+}
+
+.alert-filter-btn:hover:not(.active) {
+    border-color: var(--color-primary) !important;
+    color: var(--color-primary) !important;
+}
+
+/* Filas de alerta */
+.alert-item {
+    border-left: 3px solid transparent !important;
+    transition: background 150ms ease !important;
+    padding: 10px 14px !important;
+    border-radius: 0 8px 8px 0 !important;
+}
+
+.alert-item:hover {
+    background: var(--color-surface-subtle) !important;
+}
+
+/* ============================================================
+   12. PANEL DE INDICADORES ESTRATÉGICOS
+   ============================================================ */
+
+/* Tarjetas de Indicadores */
+.indicator-card,
+[class*="indicator"] .bg-white {
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* Cards de resumen de indicadores (metas cumplidas, en proceso, riesgo) */
+.bg-green-50, .bg-yellow-50, .bg-red-50,
+[class*="metas-"] {
+    border-radius: var(--radius-lg) !important;
+    border: 1px solid var(--color-border) !important;
+}
+
+/* ============================================================
+   13. SECCIONES GENERALES DE PANELES
+   ============================================================ */
+
+/* Todas las secciones de contenido */
+.tab-content > section,
+.tab-content > div > section,
+.bg-white.rounded-2xl,
+.bg-white.rounded-xl,
+.bg-white.p-6,
+.bg-white.p-5,
+.bg-white.p-4 {
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-xl) !important;
+    box-shadow: var(--shadow-sm) !important;
+    background: #FFFFFF !important;
+}
+
+/* Sobrescritura de bordes de Tailwind */
+.border, .border-gray-100, .border-gray-200 {
+    border-color: var(--color-border) !important;
+}
+
+/* ============================================================
+   14. BOTONES UTILITARIOS
+   ============================================================ */
+
+.btn-export,
+button.btn-export {
+    background: var(--color-surface-subtle) !important;
+    border: 1.5px solid var(--color-border) !important;
+    color: var(--color-text-secondary) !important;
+    border-radius: var(--radius-md) !important;
+    font-family: var(--font-body) !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    transition: all 200ms ease !important;
+}
+
+.btn-export:hover {
+    border-color: var(--color-primary) !important;
+    color: var(--color-primary) !important;
+    background: var(--color-primary-subtle) !important;
+}
+
+/* Botón de limpiar filtros */
+.btn-ghost,
+button[id*="limpiar"],
+button[id*="clear"] {
+    background: transparent !important;
+    border: 1.5px solid var(--color-border) !important;
+    color: var(--color-text-muted) !important;
+    border-radius: var(--radius-md) !important;
+    font-family: var(--font-body) !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    transition: all 200ms ease !important;
+    cursor: pointer;
+}
+
+.btn-ghost:hover,
+button[id*="limpiar"]:hover,
+button[id*="clear"]:hover {
+    border-color: var(--color-border-strong) !important;
+    color: var(--color-text-secondary) !important;
+}
+
+/* Botón de filtros avanzados */
+#btn-toggle-filters,
+#btn-toggle-map-filters {
+    background: var(--color-surface-subtle) !important;
+    border: 1.5px solid var(--color-border) !important;
+    color: var(--color-text-secondary) !important;
+    border-radius: var(--radius-md) !important;
+    font-family: var(--font-body) !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    transition: all 200ms ease !important;
+    cursor: pointer;
+}
+
+/* ============================================================
+   15. PANTALLA COMPLETA DEL MAPA
+   ============================================================ */
+
+.map-container-wrapper.fullscreen {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999 !important;
+    border-radius: 0 !important;
+    border: none !important;
+}
+
+/* Panel de capas del mapa */
+.map-layers-panel {
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-md) !important;
+    background: rgba(255,255,255,0.97) !important;
+    backdrop-filter: blur(12px) !important;
+}
+
+/* ============================================================
+   16. SCROLLBARS REFINADOS
+   ============================================================ */
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+}
+
+/* ============================================================
+   17. ANIMACIONES PREMIUM
+   ============================================================ */
+
+@keyframes fadeUpIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.kpi-card {
+    animation: fadeUpIn 0.35s ease both;
+}
+
+.kpi-card:nth-child(1) { animation-delay: 0.05s; }
+.kpi-card:nth-child(2) { animation-delay: 0.10s; }
+.kpi-card:nth-child(3) { animation-delay: 0.15s; }
+.kpi-card:nth-child(4) { animation-delay: 0.20s; }
+.kpi-card:nth-child(5) { animation-delay: 0.25s; }
+.kpi-card:nth-child(6) { animation-delay: 0.30s; }
+
+/* ============================================================
+   18. MODAL DE CONVENIOS PREMIUM
+   ============================================================ */
+
+.modal-content,
+.modal-overlay > div {
+    border-radius: var(--radius-2xl) !important;
+    border: 1px solid var(--color-border) !important;
+    box-shadow: var(--shadow-lg) !important;
+}
+
+/* ============================================================
+   19. TEXTOS Y ENCABEZADOS DE SECCIÓN
+   ============================================================ */
+
+.section-title,
+.filter-section-title,
+.layer-panel-title,
+.table-section h2 {
+    font-family: var(--font-headline) !important;
+    letter-spacing: -0.01em !important;
+}
+
+/* Subtítulos de sección */
+.chart-subtitle,
+.filter-section-subtitle,
+.section-subtitle {
+    font-family: var(--font-body) !important;
+    color: var(--color-text-muted) !important;
+}
+
+/* ============================================================
+   20. ACTIVE FILTERS BADGE
+   ============================================================ */
+
+.filter-active-badge,
+#active-filters-badge,
+#map-active-filters-badge {
+    background: var(--color-primary) !important;
+    color: #FFFFFF !important;
+    border-radius: 99px !important;
+    font-family: var(--font-body) !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    padding: 2px 8px !important;
+}
+
+/* ============================================================
+   21. PANEL RESUMEN DE INDICADORES (Cards de KPI de metas)
+   ============================================================ */
+
+/* Cards de metas cumplidas/en proceso/en riesgo */
+[class*="bg-green"][class*="50"],
+[class*="bg-yellow"][class*="50"],
+[class*="bg-red"][class*="50"] {
+    border-radius: var(--radius-lg) !important;
+}
+
+/* ============================================================
+   22. MAPA — CABECERA DE SECCIÓN
+   ============================================================ */
+
+.map-section-header {
+    font-family: var(--font-headline) !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+}
+
+#btn-map-fullscreen {
+    background: rgba(255,255,255,0.92) !important;
+    border: 1.5px solid var(--color-border) !important;
+    border-radius: var(--radius-md) !important;
+    color: var(--color-text-secondary) !important;
+    box-shadow: var(--shadow-sm) !important;
+    backdrop-filter: blur(8px) !important;
+    transition: all 200ms ease !important;
+}
+
+#btn-map-fullscreen:hover {
+    border-color: var(--color-primary) !important;
+    color: var(--color-primary) !important;
+    background: rgba(255,255,255,0.98) !important;
+    box-shadow: var(--shadow-md) !important;
+}
+
+/* ============================================================
+   23. AJUSTES FINALES DE ARMONÍA
+   ============================================================ */
+
+/* KPI con valor largo (moneda) — mantener visible */
+.kpi-value,
+.kpi-value-large {
+    color: var(--color-text-primary) !important;
+    opacity: 1 !important;
+}
+
+/* Sub-badges de KPI (Total, Activo, Pendiente, etc.) */
+.kpi-card [class*="text-emerald"],
+.kpi-card [class*="text-green"] {
+    color: var(--color-primary-light) !important;
+}
+
+.kpi-card [class*="text-orange"],
+.kpi-card [class*="text-amber"] {
+    color: #D97706 !important;
+}
+
+/* Panel de indicadores estratégicos — tarjetas */
+.panel-indicador-card,
+[class*="indicator-card"] {
+    background: #FFFFFF !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* Barra de progreso de indicadores — colores semánticos */
+.progress-bar-indicator {
+    border-radius: var(--radius-full) !important;
+}
+
+/* Cabecera de sección de indicadores */
+.plan-section-header,
+.plan-header {
+    font-family: var(--font-headline) !important;
+    font-weight: 700 !important;
+}
+
+/* Fondo del panel principal */
+.tab-content {
+    background: transparent !important;
+}
+
+/* Separadores de tabla */
+table tr {
+    border-bottom: 1px solid var(--color-border) !important;
+}
+
+table tr:last-child {
+    border-bottom: none !important;
+}
+
+/* Header de tabla rediseñado */
+table thead tr {
+    background: var(--color-surface-subtle) !important;
+}
+
+table thead th {
+    font-family: var(--font-body) !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    color: var(--color-text-muted) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    padding: 12px 16px !important;
+}
+
+table tbody td {
+    font-family: var(--font-body) !important;
+    font-size: 13px !important;
+    padding: 14px 16px !important;
+    color: var(--color-text-primary) !important;
+    vertical-align: middle !important;
+}
+
+/* Línea de avance en tarjetas de indicadores */
+.indicator-progress-line {
+    height: 4px !important;
+    border-radius: var(--radius-full) !important;
+    background: var(--color-border) !important;
+}
+
+/* Gráfico de líneas de indicadores — área fill */
+canvas {
+    border-radius: var(--radius-md) !important;
+}
+
+/* Panel de Alertas: botones de filtro */
+.alert-tabs .alert-filter-btn,
+button[onclick*="setAlertFilter"],
+[id*="filter-btn"] {
+    font-family: var(--font-body) !important;
+    border-radius: 99px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    transition: all 200ms ease !important;
+}
+
+/* Badge de número de alertas */
+.alerts-count-badge,
+[class*="alert-count"] {
+    background: var(--color-danger) !important;
+    color: #FFFFFF !important;
+    border-radius: 99px !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    padding: 2px 8px !important;
+}
+
+/* Sección del mapa territorial — contenedor */
+.map-container-wrapper {
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-xl) !important;
+    overflow: hidden !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* Legend items del mapa */
+.map-legend-item {
+    font-family: var(--font-body) !important;
+    font-size: 11px !important;
+}
+
+/* Tooltip de barras del gráfico */
+.chartjs-tooltip {
+    border-radius: var(--radius-md) !important;
+    font-family: var(--font-body) !important;
+    box-shadow: var(--shadow-md) !important;
+}
+
+/* Panel de Indicadores Estratégicos (cards de porcentaje) */
+.indicator-pct-card {
+    background: #FFFFFF !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 16px !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* Colores semánticos para porcentajes de indicadores */
+.pct-low  { color: var(--color-danger) !important; }
+.pct-mid  { color: var(--color-warning) !important; }
+.pct-high { color: var(--color-success) !important; }
+
+/* Arreglo de color de texto en resumen de indicadores (metas cards) */
+.meta-card {
+    background: #FFFFFF !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* Toggle de fuente de datos */
+.toggle-btn-group button {
+    font-family: var(--font-body) !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    border-radius: var(--radius-md) !important;
+}
+
+/* Paginación de la tabla */
+.pagination-btn {
+    font-family: var(--font-body) !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    border: 1.5px solid var(--color-border) !important;
+    border-radius: var(--radius-sm) !important;
+    color: var(--color-text-secondary) !important;
+    background: #FFFFFF !important;
+    transition: all 200ms ease !important;
+}
+
+.pagination-btn:hover {
+    border-color: var(--color-primary) !important;
+    color: var(--color-primary) !important;
+    background: var(--color-primary-subtle) !important;
+}
+
+/* Texto de paginación */
+.pagination-info {
+    font-family: var(--font-body) !important;
+    font-size: 12px !important;
+    color: var(--color-text-muted) !important;
+}
+
+/* IDs de convenios en tabla */
+td .convenio-id,
+.convenio-id {
+    font-family: var(--font-headline) !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    color: var(--color-primary) !important;
+    letter-spacing: 0.01em !important;
+}
+
+/* Footer del mapa territorial con leyenda */
+.map-legend {
+    background: rgba(255,255,255,0.92) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-md) !important;
+}
+
+/* ============================================================
+   24. MICRO-ANIMACIONES Y MICRO-INTERACCIONES
+   ============================================================ */
+
+/* Transición en todas las cards */
+.kpi-card,
+.chart-card,
+.filter-section,
+.table-section,
+.alert-item {
+    will-change: transform;
+}
+
+/* Hover en filas de la leyenda del estado */
+.estado-legend-row:hover {
+    background: var(--color-surface-hover) !important;
+    border-color: var(--color-primary) !important;
+    border-radius: 10px !important;
+}
+
+/* Indicador de punto activo — actualizado */
+@keyframes indicatorPulsePremium {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6); }
+    50%       { box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
+}
+
+.active-dot {
+    animation: indicatorPulsePremium 2.5s ease-in-out infinite !important;
+}
+
+/* Transición del sidebar */
+.tab-btn {
+    will-change: background, color;
+}
+
+/* Animación para el efecto de franjas en la barra de progreso horizontal */
+@keyframes progress-bar-stripes {
+    0% { background-position: 1rem 0; }
+    100% { background-position: 0 0; }
+}
