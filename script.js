@@ -1126,8 +1126,8 @@ async function generateProfessionalPDF(row) {
         const convenioBanner = cleanCard([
             {
                 columns: [
-                    { text: 'CONVENIO N°', fontSize: 7.5, bold: true, color: '#A3E635', letterSpacing: 0.8, width: 'auto', margin: [0, 4, 8, 0] },
-                    { text: row['CONVENIO'] || 'S/N', fontSize: 15, bold: true, color: '#FFFFFF', width: '*' }
+                    { text: 'CONVENIO N°', fontSize: 7.5, bold: true, color: '#1A6B3C', letterSpacing: 0.8, width: 'auto', margin: [0, 4, 8, 0] },
+                    { text: row['CONVENIO'] || 'S/N', fontSize: 14, bold: true, color: '#0F172A', width: '*' }
                 ],
                 margin: [0, 0, 0, 8]
             },
@@ -1136,23 +1136,23 @@ async function generateProfessionalPDF(row) {
                     {
                         width: '*',
                         stack: [
-                            { text: 'OBJETO DEL CONVENIO', fontSize: 6.5, bold: true, color: '#A3E635', letterSpacing: 0.5 },
-                            { text: objetoText, fontSize: 7.5, color: '#FFFFFF', margin: [0, 2, 0, 0], lineHeight: 1.15 }
+                            { text: 'OBJETO DEL CONVENIO', fontSize: 6.5, bold: true, color: '#1A6B3C', letterSpacing: 0.5 },
+                            { text: objetoText, fontSize: 7.5, color: '#334155', margin: [0, 2, 0, 0], lineHeight: 1.15 }
                         ]
                     },
                     {
                         width: 175,
                         stack: [
-                            iconLabel('\uf508', 'Supervisor Responsable', row['SUPERVISOR'] || 'Sin Asignar', true),
-                            iconLabel('\uf2b5', 'Conveniante Ejecutor', row['CONVENIANTE EJECUTOR'] || 'N/A', true),
-                            iconLabel('\uf073', 'Fecha de Inicio', getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || 'N/A', true)
+                            iconLabel('\uf508', 'Supervisor Responsable', row['SUPERVISOR'] || 'Sin Asignar', false),
+                            iconLabel('\uf2b5', 'Conveniante Ejecutor', row['CONVENIANTE EJECUTOR'] || 'N/A', false),
+                            iconLabel('\uf073', 'Fecha de Inicio', getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || 'N/A', false)
                         ],
                         margin: [10, 0, 0, 0]
                     }
                 ],
                 columnGap: 12
             }
-        ], '#1A6B3C', null, 12);
+        ], '#F8FAFC', '#E2E8F0', 12);
 
         const widgetContratado = iconLabel('\uf548', labelContratado, valContratado, false, true);
         widgetContratado.margin = [0, 0, 0, 0];
@@ -1310,37 +1310,38 @@ async function generateProfessionalPDF(row) {
             content: [
                 {
                     columns: [
+                        logoBase64 ? {
+                            image: logoBase64,
+                            width: 32,
+                            alignment: 'left'
+                        } : { text: '' },
                         {
-                            stack: [ logoElement ],
-                            width: 60
+                            stack: [
+                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 10, bold: true, color: '#1A6B3C', letterSpacing: 0.5 },
+                                { text: 'SECRETARÍA DE INFRAESTRUCTURA FÍSICA', fontSize: 7.5, bold: true, color: '#64748B' },
+                                { text: 'Dirección de Infraestructura y Apoyo Territorial (DIAT)', fontSize: 7, color: '#94A3B8' }
+                            ],
+                            margin: [8, 0, 0, 0],
+                            width: '*'
                         },
                         {
                             stack: [
-                                { text: 'DIRECCIÓN DE INFRAESTRUCTURA Y APOYO TERRITORIAL', fontSize: 8, bold: true, color: '#64748B', letterSpacing: 0.8, lineHeight: 0.95 },
-                                { text: 'Secretaría de Infraestructura Física', fontSize: 13, bold: true, color: '#1A6B3C', margin: [0, 1, 0, 1], lineHeight: 0.95 },
-                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 16, bold: true, color: '#1A6B3C', lineHeight: 0.95 }
+                                { text: 'FICHA TÉCNICA DE CONVENIO', fontSize: 9, bold: true, color: '#1A6B3C', alignment: 'right' },
+                                { 
+                                    text: [
+                                        { text: 'ESTADO: ', color: '#64748B' },
+                                        { text: sysState.label.toUpperCase(), color: sysState.hex }
+                                    ], 
+                                    fontSize: 7.5, 
+                                    bold: true, 
+                                    alignment: 'right' 
+                                },
+                                { text: `Generado: ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'})}`, fontSize: 7, color: '#94A3B8', alignment: 'right' }
                             ],
-                            width: '*',
-                            margin: [0, 2, 0, 0]
-                        },
-                        {
-                            width: 130,
-                            stack: [
-                                cleanCard([
-                                    { text: 'ESTADO DEL CONVENIO', fontSize: 7, bold: true, color: '#64748B', alignment: 'center', margin: [0, 0, 0, 3] },
-                                    {
-                                        text: [
-                                            { text: '\u2022 ', fontSize: 13, color: sysState.hex, bold: true },
-                                            { text: sysState.label.toUpperCase(), fontSize: 10, bold: true, color: sysState.hex }
-                                        ],
-                                        alignment: 'center'
-                                    }
-                                ], '#FFFFFF', '#E2E8F0', 8)
-                            ],
-                            margin: [0, 2, 0, 0]
+                            width: 'auto'
                         }
                     ],
-                    margin: [0, 0, 0, 10]
+                    margin: [0, 0, 0, 8]
                 },
                 { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#1A6B3C' }], margin: [0, 5, 0, 12] },
                 progressSection,
