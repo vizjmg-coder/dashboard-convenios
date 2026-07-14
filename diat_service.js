@@ -235,63 +235,114 @@ class DIATDataService {
     }
 
     /**
-     * Registra una visita técnica en el sistema local
+     * Sincroniza las visitas técnicas registradas desde el archivo visitas.json de Google Drive
      */
-    static async addTechnicalVisit(username, convenioId, visitData) {
-        return new Promise((resolve) => {
-            // Simular retraso de red de 1s
-            setTimeout(() => {
-                const visits = this.getTechnicalVisits();
-                const newVisit = {
-                    id: 'VT-' + Date.now(),
-                    convenioId: String(convenioId).trim(),
-                    usuario: username,
-                    fecha: visitData.fecha || new Date().toLocaleDateString('es-CO'),
-                    tipo: visitData.tipo || 'Avance de obra',
-                    observaciones: visitData.observaciones || '',
-                    compromisos: visitData.compromisos || '',
-                    riesgos: visitData.riesgos || '',
-                    lat: parseFloat(visitData.lat) || 0,
-                    lng: parseFloat(visitData.lng) || 0,
-                    photoCount: parseInt(visitData.photoCount) || 0,
-                    photos: visitData.photos || []
-                };
-                visits.unshift(newVisit);
-                this.saveTechnicalVisits(visits);
-                resolve(newVisit);
-            }, 1000);
-        });
+    static async syncTechnicalVisitsFromServer() {
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXBFslIOCwVCyAae8-FG0VL5pqotLkjejwJhavm5xoGU4SlyVETwRkGCmDNVkcRPw4/exec";
+        try {
+            const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getVisits`);
+            if (response.ok) {
+                const visits = await response.json();
+                if (Array.isArray(visits)) {
+                    this.saveTechnicalVisits(visits);
+                    return true;
+                }
+            }
+        } catch (e) {
+            console.error("Error sincronizando visitas desde Google Drive:", e);
+        }
+        return false;
     }
 
     /**
-     * Actualiza una visita técnica existente en el sistema local
+     * Registra una visita técnica localmente y la sincroniza con Google Drive
+     */
+    static async addTechnicalVisit(username, convenioId, visitData) {
+        const newVisit = {
+            id: 'VT-' + Date.now(),
+            convenioId: String(convenioId).trim(),
+            usuario: username,
+            fecha: visitData.fecha || new Date().toLocaleDateString('es-CO'),
+            tipo: visitData.tipo || 'Avance de obra',
+            observaciones: visitData.observaciones || '',
+            compromisos: visitData.compromisos || '',
+            riesgos: visitData.riesgos || '',
+            lat: parseFloat(visitData.lat) || 0,
+            lng: parseFloat(visitData.lng) || 0,
+            photoCount: parseInt(visitData.photoCount) || 0,
+            photos: visitData.photos || []
+        };
+
+        // Guardar en caché local
+        const visits = this.getTechnicalVisits();
+        visits.unshift(newVisit);
+        this.saveTechnicalVisits(visits);
+
+        // Sincronizar con Google Drive en segundo plano (POST sin bloquear UI)
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXBFslIOCwVCyAae8-FG0VL5pqotLkjejwJhavm5xoGU4SlyVETwRkGCmDNVkcRPw4/exec";
+        try {
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: {
+                    "Content-Type": "text/plain"
+                },
+                body: JSON.stringify({
+                    action: "saveVisit",
+                    visit: newVisit
+                })
+            }).catch(e => console.error("Error asíncrono enviando visita a Drive:", e));
+        } catch (e) {
+            console.error("Error enviando visita a Google Drive:", e);
+        }
+
+        return newVisit;
+    }
+
+    /**
+     * Actualiza una visita técnica localmente y la sincroniza con Google Drive
      */
     static async updateTechnicalVisit(visitId, visitData) {
-        return new Promise((resolve) => {
-            // Simular retraso de red de 1s
-            setTimeout(() => {
-                const visits = this.getTechnicalVisits();
-                const idx = visits.findIndex(v => v.id === visitId);
-                if (idx !== -1) {
-                    visits[idx] = {
-                        ...visits[idx],
-                        fecha: visitData.fecha !== undefined ? visitData.fecha : visits[idx].fecha,
-                        tipo: visitData.tipo !== undefined ? visitData.tipo : visits[idx].tipo,
-                        observaciones: visitData.observaciones !== undefined ? visitData.observaciones : visits[idx].observaciones,
-                        compromisos: visitData.compromisos !== undefined ? visitData.compromisos : visits[idx].compromisos,
-                        riesgos: visitData.riesgos !== undefined ? visitData.riesgos : visits[idx].riesgos,
-                        lat: visitData.lat !== undefined ? parseFloat(visitData.lat) || 0 : visits[idx].lat,
-                        lng: visitData.lng !== undefined ? parseFloat(visitData.lng) || 0 : visits[idx].lng,
-                        photoCount: visitData.photos !== undefined ? visitData.photos.length : visits[idx].photoCount,
-                        photos: visitData.photos !== undefined ? visitData.photos : visits[idx].photos
-                    };
-                    this.saveTechnicalVisits(visits);
-                    resolve(visits[idx]);
-                } else {
-                    resolve(null);
-                }
-            }, 1000);
-        });
+        const visits = this.getTechnicalVisits();
+        const idx = visits.findIndex(v => v.id === visitId);
+        if (idx === -1) return null;
+
+        const updatedVisit = {
+            ...visits[idx],
+            fecha: visitData.fecha !== undefined ? visitData.fecha : visits[idx].fecha,
+            tipo: visitData.tipo !== undefined ? visitData.tipo : visits[idx].tipo,
+            observaciones: visitData.observaciones !== undefined ? visitData.observaciones : visits[idx].observaciones,
+            compromisos: visitData.compromisos !== undefined ? visitData.compromisos : visits[idx].compromisos,
+            riesgos: visitData.riesgos !== undefined ? visitData.riesgos : visits[idx].riesgos,
+            lat: visitData.lat !== undefined ? parseFloat(visitData.lat) || 0 : visits[idx].lat,
+            lng: visitData.lng !== undefined ? parseFloat(visitData.lng) || 0 : visits[idx].lng,
+            photoCount: visitData.photos !== undefined ? visitData.photos.length : visits[idx].photoCount,
+            photos: visitData.photos !== undefined ? visitData.photos : visits[idx].photos
+        };
+
+        // Guardar en caché local
+        visits[idx] = updatedVisit;
+        this.saveTechnicalVisits(visits);
+
+        // Sincronizar con Google Drive en segundo plano (POST sin bloquear UI)
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXBFslIOCwVCyAae8-FG0VL5pqotLkjejwJhavm5xoGU4SlyVETwRkGCmDNVkcRPw4/exec";
+        try {
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: {
+                    "Content-Type": "text/plain"
+                },
+                body: JSON.stringify({
+                    action: "saveVisit",
+                    visit: updatedVisit
+                })
+            }).catch(e => console.error("Error asíncrono actualizando visita en Drive:", e));
+        } catch (e) {
+            console.error("Error actualizando visita en Google Drive:", e);
+        }
+
+        return updatedVisit;
     }
 }
 

@@ -8286,6 +8286,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Sincronizar visitas técnicas en segundo plano desde Google Drive (visitas.json)
+    if (window.DIATDataService) {
+        window.DIATDataService.syncTechnicalVisitsFromServer().then(synced => {
+            if (synced) {
+                // Re-renderizar portal si está activo
+                const logged = getLoggedUser();
+                if (logged && typeof renderSupervisorPortal === 'function') {
+                    renderSupervisorPortal();
+                }
+            }
+        });
+    }
+
     // Ejecución inicial
     updateActiveFiltersBadge();
     updateMapActiveFiltersBadge();
