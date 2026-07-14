@@ -1395,7 +1395,7 @@
                                     <span id="mod-aporte-depto" style="font-weight:700;font-size:12px;color:#0F172A;"></span>
                                 </div>
                                 <div class="flex justify-between items-center">
-                                    <span style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Aporte Municipio</span>
+                                    <span id="mod-lbl-aporte-mun" style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Aporte Municipio</span>
                                     <span id="mod-aporte-mun" style="font-weight:700;font-size:12px;color:#0F172A;"></span>
                                 </div>
                                 <div class="flex justify-between items-center">
@@ -1714,8 +1714,8 @@
             <!-- Modal Header -->
             <div class="p-5 flex justify-between items-center bg-white shrink-0 z-10 border-b border-slate-200">
                 <div>
-                    <h2 style="font-size:16px;font-weight:800;color:#0F172A;letter-spacing:-0.01em;">Registrar Nueva Visita Técnica</h2>
-                    <p style="font-size:10px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;">Ingreso de informe de supervisión y geolocalización</p>
+                    <h2 id="modal-registrar-visita-title" style="font-size:16px;font-weight:800;color:#0F172A;letter-spacing:-0.01em;">Registrar Nueva Visita Técnica</h2>
+                    <p id="modal-registrar-visita-desc" style="font-size:10px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;">Ingreso de informe de supervisión y geolocalización</p>
                 </div>
                 <button type="button" id="btn-close-visit-modal" style="width:32px;height:32px;border-radius:99px;display:flex;align-items:center;justify-content:center;background:#F8FAFC;border:1.5px solid #E2E8F0;color:#94A3B8;cursor:pointer;transition:all 0.2s;" class="shrink-0">
                     <i class="fa-solid fa-xmark" style="font-size: 14px;"></i>
@@ -1913,7 +1913,10 @@
             </div>
 
             <!-- Modal Footer -->
-            <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0">
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 shrink-0">
+                <button type="button" id="btn-edit-visit-detail" class="px-5 py-2 bg-institutional-primary hover:bg-institutional-light text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-all hidden">
+                    <i class="fa-solid fa-pen-to-square mr-1"></i> Editar Visita
+                </button>
                 <button type="button" id="btn-close-visit-detail" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg text-xs uppercase tracking-wider transition-all">
                     Cerrar
                 </button>

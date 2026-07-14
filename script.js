@@ -1235,6 +1235,13 @@ async function generateProfessionalPDF(row) {
             12
         );
 
+        const muniStrPdf = String(row['MUNICIPIO'] || 'N/A').trim().toUpperCase();
+        const ejecStrPdf = String(row['CONVENIANTE EJECUTOR'] || '').trim().toUpperCase();
+        const isEjecutorDiferentePdf = (ejecStrPdf && ejecStrPdf !== muniStrPdf && ejecStrPdf !== 'N/A');
+        const labelAporteMunPdf = isEjecutorDiferentePdf 
+            ? `APORTE CONVENIANTE EJECUTOR (${String(row['CONVENIANTE EJECUTOR']).toUpperCase()})` 
+            : 'APORTE MUNICIPIO';
+
         const inversionCard = cleanCard([
             {
                 table: {
@@ -1249,7 +1256,7 @@ async function generateProfessionalPDF(row) {
                             { text: formatCurrency(row['APORTE DEPARTAMENTO']), fontSize: 8.5, bold: true, color: '#1A6B3C', fillColor: '#F0FDF4', alignment: 'right', margin: [5, 5, 5, 5] }
                         ],
                         [
-                            { text: 'APORTE MUNICIPIO', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
+                            { text: labelAporteMunPdf, fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
                             { text: formatCurrency(row['APORTE MUNICIPIO']), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
                         ],
                         [
@@ -3659,6 +3666,8 @@ function openModal(row) {
     
     // Configurar enlace del PDF
     document.getElementById('btn-open-source-pdf').href = `./assets/pdfs/${String(row['CONVENIO']).trim()}.pdf`;
+
+
     
     document.getElementById('mod-objeto').textContent = row['OBJETO'] || 'Sin descripción u objeto definido.';
     
@@ -3669,6 +3678,15 @@ function openModal(row) {
     document.getElementById('mod-valor-total').textContent = formatCurrency(row['VALOR TOTAL']);
     document.getElementById('mod-aporte-depto').textContent = formatCurrency(row['APORTE DEPARTAMENTO']);
     document.getElementById('mod-aporte-mun').textContent = formatCurrency(row['APORTE MUNICIPIO']);
+    const isEjecutorDiferente = (modalEjecStr && modalEjecStr !== modalMuniStr && modalEjecStr !== 'N/A');
+    const lblAporteMun = document.getElementById('mod-lbl-aporte-mun');
+    if (lblAporteMun) {
+        if (isEjecutorDiferente) {
+            lblAporteMun.textContent = `Aporte Conveniante Ejecutor (${row['CONVENIANTE EJECUTOR']})`;
+        } else {
+            lblAporteMun.textContent = 'Aporte Municipio';
+        }
+    }
     document.getElementById('mod-adicion-depto').textContent = formatCurrency(row['ADICION DEPARTAMENTO']);
     document.getElementById('mod-adicion-mun').textContent = formatCurrency(row['ADICION MUNICIPIO']);
     document.getElementById('mod-desembolsado-full').textContent = formatCurrency(row['VALOR TOTAL DESEMBOLSADO']);
@@ -3799,60 +3817,110 @@ function openModal(row) {
         domImg.src = src;
     };
 
-    fetch(`./assets/fotos/${n}/index.json`)
+    const removeLoading = () => {
+        const el = document.getElementById('mod-galeria-loading');
+        if (el) el.remove();
+    };
+
+    // Mostrar indicador de carga
+    let loadingEl = document.getElementById('mod-galeria-loading');
+    if (!loadingEl) {
+        loadingEl = document.createElement('div');
+        loadingEl.id = 'mod-galeria-loading';
+        loadingEl.className = 'flex flex-col items-center justify-center py-12 text-slate-400 gap-2 font-medium text-xs w-full';
+        loadingEl.innerHTML = `
+            <i class="fa-solid fa-spinner fa-spin text-lg text-white/50"></i>
+            <span class="text-white/50">Cargando fotos desde Google Drive...</span>
+        `;
+    }
+    const modGaleria = document.getElementById('mod-galeria');
+    if (modGaleria) {
+        modGaleria.appendChild(loadingEl);
+    }
+
+    const loadLocalStoragePhotos = () => {
+        try {
+            const localPhotos = JSON.parse(localStorage.getItem('diat_photos_' + n)) || [];
+            localPhotos.forEach(photo => {
+                if (photo && photo.base64 && galDespues) {
+                    addPhotoToGallery(photo.base64, 'Después', galDespues);
+                }
+            });
+        } catch (e) {
+            console.error("Error cargando fotos de localStorage:", e);
+        }
+        removeLoading();
+        updateGalleryVisibility();
+    };
+
+    const loadLocalPhotosFallback = () => {
+        fetch(`./assets/fotos/${n}/index.json`)
+            .then(r => r.ok ? r.json() : null)
+            .then(idx => {
+                if (idx) {
+                    const loadFromIndex = (fileList, container, label) => {
+                        if (!container || !fileList || fileList.length === 0) return;
+                        fileList.forEach(relPath => {
+                            addPhotoToGallery(`./assets/fotos/${n}/${relPath}`, label, container);
+                        });
+                    };
+                    loadFromIndex(idx.antes,   galAntes,   'Antes');
+                    loadFromIndex(idx.durante, galDurante, 'Durante');
+                    loadFromIndex(idx.despues, galDespues, 'Después');
+                } else {
+                    const extensions = ['jpg', 'jpeg', 'png', 'jfif', 'JPG', 'JPEG', 'PNG', 'JFIF'];
+                    const loadImages = (foldersList, container, label) => {
+                        if (!container) return;
+                        for (let i = 1; i <= 15; i++) {
+                            let found = false;
+                            const tryCombination = (fi, ei) => {
+                                if (found || fi >= foldersList.length) return;
+                                if (ei >= extensions.length) { tryCombination(fi + 1, 0); return; }
+                                const img = new Image();
+                                const src = `./assets/fotos/${n}/${foldersList[fi]}/${i}.${extensions[ei]}`;
+                                img.onload = () => { if (found) return; found = true; addPhotoToGallery(src, label, container); };
+                                img.onerror = () => tryCombination(fi, ei + 1);
+                                img.src = src;
+                            };
+                            tryCombination(0, 0);
+                        }
+                    };
+                    loadImages(['Antes', 'antes'], galAntes, 'Antes');
+                    loadImages(['Durante', 'durante'], galDurante, 'Durante');
+                    loadImages(['Despues', 'Después', 'despues', 'después'], galDespues, 'Después');
+                }
+            })
+            .catch(() => { /* sin fotos o sin acceso */ })
+            .finally(() => {
+                loadLocalStoragePhotos();
+            });
+    };
+
+    const appsScriptUrl = "https://script.google.com/macros/s/AKfycbwXBFslIOCwVCyAae8-FG0VL5pqotLkjejwJhavm5xoGU4SlyVETwRkGCmDNVkcRPw4/exec";
+    fetch(`${appsScriptUrl}?convenio=${encodeURIComponent(n)}`)
         .then(r => r.ok ? r.json() : null)
         .then(idx => {
-            if (idx) {
-                // Método principal: usar index.json con rutas relativas exactas
+            const hasPhotos = idx && ((idx.antes && idx.antes.length > 0) || (idx.durante && idx.durante.length > 0) || (idx.despues && idx.despues.length > 0));
+            if (hasPhotos) {
                 const loadFromIndex = (fileList, container, label) => {
                     if (!container || !fileList || fileList.length === 0) return;
-                    fileList.forEach(relPath => {
-                        addPhotoToGallery(`./assets/fotos/${n}/${relPath}`, label, container);
+                    fileList.forEach(url => {
+                        addPhotoToGallery(url, label, container);
                     });
                 };
                 loadFromIndex(idx.antes,   galAntes,   'Antes');
                 loadFromIndex(idx.durante, galDurante, 'Durante');
                 loadFromIndex(idx.despues, galDespues, 'Después');
+                loadLocalStoragePhotos();
             } else {
-                // Fallback: intento con nombres numéricos (1-15) para convenios sin index.json
-                const extensions = ['jpg', 'jpeg', 'png', 'jfif', 'JPG', 'JPEG', 'PNG', 'JFIF'];
-                const loadImages = (foldersList, container, label) => {
-                    if (!container) return;
-                    for (let i = 1; i <= 15; i++) {
-                        let found = false;
-                        const tryCombination = (fi, ei) => {
-                            if (found || fi >= foldersList.length) return;
-                            if (ei >= extensions.length) { tryCombination(fi + 1, 0); return; }
-                            const img = new Image();
-                            const src = `./assets/fotos/${n}/${foldersList[fi]}/${i}.${extensions[ei]}`;
-                            img.onload = () => { if (found) return; found = true; addPhotoToGallery(src, label, container); };
-                            img.onerror = () => tryCombination(fi, ei + 1);
-                            img.src = src;
-                        };
-                        tryCombination(0, 0);
-                    }
-                };
-                loadImages(['Antes', 'antes'], galAntes, 'Antes');
-                loadImages(['Durante', 'durante'], galDurante, 'Durante');
-                loadImages(['Despues', 'Después', 'despues', 'después'], galDespues, 'Después');
+                loadLocalPhotosFallback();
             }
         })
-        .catch(() => { /* sin fotos o sin acceso */ })
-        .finally(() => {
-            try {
-                const localPhotos = JSON.parse(localStorage.getItem('diat_photos_' + n)) || [];
-                localPhotos.forEach(photo => {
-                    if (photo && photo.base64 && galDespues) {
-                        addPhotoToGallery(photo.base64, 'Después', galDespues);
-                    }
-                });
-            } catch (e) {
-                console.error("Error cargando fotos de localStorage:", e);
-            }
-            updateGalleryVisibility();
+        .catch(() => {
+            loadLocalPhotosFallback();
         });
 
-    setTimeout(updateGalleryVisibility, 1500);
+    setTimeout(updateGalleryVisibility, 2000);
 }
 
 function closeModal() { document.getElementById('modal-detalle').classList.add('hidden'); document.body.style.overflow = 'auto'; }
@@ -6132,6 +6200,14 @@ const PORTAL_USERS = {
         role: 'Supervisor Técnico DIAT',
         email: 'jmarin@antioquia.gov.co',
         initials: 'JM'
+    },
+    'CQUIRAMAH': {
+        password: '1041610570',
+        name: 'Cristian Camilo Quirama Henao',
+        supervisorExcelName: 'CRISTIAN CAMILO QUIRAMA HENAO',
+        role: 'Supervisor Técnico DIAT',
+        email: 'cquirama@antioquia.gov.co',
+        initials: 'CQ'
     }
 };
 
@@ -6502,6 +6578,19 @@ function initSupervisorPortal() {
         document.getElementById('visit-detail-compromisos').textContent = v.compromisos || '--';
         document.getElementById('visit-detail-riesgos').textContent = v.riesgos || '--';
 
+        // Mostrar botón de editar si el usuario logueado es el creador de la visita
+        const loggedUser = getLoggedUser();
+        const btnEdit = document.getElementById('btn-edit-visit-detail');
+        if (btnEdit) {
+            if (loggedUser && v.usuario && loggedUser.name.trim().toUpperCase() === v.usuario.trim().toUpperCase()) {
+                btnEdit.classList.remove('hidden');
+                btnEdit.dataset.visitId = v.id;
+            } else {
+                btnEdit.classList.add('hidden');
+                delete btnEdit.dataset.visitId;
+            }
+        }
+
         // Cargar fotos
         const photosContainer = document.getElementById('visit-detail-photos');
         const emptyPhotos = document.getElementById('visit-detail-photos-empty');
@@ -6552,6 +6641,69 @@ function initSupervisorPortal() {
         }
     });
 
+    window.editingVisitId = null;
+
+    window.openEditVisitModal = function(visitId) {
+        const visits = window.DIATDataService.getTechnicalVisits();
+        const v = visits.find(visit => visit.id === visitId);
+        if (!v) return;
+
+        window.editingVisitId = v.id;
+
+        // Cambiar título del modal
+        const titleEl = document.getElementById('modal-registrar-visita-title');
+        const descEl = document.getElementById('modal-registrar-visita-desc');
+        if (titleEl) titleEl.textContent = "Editar Visita Técnica";
+        if (descEl) descEl.textContent = "Modificación de informe de supervisión y geolocalización";
+
+        // Poblar select
+        const selectEl = document.getElementById('visit-convenio-select');
+        if (selectEl) {
+            selectEl.innerHTML = '';
+            const opt = document.createElement('option');
+            opt.value = v.convenioId;
+            opt.textContent = `Convenio ${v.convenioId}`;
+            selectEl.appendChild(opt);
+            selectEl.disabled = true;
+        }
+
+        // Poblar campos
+        document.getElementById('visit-fecha').value = toDateInputValue(v.fecha);
+        document.getElementById('visit-tipo').value = v.tipo || 'Avance de obra';
+        document.getElementById('visit-obs').value = v.observaciones || '';
+        document.getElementById('visit-compromisos').value = v.compromisos || '';
+        document.getElementById('visit-riesgos').value = v.riesgos || '';
+        
+        window.visitUploadedPhotos = v.photos || [];
+        renderVisitPhotoPreviews();
+
+        const lat = parseFloat(v.lat) || 0;
+        const lng = parseFloat(v.lng) || 0;
+        document.getElementById('visit-gps-lat').value = lat !== 0 ? lat.toFixed(6) : '';
+        document.getElementById('visit-gps-lng').value = lng !== 0 ? lng.toFixed(6) : '';
+
+        // Mostrar modal
+        document.getElementById('modal-registrar-visita').style.display = 'flex';
+        document.getElementById('modal-registrar-visita').classList.remove('hidden');
+
+        // Inicializar mapa
+        setTimeout(() => {
+            initVisitMap(lat, lng);
+        }, 200);
+    };
+
+    const btnEditVisitDetail = document.getElementById('btn-edit-visit-detail');
+    if (btnEditVisitDetail) {
+        btnEditVisitDetail.addEventListener('click', () => {
+            const visitId = btnEditVisitDetail.dataset.visitId;
+            if (visitId) {
+                document.getElementById('modal-detalle-visita').style.display = 'none';
+                document.getElementById('modal-detalle-visita').classList.add('hidden');
+                window.openEditVisitModal(visitId);
+            }
+        });
+    }
+
     // 8. Guardar Visita en el nuevo modal independiente
     const btnSaveVisit = document.getElementById('btn-save-visit');
     if (btnSaveVisit) {
@@ -6580,20 +6732,35 @@ function initSupervisorPortal() {
 
             btnSaveVisit.disabled = true;
             const oldHtml = btnSaveVisit.innerHTML;
-            btnSaveVisit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Registrando...';
 
-            // Guardar visita técnica
-            await window.DIATDataService.addTechnicalVisit(username, convenioId, {
-                fecha: fechaVal ? toDateInputValue(fechaVal) : undefined,
-                tipo,
-                observaciones,
-                compromisos,
-                riesgos,
-                lat,
-                lng,
-                photoCount: window.visitUploadedPhotos.length,
-                photos: window.visitUploadedPhotos
-            });
+            const isEdit = !!window.editingVisitId;
+            if (isEdit) {
+                btnSaveVisit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Guardando...';
+                await window.DIATDataService.updateTechnicalVisit(window.editingVisitId, {
+                    fecha: fechaVal ? toDateInputValue(fechaVal) : undefined,
+                    tipo,
+                    observaciones,
+                    compromisos,
+                    riesgos,
+                    lat,
+                    lng,
+                    photos: window.visitUploadedPhotos
+                });
+            } else {
+                btnSaveVisit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Registrando...';
+                // Guardar visita técnica
+                await window.DIATDataService.addTechnicalVisit(username, convenioId, {
+                    fecha: fechaVal ? toDateInputValue(fechaVal) : undefined,
+                    tipo,
+                    observaciones,
+                    compromisos,
+                    riesgos,
+                    lat,
+                    lng,
+                    photoCount: window.visitUploadedPhotos.length,
+                    photos: window.visitUploadedPhotos
+                });
+            }
 
             // Si las coordenadas son válidas, actualizar la ubicación del convenio en la base de datos
             if (lat !== 0 && lng !== 0) {
@@ -6617,10 +6784,19 @@ function initSupervisorPortal() {
             if (document.getElementById('visit-foto-input')) document.getElementById('visit-foto-input').value = '';
             renderVisitPhotoPreviews();
 
+            // Restaurar estado del selector de convenios
+            const selectEl = document.getElementById('visit-convenio-select');
+            if (selectEl) selectEl.disabled = false;
+
             document.getElementById('modal-registrar-visita').style.display = 'none';
             document.getElementById('modal-registrar-visita').classList.add('hidden');
 
-            alertToast('Visita Registrada', 'La visita técnica ha sido guardada con éxito.');
+            if (isEdit) {
+                alertToast('Visita Actualizada', 'La visita técnica ha sido modificada con éxito.');
+            } else {
+                alertToast('Visita Registrada', 'La visita técnica ha sido guardada con éxito.');
+            }
+            window.editingVisitId = null;
 
             // Recargar datos y fusionar
             if (window.baseExcelData && window.DIATDataService) {
@@ -6659,6 +6835,12 @@ function initSupervisorPortal() {
                 return;
             }
 
+            window.editingVisitId = null;
+            const titleEl = document.getElementById('modal-registrar-visita-title');
+            const descEl = document.getElementById('modal-registrar-visita-desc');
+            if (titleEl) titleEl.textContent = "Registrar Nueva Visita Técnica";
+            if (descEl) descEl.textContent = "Ingreso de informe de supervisión y geolocalización";
+
             // Resetear inputs del formulario de visita
             document.getElementById('visit-fecha').value = toDateInputValue('');
             document.getElementById('visit-tipo').value = 'Avance de obra';
@@ -6671,13 +6853,16 @@ function initSupervisorPortal() {
 
             // Poblar dropdown select
             const selectEl = document.getElementById('visit-convenio-select');
-            selectEl.innerHTML = '';
-            supervisorRows.forEach((r, idx) => {
-                const opt = document.createElement('option');
-                opt.value = String(r['CONVENIO']).trim();
-                opt.textContent = `Convenio ${r['CONVENIO']} - ${r['MUNICIPIO'] || ''} (${r['ESTADO CONVENIO'] || ''})`;
-                selectEl.appendChild(opt);
-            });
+            if (selectEl) {
+                selectEl.disabled = false;
+                selectEl.innerHTML = '';
+                supervisorRows.forEach((r, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = String(r['CONVENIO']).trim();
+                    opt.textContent = `Convenio ${r['CONVENIO']} - ${r['MUNICIPIO'] || ''} (${r['ESTADO CONVENIO'] || ''})`;
+                    selectEl.appendChild(opt);
+                });
+            }
 
             // Seleccionar el primero por defecto y cargar ubicación
             const firstRow = supervisorRows[0];
@@ -6920,10 +7105,16 @@ function checkAuthStatus() {
         if (headerName) headerName.textContent = user.name;
         if (headerRole) headerRole.textContent = user.role;
         if (headerAvatarImg) {
-            headerAvatarImg.src = `https://ui-avatars.com/api/?name=Jonathan+Marin&background=0B5640&color=fff&bold=true`;
+            headerAvatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=0B5640&color=fff&bold=true`;
         }
         if (ddName) ddName.textContent = user.name;
         if (ddRole) ddRole.textContent = user.role;
+
+        // Actualizar avatar y título de bienvenida del portal
+        const portalAvatar = document.getElementById('portal-user-avatar');
+        if (portalAvatar) portalAvatar.textContent = user.initials;
+        const portalWelcome = document.getElementById('portal-welcome-title');
+        if (portalWelcome) portalWelcome.textContent = `Bienvenido, ${user.name}`;
 
         if (unauthorized) unauthorized.classList.add('hidden');
         if (authorized) authorized.classList.remove('hidden');
@@ -7956,10 +8147,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Inicializar dropdowns con buscador personalizados
-    initSearchableDropdown('filter-municipio', 'Seleccionar Municipio...');
+    initSearchableDropdown('filter-vigencia', 'Seleccionar Vigencia...');
     initSearchableDropdown('filter-supervisor', 'Seleccionar Supervisor...');
-    initSearchableDropdown('map-filter-municipio', 'Seleccionar Municipio...');
+    initSearchableDropdown('filter-indicador', 'Seleccionar Indicador...');
+    initSearchableDropdown('filter-clasificacion', 'Seleccionar Clasificación...');
+    initSearchableDropdown('filter-municipio', 'Seleccionar Municipio...');
+    initSearchableDropdown('filter-subregion', 'Seleccionar Subregión...');
+    initSearchableDropdown('filter-estado', 'Seleccionar Estado...');
+    initSearchableDropdown('filter-convenio-num', 'Seleccionar N° Convenio...');
+
+    initSearchableDropdown('map-filter-vigencia', 'Seleccionar Vigencia...');
     initSearchableDropdown('map-filter-supervisor', 'Seleccionar Supervisor...');
+    initSearchableDropdown('map-filter-indicador', 'Seleccionar Indicador...');
+    initSearchableDropdown('map-filter-clasificacion', 'Seleccionar Clasificación...');
+    initSearchableDropdown('map-filter-municipio', 'Seleccionar Municipio...');
+    initSearchableDropdown('map-filter-subregion', 'Seleccionar Subregión...');
+    initSearchableDropdown('map-filter-estado', 'Seleccionar Estado...');
+    initSearchableDropdown('map-filter-convenio-num', 'Seleccionar N° Convenio...');
 
     // Contador de filtros activos
     const mainFilters = [

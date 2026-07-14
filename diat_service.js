@@ -262,6 +262,37 @@ class DIATDataService {
             }, 1000);
         });
     }
+
+    /**
+     * Actualiza una visita técnica existente en el sistema local
+     */
+    static async updateTechnicalVisit(visitId, visitData) {
+        return new Promise((resolve) => {
+            // Simular retraso de red de 1s
+            setTimeout(() => {
+                const visits = this.getTechnicalVisits();
+                const idx = visits.findIndex(v => v.id === visitId);
+                if (idx !== -1) {
+                    visits[idx] = {
+                        ...visits[idx],
+                        fecha: visitData.fecha !== undefined ? visitData.fecha : visits[idx].fecha,
+                        tipo: visitData.tipo !== undefined ? visitData.tipo : visits[idx].tipo,
+                        observaciones: visitData.observaciones !== undefined ? visitData.observaciones : visits[idx].observaciones,
+                        compromisos: visitData.compromisos !== undefined ? visitData.compromisos : visits[idx].compromisos,
+                        riesgos: visitData.riesgos !== undefined ? visitData.riesgos : visits[idx].riesgos,
+                        lat: visitData.lat !== undefined ? parseFloat(visitData.lat) || 0 : visits[idx].lat,
+                        lng: visitData.lng !== undefined ? parseFloat(visitData.lng) || 0 : visits[idx].lng,
+                        photoCount: visitData.photos !== undefined ? visitData.photos.length : visits[idx].photoCount,
+                        photos: visitData.photos !== undefined ? visitData.photos : visits[idx].photos
+                    };
+                    this.saveTechnicalVisits(visits);
+                    resolve(visits[idx]);
+                } else {
+                    resolve(null);
+                }
+            }, 1000);
+        });
+    }
 }
 
 // Exponer la clase globalmente para su uso en index.html y script.js
