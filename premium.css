@@ -86,6 +86,10 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+.map-container-wrapper {
+    height: 780px;
+}
+
 /* Tipografía global */
 h1, h2, h3, h4, h5, h6,
 .dashboard-title,
@@ -1339,3 +1343,317 @@ td .convenio-id,
     0% { background-position: 1rem 0; }
     100% { background-position: 0 0; }
 }
+
+/* ============================================================
+   25. RESPONSIVIDAD MÓVIL Y OPTIMIZACIÓN DE ALINEACIÓN
+   ============================================================ */
+
+/* Prevenir tap highlights en móviles */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch scrolling suave */
+.custom-scrollbar,
+.table-container-scroll,
+.overflow-x-auto,
+.overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Reglas para pantallas medianas y móviles (< 1024px) */
+@media (max-width: 1023px) {
+    .sidebar-nav {
+        box-shadow: 0 0 40px rgba(0,0,0,0.3);
+    }
+}
+
+/* Reglas para tablets y teléfonos (< 768px) */
+@media (max-width: 768px) {
+    /* Ajuste del área de contenido principal */
+    main.custom-scrollbar {
+        padding: 14px 12px !important;
+    }
+
+    /* Ajuste de filtros */
+    .filter-section-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+    
+    .filter-section-title {
+        font-size: 13px !important;
+    }
+
+    .btn-filter-toggle,
+    .btn-pdf,
+    .btn-reset,
+    .btn-export {
+        padding: 8px 10px !important;
+        font-size: 11px !important;
+    }
+
+    /* KPI Cards scaling */
+    .kpi-card {
+        padding: 12px 14px !important;
+    }
+
+    .kpi-card .kpi-icon {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 13px !important;
+    }
+
+    .kpi-card .kpi-label {
+        font-size: 10px !important;
+    }
+
+    .kpi-card .kpi-value {
+        font-size: 20px !important;
+    }
+
+    .kpi-value-large {
+        font-size: 16px !important;
+    }
+
+    .kpi-trend {
+        font-size: 9px !important;
+        padding: 2px 6px !important;
+        white-space: nowrap !important;
+    }
+
+    /* Directing & Tables */
+    .table-section .p-5 {
+        padding: 12px 14px !important;
+    }
+
+    .sticky-header th {
+        padding: 10px 12px !important;
+        font-size: 9px !important;
+    }
+
+    .table-container-scroll td {
+        padding: 10px 12px !important;
+        font-size: 11px !important;
+    }
+
+    /* Paginación de tabla */
+    .table-section .p-4.flex {
+        flex-direction: column !important;
+        gap: 10px !important;
+        align-items: center !important;
+    }
+
+    .btn-page {
+        padding: 6px 10px !important;
+        font-size: 10px !important;
+    }
+
+    /* Mapa interactivo responsive */
+    .map-container-wrapper {
+        height: 480px !important;
+    }
+
+    .map-search-container {
+        left: 8px !important;
+        right: 8px !important;
+        width: auto !important;
+        top: 8px !important;
+    }
+
+    .map-search-bar input {
+        font-size: 12px !important;
+        padding: 8px 12px 8px 34px !important;
+    }
+
+    .map-layer-panel {
+        top: 60px !important;
+        right: 8px !important;
+        left: auto !important;
+        width: 220px !important;
+        max-height: 280px !important;
+        overflow-y: auto !important;
+    }
+
+    /* Modales */
+    .modal-overlay > div {
+        max-height: 94dvh !important;
+        margin: 8px !important;
+    }
+}
+
+/* Reglas para teléfonos estrechos (< 480px) */
+@media (max-width: 480px) {
+    main.custom-scrollbar {
+        padding: 10px 8px !important;
+    }
+
+    .header-search-input {
+        width: 120px !important;
+        font-size: 11px !important;
+        padding: 6px 12px 6px 32px !important;
+    }
+
+    .header-search-icon {
+        font-size: 11px !important;
+        left: 10px !important;
+    }
+
+    /* Resumen de avance del plan */
+    .plan-promedio-section {
+        padding: 14px 12px !important;
+    }
+
+    .plan-promedio-marker {
+        font-size: 8px !important;
+    }
+
+    /* Tarjetas KPI en 2 columnas muy compactas */
+    .kpi-card {
+        padding: 10px 10px !important;
+    }
+
+    .kpi-card .kpi-value {
+        font-size: 18px !important;
+    }
+
+    .kpi-value-large {
+        font-size: 14px !important;
+    }
+
+    /* Desplegable menú usuario */
+    .user-menu-dropdown {
+        width: 200px !important;
+        right: -8px !important;
+    }
+}
+
+/* ============================================================
+   26. BOTÓN REFRESCAR Y ANIMACIÓN DE CONFIRMACIÓN
+   ============================================================ */
+
+.btn-header-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: #FFFFFF;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-full);
+    padding: 6px 14px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(15,23,42,0.04);
+    user-select: none;
+    white-space: nowrap;
+}
+
+.btn-header-refresh:hover {
+    background: #E8F5EE;
+    border-color: #1A6B3C;
+    color: #1A6B3C;
+    box-shadow: 0 4px 14px rgba(26, 107, 60, 0.15);
+    transform: translateY(-1px);
+}
+
+.btn-header-refresh:active {
+    transform: translateY(0) scale(0.97);
+}
+
+.btn-header-refresh.is-success {
+    background: #E8F5EE !important;
+    border-color: #10B981 !important;
+    color: #018D38 !important;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Animación de destello al actualizar contenido */
+@keyframes dashboardRefreshPulse {
+    0% {
+        opacity: 0.35;
+        transform: scale(0.994);
+        filter: blur(2px);
+    }
+    60% {
+        opacity: 0.9;
+        filter: blur(0px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+    }
+}
+
+.refresh-flash-anim {
+    animation: dashboardRefreshPulse 0.55s cubic-bezier(0.16, 1, 0.3, 1) ease-out !important;
+}
+
+/* ============================================================
+   27. MAPA MINIMALISTA Y MÁSCARA TERRITORIAL
+   ============================================================ */
+
+/* Rediseño minimalista de la barra de búsqueda del mapa */
+.map-search-bar {
+    background: rgba(255, 255, 255, 0.88) !important;
+    backdrop-filter: blur(16px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+    border: 1px solid rgba(226, 232, 240, 0.9) !important;
+    border-radius: 14px !important;
+    padding: 8px 14px !important;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08) !important;
+    transition: all 0.25s ease !important;
+}
+
+.map-search-bar:focus-within {
+    background: #FFFFFF !important;
+    border-color: #1A6B3C !important;
+    box-shadow: 0 6px 24px rgba(26, 107, 60, 0.16) !important;
+}
+
+/* Rediseño minimalista del panel flotante de capas */
+.map-layer-panel {
+    background: rgba(255, 255, 255, 0.88) !important;
+    backdrop-filter: blur(16px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+    border: 1px solid rgba(226, 232, 240, 0.9) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 30px rgba(15, 23, 42, 0.09) !important;
+    width: 230px !important;
+}
+
+.layer-panel-header {
+    background: linear-gradient(135deg, #163D26 0%, #0D2718 100%) !important;
+    padding: 8px 12px !important;
+    border-radius: 15px 15px 0 0 !important;
+}
+
+.layer-item {
+    font-size: 11px !important;
+    padding: 6px 8px !important;
+    border-radius: 8px !important;
+    transition: background 0.15s ease !important;
+}
+
+.layer-item:hover {
+    background: rgba(26, 107, 60, 0.06) !important;
+}
+
+/* Rediseño del popup flotante de mapa */
+.map-info-popup .maplibregl-popup-content {
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(226, 232, 240, 0.9) !important;
+    box-shadow: 0 12px 36px rgba(15, 23, 42, 0.12) !important;
+}
+
+/* Ajustes gráficos ligeros y minimalistas */
+.chart-card {
+    border-radius: 18px !important;
+}
+
+

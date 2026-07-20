@@ -134,10 +134,10 @@
         <div id="main-content-container" class="flex-1 flex flex-col h-full overflow-hidden">
 
             <!-- CABECERA SUPERIOR (HEADER) -->
-            <header class="flex items-center justify-between px-6 py-3 sticky top-0 z-40 shrink-0 no-print">
-                <div class="flex items-center gap-3">
+            <header class="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 sticky top-0 z-40 shrink-0 no-print">
+                <div class="flex items-center gap-2 sm:gap-3 shrink-0">
                     <!-- Botón Hamburguesa Móvil -->
-                    <button id="btn-sidebar-toggle" class="lg:hidden header-icon-btn">
+                    <button id="btn-sidebar-toggle" class="lg:hidden header-icon-btn shrink-0">
                         <i class="fa-solid fa-bars text-sm"></i>
                     </button>
                     <!-- Barra de búsqueda -->
@@ -147,19 +147,25 @@
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2 sm:gap-3">
+                <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                    <!-- Botón Refrescar / Actualizar Datos (al costado izquierdo de la fecha de corte) -->
+                    <button id="btn-refresh-dashboard" type="button" class="btn-header-refresh" title="Refrescar datos del Excel conservando filtros y posición">
+                        <i class="fa-solid fa-rotate-right" id="btn-refresh-icon"></i>
+                        <span id="btn-refresh-text" class="hidden sm:inline">Actualizar</span>
+                    </button>
+
                     <!-- Fecha de corte -->
-                    <div class="header-date-badge hidden md:flex">
+                    <div class="header-date-badge hidden md:flex items-center">
                         <i class="fa-regular fa-calendar-check" style="color:#0B5640;"></i>
-                        Corte: <span id="fecha-actualizacion" class="ml-1 font-bold" style="color:#0F172A;">Cargando...</span>
+                        <span class="ml-1">Corte:</span> <span id="fecha-actualizacion" class="ml-1 font-bold" style="color:#0F172A;">Cargando...</span>
                     </div>
 
-                    <div style="width:1px;height:24px;background:#E2E8F0;"></div>
+                    <div style="width:1px;height:24px;background:#E2E8F0;" class="hidden sm:block"></div>
 
                     <!-- Perfil de usuario -->
-                    <div class="relative">
+                    <div class="relative shrink-0">
                         <div class="header-profile cursor-pointer" id="header-user-profile">
-                            <div class="header-profile-avatar">
+                            <div class="header-profile-avatar shrink-0">
                                 <img id="header-user-avatar-img" src="./assets/perfil_equipo.jpg" alt="Perfil" class="w-full h-full object-cover"
                                     onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name=DIAT&background=0B5640&color=fff&bold=true';">
                             </div>
@@ -171,7 +177,7 @@
                         </div>
                         
                         <!-- Menú Desplegable de Usuario -->
-                        <div id="user-menu-dropdown" class="user-menu-dropdown hidden" style="position:absolute;right:0;top:calc(100% + 10px);width:220px;background:#fff;border:1.5px solid #E2E8F0;border-radius:16px;box-shadow:0 12px 30px rgba(15,23,42,0.08);z-index:100;overflow:hidden;">
+                        <div id="user-menu-dropdown" class="user-menu-dropdown hidden" style="position:absolute;right:0;top:calc(100% + 10px);width:220px;max-width:calc(100vw - 24px);background:#fff;border:1.5px solid #E2E8F0;border-radius:16px;box-shadow:0 12px 30px rgba(15,23,42,0.08);z-index:100;overflow:hidden;">
                             <div style="padding:14px;border-bottom:1px solid #E2E8F0;background:#F8FAFC;">
                                 <p id="dropdown-user-name" style="font-size:12px;font-weight:800;color:#0F172A;margin:0;">Supervisión DIAT</p>
                                 <p id="dropdown-user-role" style="font-size:10px;font-weight:600;color:#94A3B8;text-transform:uppercase;margin:2px 0 0;">Equipo Técnico</p>
@@ -202,24 +208,24 @@
 
             <!-- SECCIÓN DE FILTROS -->
             <section class="filter-section">
-                <div class="filter-section-header">
-                    <div class="flex items-center gap-2">
+                <div class="filter-section-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div class="flex items-center gap-2 flex-wrap">
                         <div class="filter-section-title">
                             <i class="fa-solid fa-filter"></i>
                             Filtros de Búsqueda
                         </div>
                         <span id="active-filters-badge" class="hidden px-2 py-0.5 text-[10px] font-extrabold bg-teal-50 text-teal-800 rounded-full border border-teal-200/50">0 activos</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button id="btn-toggle-filters" class="btn-filter-toggle flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider transition-all border border-slate-200/60">
+                    <div class="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                        <button id="btn-toggle-filters" class="btn-filter-toggle flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider transition-all border border-slate-200/60 flex-1 sm:flex-initial justify-center">
                             <i class="fa-solid fa-sliders"></i>
                             <span>Filtros Avanzados</span>
                             <i class="fa-solid fa-chevron-down transition-transform duration-200" id="btn-toggle-filters-icon"></i>
                         </button>
-                        <button id="btn-export-resumen-pdf" class="btn-pdf">
+                        <button id="btn-export-resumen-pdf" class="btn-pdf flex-1 sm:flex-initial justify-center">
                             <i class="fa-solid fa-file-pdf"></i> Exportar Ficha PDF
                         </button>
-                        <button id="btn-reset-filters" class="btn-reset">
+                        <button id="btn-reset-filters" class="btn-reset flex-1 sm:flex-initial justify-center">
                             <i class="fa-solid fa-eraser"></i> Limpiar Filtros
                         </button>
                     </div>
@@ -352,68 +358,68 @@
             <!-- SUMMARY CARD (convenio seleccionado — oculto por defecto) -->
             <div id="summary-card-container" class="hidden">
                 <div class="bg-white overflow-hidden flex flex-col lg:flex-row" style="border-radius:20px;border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
-                    <div class="p-8 lg:w-5/12 flex flex-col justify-center relative z-10">
+                    <div class="p-4 sm:p-8 lg:w-5/12 flex flex-col justify-center relative z-10">
                         <span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:#94A3B8;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
                             <i class="fa-solid fa-bolt" style="color:#F28E18;"></i> Vista Detallada Rápida
                         </span>
-                        <div class="flex justify-between items-start w-full gap-3">
-                            <h2 style="font-size:32px;font-weight:900;color:#0F172A;letter-spacing:-0.02em;" id="summary-num">--</h2>
-                            <button id="btn-abrir-ficha" class="btn-gestion mt-2" style="padding:10px 20px;font-size:12px;">
+                        <div class="flex flex-wrap justify-between items-start w-full gap-2 sm:gap-3">
+                            <h2 style="font-size:24px;font-weight:900;color:#0F172A;letter-spacing:-0.02em;" class="sm:text-3xl" id="summary-num">--</h2>
+                            <button id="btn-abrir-ficha" class="btn-gestion" style="padding:8px 14px;font-size:11px;">
                                 <i class="fa-solid fa-folder-open"></i> Ficha Técnica
                             </button>
                         </div>
-                        <p style="color:#0B5640;font-size:13px;font-weight:600;margin-top:8px;margin-bottom:20px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+                        <p style="color:#0B5640;font-size:12px;font-weight:600;margin-top:8px;margin-bottom:16px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
                             <span><i class="fa-solid fa-location-dot mr-1.5"></i><span id="summary-municipio">MUNICIPIO</span></span>
-                            <span id="summary-ejecutor-container" class="hidden" style="font-size:11px;background:rgba(11, 86, 64,0.08);color:#0B5640;padding:2px 10px;border-radius:99px;border:1px solid rgba(11, 86, 64,0.2);">
+                            <span id="summary-ejecutor-container" class="hidden" style="font-size:10px;background:rgba(11, 86, 64,0.08);color:#0B5640;padding:2px 8px;border-radius:99px;border:1px solid rgba(11, 86, 64,0.2);">
                                 <i class="fa-solid fa-building-user mr-1"></i><span id="summary-ejecutor">EJECUTOR</span>
                             </span>
                         </p>
-                        <div class="grid grid-cols-2 gap-4 mt-auto">
-                            <div style="background:#F8FAFC;padding:16px;border-radius:14px;border:1.5px solid #E2E8F0;">
+                        <div class="grid grid-cols-2 gap-3 mt-auto">
+                            <div style="background:#F8FAFC;padding:12px;border-radius:14px;border:1.5px solid #E2E8F0;">
                                 <p id="lbl-alcance" style="font-size:9px;color:#94A3B8;text-transform:uppercase;font-weight:700;letter-spacing:0.08em;margin-bottom:4px;">Contratado</p>
-                                <p style="font-size:20px;font-weight:800;color:#0F172A;"><span id="summary-alcance">0</span> <span id="unit-alcance" style="font-size:11px;font-weight:400;color:#94A3B8;">m</span></p>
+                                <p style="font-size:18px;font-weight:800;color:#0F172A;"><span id="summary-alcance">0</span> <span id="unit-alcance" style="font-size:11px;font-weight:400;color:#94A3B8;">m</span></p>
                             </div>
-                            <div style="background:#F8FAFC;padding:16px;border-radius:14px;border:1.5px solid #E2E8F0;">
+                            <div style="background:#F8FAFC;padding:12px;border-radius:14px;border:1.5px solid #E2E8F0;">
                                 <p id="lbl-ejecutado" style="font-size:9px;color:#94A3B8;text-transform:uppercase;font-weight:700;letter-spacing:0.08em;margin-bottom:4px;">Ejecutado</p>
-                                <p style="font-size:20px;font-weight:800;color:#0F172A;"><span id="summary-ejecutado">0</span> <span id="unit-ejecutado" style="font-size:11px;font-weight:400;color:#94A3B8;">m</span></p>
+                                <p style="font-size:18px;font-weight:800;color:#0F172A;"><span id="summary-ejecutado">0</span> <span id="unit-ejecutado" style="font-size:11px;font-weight:400;color:#94A3B8;">m</span></p>
                             </div>
                         </div>
                     </div>
 
-                    <div class="p-6 lg:w-3/12 flex flex-col items-center justify-center gap-5 relative z-10" style="border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0;">
-                        <div class="flex items-center justify-center gap-4 flex-wrap w-full">
-                            <div class="relative w-32 h-32 flex items-center justify-center shrink-0">
+                    <div class="p-4 sm:p-6 lg:w-3/12 flex flex-col items-center justify-center gap-4 relative z-10" style="border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0;">
+                        <div class="flex items-center justify-center gap-3 sm:gap-4 flex-nowrap w-full">
+                            <div class="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center shrink-0">
                                 <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                                     <circle cx="50" cy="50" r="40" stroke="#E2E8F0" stroke-width="8" fill="none" />
                                     <circle id="gauge-fisico" cx="50" cy="50" r="40" stroke="#0B5640" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
                                 </svg>
                                 <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span id="summary-fisico-txt" style="font-size:22px;font-weight:900;color:#0F172A;line-height:1;">0%</span>
+                                    <span id="summary-fisico-txt" style="font-size:18px;font-weight:900;color:#0F172A;line-height:1;" class="sm:text-xl">0%</span>
                                     <span style="font-size:8px;color:#94A3B8;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-top:2px;">Físico</span>
                                 </div>
                             </div>
-                            <div class="relative w-32 h-32 flex items-center justify-center shrink-0">
+                            <div class="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center shrink-0">
                                 <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                                     <circle cx="50" cy="50" r="40" stroke="#E2E8F0" stroke-width="8" fill="none" />
                                     <circle id="gauge-financiero" cx="50" cy="50" r="40" stroke="#3561AB" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="251.2" class="transition-all duration-1000 ease-out" stroke-linecap="round" />
                                 </svg>
                                 <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span id="summary-financiero-txt" style="font-size:22px;font-weight:900;color:#0F172A;line-height:1;">0%</span>
+                                    <span id="summary-financiero-txt" style="font-size:18px;font-weight:900;color:#0F172A;line-height:1;" class="sm:text-xl">0%</span>
                                     <span style="font-size:8px;color:#94A3B8;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-top:2px;">Financiero</span>
                                 </div>
                             </div>
                         </div>
-                        <div class="w-full pt-4 flex items-center gap-3" style="border-top:1px solid #E2E8F0;">
-                            <img id="summary-supervisor-img" src="" class="w-14 h-14 rounded-full object-cover shrink-0" style="border:2px solid #E2E8F0;"
+                        <div class="w-full pt-3 flex items-center gap-3" style="border-top:1px solid #E2E8F0;">
+                            <img id="summary-supervisor-img" src="" class="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover shrink-0" style="border:2px solid #E2E8F0;"
                                 onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name=SUP&background=0F766E&color=fff&bold=true';">
                             <div class="overflow-hidden">
-                                <p style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;">Supervisor</p>
+                                <p style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;">Supervisor</p>
                                 <p id="summary-supervisor-name" style="font-size:11px;font-weight:700;color:#0F172A;line-height:1.3;">--</p>
                             </div>
                         </div>
                     </div>
 
-                    <div class="lg:w-4/12 relative min-h-[200px] lg:min-h-full z-10" style="background:#F8FAFC;">
+                    <div class="lg:w-4/12 relative min-h-[180px] sm:min-h-[220px] lg:min-h-full z-10" style="background:#F8FAFC;">
                         <div id="summary-map" class="absolute inset-0 w-full h-full z-0"></div>
                         <div id="summary-map-overlay" class="absolute inset-0 flex items-center justify-center z-10 backdrop-blur-sm transition-opacity duration-300" style="background:rgba(248,250,252,0.85);">
                             <span id="summary-map-msg" style="font-size:12px;font-weight:600;color:#94A3B8;display:flex;align-items:center;gap:6px;">
@@ -707,9 +713,9 @@
                         <tbody id="table-body" style="color:#0F172A;" class="divide-y" style="border-color:#F1F5F9;"></tbody>
                     </table>
                 </div>
-                <div class="p-4 flex items-center justify-between" style="border-top:1.5px solid #E2E8F0;background:#F8FAFC;">
-                    <span style="font-size:10px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;" id="table-info">Mostrando registros...</span>
-                    <div class="flex gap-2">
+                <div class="p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3" style="border-top:1.5px solid #E2E8F0;background:#F8FAFC;">
+                    <span style="font-size:10px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;" id="table-info" class="text-center sm:text-left">Mostrando registros...</span>
+                    <div class="flex gap-1.5 sm:gap-2 flex-wrap justify-center">
                         <button id="btn-first" class="btn-page">&lt;&lt; Primera</button>
                         <button id="btn-prev" class="btn-page">Anterior</button>
                         <button id="btn-next" class="btn-page">Siguiente</button>
@@ -800,7 +806,7 @@
             <div class="hidden"><h3 id="kpi-map-area">0</h3></div>
 
             <!-- MAPA PRINCIPAL -->
-            <div id="map-wrapper" class="map-container-wrapper bg-white flex flex-col overflow-hidden relative" style="border:1.5px solid #E2E8F0;border-radius:20px;box-shadow:0 8px 24px rgba(15,23,42,0.06);height:780px;transition: all 0.3s ease;">
+            <div id="map-wrapper" class="map-container-wrapper bg-white flex flex-col overflow-hidden relative" style="border:1.5px solid #E2E8F0;border-radius:20px;box-shadow:0 8px 24px rgba(15,23,42,0.06);transition: all 0.3s ease;">
                 <div class="flex justify-between items-center shrink-0 z-10" style="padding:16px 20px;border-bottom:1.5px solid #E2E8F0;background:#F8FAFC;">
                     <h2 style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:8px;">
                         <i class="fa-solid fa-map" style="color:#0B5640;"></i> Mapa Interactivo de Antioquia

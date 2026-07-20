@@ -2580,12 +2580,132 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // Evento Botón Refrescar Dashboard
+        const btnRefreshDashboard = document.getElementById('btn-refresh-dashboard');
+        if (btnRefreshDashboard) {
+            btnRefreshDashboard.addEventListener('click', refreshDashboardData);
+        }
+
         if (typeof initSupervisorPortal === 'function') {
             initSupervisorPortal();
         }
         loadExcelFile();
     } catch (e) { console.error("Error inicial:", e); }
 });
+
+async function refreshDashboardData() {
+    const btnRefresh = document.getElementById('btn-refresh-dashboard');
+    const btnIcon = document.getElementById('btn-refresh-icon');
+    const btnText = document.getElementById('btn-refresh-text');
+    const mainEl = document.querySelector('main');
+    const mainContentContainer = document.getElementById('main-content');
+
+    // 1. Guardar la posición de scroll actual del contenedor principal
+    const savedScrollTop = mainEl ? mainEl.scrollTop : 0;
+
+    // 2. Guardar la pestaña activa actual
+    const activeTabBtn = document.querySelector('.tab-btn.active');
+    const savedActiveTab = activeTabBtn ? activeTabBtn.getAttribute('data-tab') : 'resumen';
+
+    // 3. Guardar la página de paginación de la tabla
+    const savedPage = currentPage;
+
+    // 4. Guardar los valores de todos los controles de filtro
+    const filterIds = [
+        'filter-search', 'filter-vigencia', 'filter-supervisor', 
+        'filter-indicador', 'filter-clasificacion', 'filter-municipio', 
+        'filter-subregion', 'filter-estado', 'filter-convenio-num',
+        'map-filter-vigencia', 'map-filter-supervisor', 'map-filter-indicador',
+        'map-filter-clasificacion', 'map-filter-municipio', 'map-filter-subregion',
+        'map-filter-estado', 'map-filter-convenio-num'
+    ];
+    const savedFilters = {};
+    filterIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) savedFilters[id] = el.value;
+    });
+
+    // 5. Estado visual de carga en el botón
+    if (btnIcon) btnIcon.className = 'fa-solid fa-rotate-right fa-spin';
+    if (btnText) btnText.textContent = 'Sincronizando...';
+    if (btnRefresh) {
+        btnRefresh.disabled = true;
+        btnRefresh.classList.remove('is-success');
+    }
+
+    try {
+        // 6. Recargar los datos del Excel / Google Sheets
+        await loadExcelFile();
+
+        // 7. Restaurar los valores de filtro guardados
+        filterIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && savedFilters[id] !== undefined) {
+                el.value = savedFilters[id];
+            }
+        });
+
+        // 8. Restaurar la página de la tabla y reaplicar los filtros
+        currentPage = savedPage;
+        applyFilters();
+
+        // 9. Asegurar que la pestaña activa se mantenga
+        if (savedActiveTab) {
+            const tabBtnToSelect = document.querySelector(`.tab-btn[data-tab="${savedActiveTab}"]`);
+            if (tabBtnToSelect && !tabBtnToSelect.classList.contains('active')) {
+                tabBtnToSelect.click();
+            }
+        }
+
+        // 10. Restaurar la posición exacta de desplazamiento vertical (scroll)
+        if (mainEl) {
+            requestAnimationFrame(() => {
+                mainEl.scrollTop = savedScrollTop;
+            });
+            setTimeout(() => {
+                mainEl.scrollTop = savedScrollTop;
+            }, 80);
+        }
+
+        // 11. Disparar animación visual de destello en el contenido principal
+        const targetAnimEl = mainContentContainer || mainEl;
+        if (targetAnimEl) {
+            targetAnimEl.classList.remove('refresh-flash-anim');
+            void targetAnimEl.offsetWidth; // Trigger reflow
+            targetAnimEl.classList.add('refresh-flash-anim');
+            setTimeout(() => targetAnimEl.classList.remove('refresh-flash-anim'), 600);
+        }
+
+        // 12. Estado de Éxito Visual en el botón
+        if (btnIcon) btnIcon.className = 'fa-solid fa-circle-check text-emerald-600';
+        if (btnText) btnText.textContent = '¡Actualizado!';
+        if (btnRefresh) btnRefresh.classList.add('is-success');
+
+        // Notificar con Toast
+        if (typeof alertToast === 'function') {
+            alertToast('Dashboard Sincronizado', 'Se han actualizado los datos del Excel manteniendo tus filtros y posición.');
+        }
+
+        // Volver al estado normal del botón después de 1.8 segundos
+        setTimeout(() => {
+            if (btnIcon) btnIcon.className = 'fa-solid fa-rotate-right';
+            if (btnText) btnText.textContent = 'Actualizar';
+            if (btnRefresh) {
+                btnRefresh.classList.remove('is-success');
+                btnRefresh.disabled = false;
+            }
+        }, 1800);
+
+    } catch (err) {
+        console.error('Error al actualizar datos:', err);
+        if (btnIcon) btnIcon.className = 'fa-solid fa-rotate-right';
+        if (btnText) btnText.textContent = 'Actualizar';
+        if (btnRefresh) btnRefresh.disabled = false;
+        if (typeof alertToast === 'function') {
+            alertToast('Error de Sincronización', 'No se pudieron descargar los datos frescos.', 'error');
+        }
+    }
+}
 
 async function loadExcelFile() {
     const sheetId = '13c4V84sj_T1ZQxoq_HLqNHxUUXINzvZJeKWVgK_H55Q';
@@ -4109,9 +4229,9 @@ async function renderMapTab() {
         // Crear instancia del mapa
         mlMap = new maplibregl.Map({
             container: 'main-map',
-            center: [-75.5, 6.55],
-            zoom: 7.2,
-            pitch: 30,
+            center: [-75.55, 6.85],
+            zoom: 7.3,
+            pitch: 0, // Vista plana en planta (sin inclinación 3D inicial)
             bearing: 0,
             maxZoom: 18,
             minZoom: 5,
@@ -4165,6 +4285,26 @@ async function renderMapTab() {
                     ],
                 };
 
+                // 1. Filtrar y eliminar todas las líneas viales del mapa base que saturan la vista satelital
+                nextStyle.layers = nextStyle.layers.filter(layer => {
+                    const layerId = (layer.id || '').toLowerCase();
+                    const sourceLayer = (layer['source-layer'] || '').toLowerCase();
+                    
+                    const isBaseRoad = layerId.includes('road') || 
+                                       layerId.includes('highway') || 
+                                       layerId.includes('transport') || 
+                                       layerId.includes('street') || 
+                                       layerId.includes('tunnel') || 
+                                       layerId.includes('bridge') || 
+                                       layerId.includes('path') || 
+                                       layerId.includes('track') || 
+                                       layerId.includes('way') ||
+                                       sourceLayer.includes('transportation') || 
+                                       sourceLayer.includes('road');
+
+                    return !isBaseRoad;
+                });
+
                 nextStyle.layers.push({
                     id: 'hills',
                     type: 'hillshade',
@@ -4174,7 +4314,8 @@ async function renderMapTab() {
                 });
 
                 const firstNonFillLayer = nextStyle.layers.find(layer => layer.type !== 'fill' && layer.type !== 'background');
-                nextStyle.layers.splice(nextStyle.layers.indexOf(firstNonFillLayer), 0, {
+                const insertIndex = firstNonFillLayer ? nextStyle.layers.indexOf(firstNonFillLayer) : 0;
+                nextStyle.layers.splice(insertIndex, 0, {
                     id: 'satellite',
                     type: 'raster',
                     source: 'satelliteSource',
@@ -4318,9 +4459,63 @@ async function renderMapTab() {
                     // Fuente para departamento disuelto
                     if (antioquiaFeature) {
                         mlMap.addSource('antioquia-dpto-src', { type: 'geojson', data: antioquiaFeature });
+
+                        // --- MÁSCARA EXTERIOR INVERTIDA: Opacar todo el contexto fuera de Antioquia ---
+                        try {
+                            const worldPoly = [[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]];
+                            let antioquiaRings = [];
+                            if (antioquiaFeature.geometry.type === 'Polygon') {
+                                antioquiaRings = [antioquiaFeature.geometry.coordinates[0]];
+                            } else if (antioquiaFeature.geometry.type === 'MultiPolygon') {
+                                antioquiaRings = antioquiaFeature.geometry.coordinates.map(poly => poly[0]);
+                            }
+                            if (antioquiaRings.length > 0) {
+                                const maskGeoJSON = {
+                                    type: 'FeatureCollection',
+                                    features: [{
+                                        type: 'Feature',
+                                        properties: {},
+                                        geometry: {
+                                            type: 'Polygon',
+                                            coordinates: [worldPoly, ...antioquiaRings]
+                                        }
+                                    }]
+                                };
+                                mlMap.addSource('outside-antioquia-src', { type: 'geojson', data: maskGeoJSON });
+                            }
+                        } catch (maskErr) {
+                            console.warn("Error creando mascara exterior:", maskErr);
+                        }
                     }
 
                     // --- CAPAS DEL MAPA ---
+
+                    // 0. Capa: Máscara exterior invertida (opacar todo lo que está fuera de Antioquia)
+                    if (mlMap.getSource('outside-antioquia-src')) {
+                        mlMap.addLayer({
+                            id: 'outside-antioquia-mask',
+                            type: 'fill',
+                            source: 'outside-antioquia-src',
+                            layout: { visibility: 'visible' },
+                            paint: {
+                                'fill-color': '#0F172A',
+                                'fill-opacity': 0.62
+                            }
+                        });
+                    }
+
+                    // Centrar y encuadrar el departamento de Antioquia en vista plana 2D
+                    try {
+                        mlMap.fitBounds([
+                            [-77.15, 5.4],
+                            [-73.85, 8.88]
+                        ], {
+                            padding: { top: 30, bottom: 30, left: 30, right: 30 },
+                            pitch: 0,
+                            bearing: 0,
+                            animate: false
+                        });
+                    } catch (fitErr) {}
 
                     // 1. Capa: Relleno por subregión (usando las disueltas)
                     mlMap.addLayer({
