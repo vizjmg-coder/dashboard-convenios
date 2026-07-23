@@ -57,6 +57,19 @@ let currentImageIndex = 0;
 const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
 const formatNumber = (val) => new Intl.NumberFormat('es-CO').format(val || 0);
 
+const getSelectValues = (id) => {
+    const el = typeof id === 'string' ? document.getElementById(id) : id;
+    if (!el) return [];
+    if (el.multiple) {
+        return Array.from(el.selectedOptions)
+            .map(opt => String(opt.value || '').trim())
+            .filter(val => val !== '' && val !== 'todos' && val !== 'TODOS');
+    } else {
+        const val = el.value ? String(el.value).trim() : '';
+        return (val && val !== 'todos' && val !== 'TODOS') ? [val] : [];
+    }
+};
+
 const parseNum = (val) => {
     if(!val) return 0;
     if(typeof val === 'number') return val;
@@ -1949,10 +1962,9 @@ async function generateResumenPDF() {
         // 1. Gather active filters
         const activeFilters = [];
         const checkFilter = (id, label) => {
-            const el = document.getElementById(id);
-            if (el && el.value) {
-                const val = el.value.trim();
-                activeFilters.push(`${label}: ${val}`);
+            const vals = getSelectValues(id);
+            if (vals.length > 0) {
+                activeFilters.push(`${label}: ${vals.join(', ')}`);
             }
         };
         checkFilter('filter-vigencia', 'Vigencia');
@@ -2356,8 +2368,10 @@ async function generateResumenPDF() {
         };
 
         // 7. Trigger download
-        const vigenciaStr = document.getElementById('filter-vigencia')?.value || 'Todos';
-        const clasifStr = document.getElementById('filter-clasificacion')?.value || 'Todas';
+        const pdfVig = getSelectValues('filter-vigencia');
+        const pdfClas = getSelectValues('filter-clasificacion');
+        const vigenciaStr = pdfVig.length > 0 ? pdfVig.join('_') : 'Todos';
+        const clasifStr = pdfClas.length > 0 ? pdfClas.join('_') : 'Todas';
         pdfMake.createPdf(docDefinition).download(`Ficha_Resumen_Ejecutivo_${vigenciaStr}_Clasif_${clasifStr}.pdf`);
 
         btnPdf.innerHTML = originalText;
@@ -2622,7 +2636,13 @@ async function refreshDashboardData() {
     const savedFilters = {};
     filterIds.forEach(id => {
         const el = document.getElementById(id);
-        if (el) savedFilters[id] = el.value;
+        if (el) {
+            if (el.tagName === 'SELECT' && el.multiple) {
+                savedFilters[id] = getSelectValues(el);
+            } else {
+                savedFilters[id] = el.value;
+            }
+        }
     });
 
     // 5. Estado visual de carga en el botón
@@ -2641,7 +2661,13 @@ async function refreshDashboardData() {
         filterIds.forEach(id => {
             const el = document.getElementById(id);
             if (el && savedFilters[id] !== undefined) {
-                el.value = savedFilters[id];
+                if (el.tagName === 'SELECT' && el.multiple && Array.isArray(savedFilters[id])) {
+                    Array.from(el.options).forEach(o => {
+                        o.selected = savedFilters[id].includes(o.value);
+                    });
+                } else {
+                    el.value = savedFilters[id];
+                }
             }
         });
 
@@ -2880,15 +2906,15 @@ function updateFilterOptions(currentSearch, currentVigencia, currentMunicipio, c
         const validRows = rawData.filter(row => {
             const rowSearch = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
             const matchSearch = !currentSearch || rowSearch.includes(currentSearch);
-            const matchVig = excludeField === 'VIGENCIA' ? true : (!currentVigencia || String(row['VIGENCIA']).trim() === currentVigencia);
-            const matchMun = excludeField === 'MUNICIPIO' ? true : (!currentMunicipio || String(row['MUNICIPIO'] || '').trim() === currentMunicipio);
-            const matchSup = excludeField === 'SUPERVISOR' ? true : (!currentSupervisor || String(row['SUPERVISOR'] || '').trim() === currentSupervisor);
-            const matchConv = excludeField === 'CONVENIO' ? true : (!currentConvenioNum || String(row['CONVENIO'] || '').trim() === currentConvenioNum);
+            const matchVig = excludeField === 'VIGENCIA' ? true : (currentVigencia.length === 0 || currentVigencia.includes(String(row['VIGENCIA'] || '').trim()));
+            const matchMun = excludeField === 'MUNICIPIO' ? true : (currentMunicipio.length === 0 || currentMunicipio.includes(String(row['MUNICIPIO'] || '').trim()));
+            const matchSup = excludeField === 'SUPERVISOR' ? true : (currentSupervisor.length === 0 || currentSupervisor.includes(String(row['SUPERVISOR'] || '').trim()));
+            const matchConv = excludeField === 'CONVENIO' ? true : (currentConvenioNum.length === 0 || currentConvenioNum.includes(String(row['CONVENIO'] || '').trim()));
             const clasifValue = String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim();
-            const matchClasif = excludeField === 'CLASIFICACIÓN' ? true : (!currentClasificacion || clasifValue === currentClasificacion);
-            const matchInd = excludeField === 'INDICADOR' ? true : (!currentIndicador || String(row['INDICADOR'] || '').trim() === currentIndicador);
-            const matchSub = excludeField === 'SUBREGION' ? true : (!currentSubregion || String(row['SUBREGION'] || '').trim() === currentSubregion);
-            const matchEst = excludeField === 'ESTADO CONVENIO' ? true : (!currentEstado || String(row['ESTADO CONVENIO'] || '').trim() === currentEstado);
+            const matchClasif = excludeField === 'CLASIFICACIÓN' ? true : (currentClasificacion.length === 0 || currentClasificacion.includes(clasifValue));
+            const matchInd = excludeField === 'INDICADOR' ? true : (currentIndicador.length === 0 || currentIndicador.includes(String(row['INDICADOR'] || '').trim()));
+            const matchSub = excludeField === 'SUBREGION' ? true : (currentSubregion.length === 0 || currentSubregion.includes(String(row['SUBREGION'] || '').trim()));
+            const matchEst = excludeField === 'ESTADO CONVENIO' ? true : (currentEstado.length === 0 || currentEstado.includes(String(row['ESTADO CONVENIO'] || '').trim()));
             return matchSearch && matchVig && matchMun && matchSup && matchConv && matchClasif && matchInd && matchSub && matchEst;
         });
         return [...new Set(validRows.map(i => {
@@ -2896,12 +2922,17 @@ function updateFilterOptions(currentSearch, currentVigencia, currentMunicipio, c
             return String(i[field] || '').trim();
         }).filter(Boolean))].sort();
     };
-    const updateSelect = (id, options, currentValue) => {
+    const updateSelect = (id, options, currentValues) => {
         const select = document.getElementById(id);
         if (!select) return;
-        const finalValue = options.includes(currentValue) ? currentValue : "";
-        select.innerHTML = '<option value="">Todos</option>' + options.map(v => `<option value="${v}">${v}</option>`).join('');
-        select.value = finalValue;
+        const validValues = currentValues.filter(v => options.includes(v));
+        select.innerHTML = '<option value="">Todos</option>' + options.map(v => {
+            const isSel = validValues.includes(v) ? 'selected' : '';
+            return `<option value="${v}" ${isSel}>${v}</option>`;
+        }).join('');
+        Array.from(select.options).forEach(opt => {
+            opt.selected = validValues.includes(opt.value);
+        });
     };
     updateSelect('filter-vigencia', getValidOptions('VIGENCIA', 'VIGENCIA').reverse(), currentVigencia);
     updateSelect('filter-municipio', getValidOptions('MUNICIPIO', 'MUNICIPIO'), currentMunicipio);
@@ -2914,21 +2945,32 @@ function updateFilterOptions(currentSearch, currentVigencia, currentMunicipio, c
 }
 
 function applyFilters() {
-    const search = document.getElementById('filter-search').value.toLowerCase().trim();
-    const vigencia = document.getElementById('filter-vigencia').value.trim();
-    const municipio = document.getElementById('filter-municipio').value.trim();
-    const supervisor = document.getElementById('filter-supervisor').value.trim();
-    const indicador = document.getElementById('filter-indicador') ? document.getElementById('filter-indicador').value.trim() : '';
-    const convenioNum = document.getElementById('filter-convenio-num').value.trim();
-    const clasificacion = document.getElementById('filter-clasificacion').value.trim();
-    const estado = document.getElementById('filter-estado') ? document.getElementById('filter-estado').value.trim() : '';
-    const subregion = document.getElementById('filter-subregion') ? document.getElementById('filter-subregion').value.trim() : '';
+    const search = document.getElementById('filter-search')?.value.toLowerCase().trim() || '';
+    const vigencia = getSelectValues('filter-vigencia');
+    const municipio = getSelectValues('filter-municipio');
+    const supervisor = getSelectValues('filter-supervisor');
+    const indicador = getSelectValues('filter-indicador');
+    const convenioNum = getSelectValues('filter-convenio-num');
+    const clasificacion = getSelectValues('filter-clasificacion');
+    const estado = getSelectValues('filter-estado');
+    const subregion = getSelectValues('filter-subregion');
 
-    const activeFiltersCount = [search, vigencia, municipio, supervisor, indicador, convenioNum, clasificacion, estado, subregion].filter(val => val !== '').length;
+    const activeFiltersCount = [
+        search !== '',
+        vigencia.length > 0,
+        municipio.length > 0,
+        supervisor.length > 0,
+        indicador.length > 0,
+        convenioNum.length > 0,
+        clasificacion.length > 0,
+        estado.length > 0,
+        subregion.length > 0
+    ].filter(Boolean).length;
+
     const badge = document.getElementById('active-filters-badge');
     if (badge) {
         if (activeFiltersCount > 0) {
-            badge.textContent = activeFiltersCount;
+            badge.textContent = `${activeFiltersCount} activo${activeFiltersCount > 1 ? 's' : ''}`;
             badge.classList.remove('hidden');
         } else {
             badge.classList.add('hidden');
@@ -2938,22 +2980,22 @@ function applyFilters() {
     filteredData = rawData.filter(row => {
         const rowValsStr = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
         const matchSearch = !search || rowValsStr.includes(search);
-        const matchVig = !vigencia || String(row['VIGENCIA'] || '').trim() === vigencia;
-        const matchMun = !municipio || String(row['MUNICIPIO'] || '').trim() === municipio;
-        const matchSup = !supervisor || String(row['SUPERVISOR'] || '').trim() === supervisor;
-        const matchInd = !indicador || String(row['INDICADOR'] || '').trim() === indicador;
-        const matchConv = !convenioNum || String(row['CONVENIO'] || '').trim() === convenioNum;
+        const matchVig = vigencia.length === 0 || vigencia.includes(String(row['VIGENCIA'] || '').trim());
+        const matchMun = municipio.length === 0 || municipio.includes(String(row['MUNICIPIO'] || '').trim());
+        const matchSup = supervisor.length === 0 || supervisor.includes(String(row['SUPERVISOR'] || '').trim());
+        const matchInd = indicador.length === 0 || indicador.includes(String(row['INDICADOR'] || '').trim());
+        const matchConv = convenioNum.length === 0 || convenioNum.includes(String(row['CONVENIO'] || '').trim());
         const clasifValue = String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim();
-        const matchClasif = !clasificacion || clasifValue === clasificacion;
-        const matchEstado = !estado || String(row['ESTADO CONVENIO'] || '').trim() === estado;
-        const matchSub = !subregion || String(row['SUBREGION'] || '').trim() === subregion;
+        const matchClasif = clasificacion.length === 0 || clasificacion.includes(clasifValue);
+        const matchEstado = estado.length === 0 || estado.includes(String(row['ESTADO CONVENIO'] || '').trim());
+        const matchSub = subregion.length === 0 || subregion.includes(String(row['SUBREGION'] || '').trim());
         return matchSearch && matchVig && matchMun && matchSup && matchInd && matchConv && matchClasif && matchEstado && matchSub;
     });
 
     updateFilterOptions(search, vigencia, municipio, supervisor, convenioNum, clasificacion, indicador, subregion, estado);
 
     const summaryCard = document.getElementById('summary-card-container');
-    const activeConv = document.getElementById('filter-convenio-num').value.trim();
+    const activeConv = convenioNum.length === 1 ? convenioNum[0] : '';
 
     if (activeConv && filteredData.length > 0) {
         const selected = filteredData[0]; 
@@ -3025,7 +3067,11 @@ function resetFilters() {
     ['filter-search', 'filter-vigencia', 'filter-supervisor', 'filter-indicador', 'filter-municipio', 'filter-convenio-num', 'filter-clasificacion', 'filter-subregion', 'filter-estado'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            el.value = '';
+            if (el.tagName === 'SELECT' && el.multiple) {
+                Array.from(el.options).forEach(o => o.selected = false);
+            } else {
+                el.value = '';
+            }
             el.dispatchEvent(new Event('change'));
         }
     });
@@ -3331,7 +3377,11 @@ function renderAlerts() {
     }
 
     window.showSummaryCard = function(conv) {
-        document.getElementById('filter-convenio-num').value = conv;
+        const convSelect = document.getElementById('filter-convenio-num');
+        if (convSelect) {
+            Array.from(convSelect.options).forEach(o => o.selected = (o.value === conv));
+            convSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
         applyFilters();
         window.scrollTo({top: 0, behavior: 'smooth'});
         const drop = document.getElementById('nav-alerts-dropdown');
@@ -3499,7 +3549,7 @@ function updateCharts() {
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:10px;transition:all 0.15s;cursor:pointer;border:1.5px solid #E2E8F0;" 
                     onmouseover="this.style.background='rgba(11, 86, 64,0.05)';this.style.borderColor='rgba(11, 86, 64,0.2)';" 
                     onmouseout="this.style.background='transparent';this.style.borderColor='#E2E8F0';"
-                    onclick="const f=document.getElementById('filter-estado');if(f){f.value=f.value==='${label}' ?'' :'${label}';applyFilters();}">
+                    onclick="const f=document.getElementById('filter-estado');if(f){const vals=getSelectValues('filter-estado');const isSel=vals.includes('${label}');Array.from(f.options).forEach(o=>{if(o.value==='${label}')o.selected=!isSel;});f.dispatchEvent(new Event('change', {bubbles:true}));}">
                     <div style="display:flex;align-items:center;gap:10px;">
                         <div style="width:12px;height:12px;border-radius:50%;background:${sysState.hex};box-shadow:0 2px 6px ${sysState.hex}40;flex-shrink:0;"></div>
                         <div>
@@ -5552,26 +5602,26 @@ let currentMapData = [];
 
 function applyMapFilters() {
     const search      = document.getElementById('map-filter-search')?.value.toLowerCase().trim() || '';
-    const vigencia    = document.getElementById('map-filter-vigencia')?.value.trim() || '';
-    const municipio   = document.getElementById('map-filter-municipio')?.value.trim() || '';
-    const supervisor  = document.getElementById('map-filter-supervisor')?.value.trim() || '';
-    const clasificacion = document.getElementById('map-filter-clasificacion')?.value.trim() || '';
-    const subregion   = document.getElementById('map-filter-subregion')?.value.trim() || '';
-    const estado      = document.getElementById('map-filter-estado')?.value.trim() || '';
-    const convenioNum = document.getElementById('map-filter-convenio-num')?.value.trim() || '';
-    const indicador   = document.getElementById('map-filter-indicador')?.value.trim() || '';
+    const vigencia    = getSelectValues('map-filter-vigencia');
+    const municipio   = getSelectValues('map-filter-municipio');
+    const supervisor  = getSelectValues('map-filter-supervisor');
+    const clasificacion = getSelectValues('map-filter-clasificacion');
+    const subregion   = getSelectValues('map-filter-subregion');
+    const estado      = getSelectValues('map-filter-estado');
+    const convenioNum = getSelectValues('map-filter-convenio-num');
+    const indicador   = getSelectValues('map-filter-indicador');
 
     currentMapData = rawData.filter(row => {
         const rowValsStr = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
         const matchSearch    = !search      || rowValsStr.includes(search);
-        const matchVig       = !vigencia    || String(row['VIGENCIA'] || '').trim() === vigencia;
-        const matchMun       = !municipio   || String(row['MUNICIPIO'] || '').trim() === municipio;
-        const matchSup       = !supervisor  || String(row['SUPERVISOR'] || '').trim() === supervisor;
-        const matchClasif    = !clasificacion || String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim() === clasificacion;
-        const matchSub       = !subregion   || String(row['SUBREGION'] || '').trim() === subregion;
-        const matchEstado    = !estado      || String(row['ESTADO CONVENIO'] || '').trim() === estado;
-        const matchConv      = !convenioNum || String(row['CONVENIO'] || '').trim() === convenioNum;
-        const matchInd       = !indicador   || String(row['INDICADOR'] || '').trim() === indicador;
+        const matchVig       = vigencia.length === 0    || vigencia.includes(String(row['VIGENCIA'] || '').trim());
+        const matchMun       = municipio.length === 0   || municipio.includes(String(row['MUNICIPIO'] || '').trim());
+        const matchSup       = supervisor.length === 0  || supervisor.includes(String(row['SUPERVISOR'] || '').trim());
+        const matchClasif    = clasificacion.length === 0 || clasificacion.includes(String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim());
+        const matchSub       = subregion.length === 0   || subregion.includes(String(row['SUBREGION'] || '').trim());
+        const matchEstado    = estado.length === 0      || estado.includes(String(row['ESTADO CONVENIO'] || '').trim());
+        const matchConv      = convenioNum.length === 0 || convenioNum.includes(String(row['CONVENIO'] || '').trim());
+        const matchInd       = indicador.length === 0   || indicador.includes(String(row['INDICADOR'] || '').trim());
         return matchSearch && matchVig && matchMun && matchSup && matchClasif && matchSub && matchEstado && matchConv && matchInd;
     });
 
@@ -5585,14 +5635,14 @@ function updateMapFilterSelects(cSearch, cVig, cMun, cSup, cClas, cSub, cEst, cC
         const valid = rawData.filter(row => {
             const rowValsStr = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
             const matchSearch = !cSearch || rowValsStr.includes(cSearch);
-            const matchVig    = exclude === 'VIGENCIA'         ? true : (!cVig  || String(row['VIGENCIA']).trim() === cVig);
-            const matchMun    = exclude === 'MUNICIPIO'        ? true : (!cMun  || String(row['MUNICIPIO'] || '').trim() === cMun);
-            const matchSup    = exclude === 'SUPERVISOR'       ? true : (!cSup  || String(row['SUPERVISOR'] || '').trim() === cSup);
-            const matchClas   = exclude === 'CLASIFICACIÓN'    ? true : (!cClas || String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim() === cClas);
-            const matchSub    = exclude === 'SUBREGION'        ? true : (!cSub  || String(row['SUBREGION'] || '').trim() === cSub);
-            const matchEst    = exclude === 'ESTADO CONVENIO'  ? true : (!cEst  || String(row['ESTADO CONVENIO'] || '').trim() === cEst);
-            const matchConv   = exclude === 'CONVENIO'         ? true : (!cConv || String(row['CONVENIO'] || '').trim() === cConv);
-            const matchInd    = exclude === 'INDICADOR'        ? true : (!cInd  || String(row['INDICADOR'] || '').trim() === cInd);
+            const matchVig    = exclude === 'VIGENCIA'         ? true : (cVig.length === 0  || cVig.includes(String(row['VIGENCIA']).trim()));
+            const matchMun    = exclude === 'MUNICIPIO'        ? true : (cMun.length === 0  || cMun.includes(String(row['MUNICIPIO'] || '').trim()));
+            const matchSup    = exclude === 'SUPERVISOR'       ? true : (cSup.length === 0  || cSup.includes(String(row['SUPERVISOR'] || '').trim()));
+            const matchClas   = exclude === 'CLASIFICACIÓN'    ? true : (cClas.length === 0 || cClas.includes(String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim()));
+            const matchSub    = exclude === 'SUBREGION'        ? true : (cSub.length === 0  || cSub.includes(String(row['SUBREGION'] || '').trim()));
+            const matchEst    = exclude === 'ESTADO CONVENIO'  ? true : (cEst.length === 0  || cEst.includes(String(row['ESTADO CONVENIO'] || '').trim()));
+            const matchConv   = exclude === 'CONVENIO'         ? true : (cConv.length === 0 || cConv.includes(String(row['CONVENIO'] || '').trim()));
+            const matchInd    = exclude === 'INDICADOR'        ? true : (cInd.length === 0  || cInd.includes(String(row['INDICADOR'] || '').trim()));
             return matchSearch && matchVig && matchMun && matchSup && matchClas && matchSub && matchEst && matchConv && matchInd;
         });
         return [...new Set(valid.map(i => {
@@ -5601,12 +5651,17 @@ function updateMapFilterSelects(cSearch, cVig, cMun, cSup, cClas, cSub, cEst, cC
         }).filter(Boolean))].sort();
     };
 
-    const upd = (id, options, current) => {
+    const upd = (id, options, currentValues) => {
         const el = document.getElementById(id);
         if (!el) return;
-        const finalVal = options.includes(current) ? current : '';
-        el.innerHTML = '<option value="">Todos</option>' + options.map(v => `<option value="${v}">${v}</option>`).join('');
-        el.value = finalVal;
+        const validValues = currentValues.filter(v => options.includes(v));
+        el.innerHTML = '<option value="">Todos</option>' + options.map(v => {
+            const isSel = validValues.includes(v) ? 'selected' : '';
+            return `<option value="${v}" ${isSel}>${v}</option>`;
+        }).join('');
+        Array.from(el.options).forEach(opt => {
+            opt.selected = validValues.includes(opt.value);
+        });
     };
 
     upd('map-filter-vigencia',     getValid('VIGENCIA', 'VIGENCIA').reverse(), cVig);
@@ -8145,7 +8200,7 @@ function renderSupervisorAlertas(supervisorRows) {
 // LÓGICA DE FILTROS COLAPSABLES Y BUSCADORES DE MUNICIPIOS
 // ============================================================
 
-// 1. Inicialización de Dropdowns con Buscador Integrado (Vanilla JS)
+// 1. Inicialización de Dropdowns con Buscador Integrado (Vanilla JS + Selección Múltiple)
 function initSearchableDropdown(selectId, placeholder = "Seleccionar...") {
     const nativeSelect = document.getElementById(selectId);
     if (!nativeSelect) return;
@@ -8180,12 +8235,52 @@ function initSearchableDropdown(selectId, placeholder = "Seleccionar...") {
             <i class="fa-solid fa-magnifying-glass"></i>
             <input type="text" class="custom-select-search-input" placeholder="Buscar..." autocomplete="off">
         </div>
+        <div class="custom-select-header-actions">
+            <button type="button" class="custom-select-action-btn btn-select-all">
+                <i class="fa-solid fa-check-double"></i> Seleccionar todos
+            </button>
+            <button type="button" class="custom-select-action-btn btn-clear-all">
+                <i class="fa-solid fa-eraser"></i> Limpiar
+            </button>
+        </div>
         <div class="custom-select-options"></div>
     `;
     container.appendChild(dropdown);
 
     const searchInput = dropdown.querySelector('.custom-select-search-input');
     const optionsContainer = dropdown.querySelector('.custom-select-options');
+    const btnSelectAll = dropdown.querySelector('.btn-select-all');
+    const btnClearAll = dropdown.querySelector('.btn-clear-all');
+
+    function updateTriggerText() {
+        const selectedOpts = Array.from(nativeSelect.options).filter(o => o.selected && o.value !== '' && o.value !== 'todos' && o.value !== 'TODOS');
+        const triggerText = trigger.querySelector('.trigger-text');
+        
+        if (selectedOpts.length === 0) {
+            triggerText.textContent = placeholder;
+            const badge = trigger.querySelector('.multi-count-badge');
+            if (badge) badge.remove();
+        } else if (selectedOpts.length === 1) {
+            triggerText.textContent = selectedOpts[0].textContent;
+            const badge = trigger.querySelector('.multi-count-badge');
+            if (badge) badge.remove();
+        } else {
+            const labels = selectedOpts.map(o => o.textContent);
+            const joined = labels.join(', ');
+            if (selectedOpts.length <= 3 && joined.length < 24) {
+                triggerText.textContent = joined;
+            } else {
+                triggerText.textContent = `${selectedOpts.length} seleccionados`;
+            }
+            let badge = trigger.querySelector('.multi-count-badge');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'multi-count-badge';
+                trigger.insertBefore(badge, trigger.querySelector('i'));
+            }
+            badge.textContent = selectedOpts.length;
+        }
+    }
 
     // Función para reconstruir las opciones
     function rebuildOptions() {
@@ -8194,68 +8289,101 @@ function initSearchableDropdown(selectId, placeholder = "Seleccionar...") {
         
         if (options.length === 0) {
             optionsContainer.innerHTML = `<div class="custom-select-no-results">No hay opciones disponibles</div>`;
+            updateTriggerText();
             return;
         }
 
         options.forEach(opt => {
             const optionEl = document.createElement('div');
             optionEl.className = 'custom-select-option';
-            if (opt.selected) {
-                optionEl.classList.add('selected');
-                trigger.querySelector('.trigger-text').textContent = opt.textContent;
-            }
             optionEl.dataset.value = opt.value;
-            optionEl.textContent = opt.textContent;
+            
+            const isAllOption = opt.value === '' || opt.value === 'todos' || opt.value === 'TODOS';
+            
+            if (opt.selected && !isAllOption) {
+                optionEl.classList.add('selected');
+            }
+
+            if (isAllOption) {
+                optionEl.innerHTML = `<div class="custom-select-option-content"><span class="custom-select-option-label">${opt.textContent}</span></div>`;
+            } else {
+                optionEl.innerHTML = `<div class="custom-select-option-content"><span class="option-checkbox"></span><span class="custom-select-option-label">${opt.textContent}</span></div>`;
+            }
 
             optionEl.addEventListener('click', (e) => {
                 e.stopPropagation();
                 
-                // Actualizar valor en select nativo
-                nativeSelect.value = opt.value;
+                if (isAllOption) {
+                    Array.from(nativeSelect.options).forEach(o => o.selected = false);
+                    if (nativeSelect.options[0]) nativeSelect.options[0].selected = true;
+                    container.classList.remove('active');
+                } else {
+                    opt.selected = !opt.selected;
+                    const remainingSelected = Array.from(nativeSelect.options).filter(o => o.selected && o.value !== '' && o.value !== 'todos' && o.value !== 'TODOS');
+                    if (remainingSelected.length === 0 && nativeSelect.options[0]) {
+                        nativeSelect.options[0].selected = true;
+                    } else if (remainingSelected.length > 0 && nativeSelect.options[0] && (nativeSelect.options[0].value === '' || nativeSelect.options[0].value === 'todos' || nativeSelect.options[0].value === 'TODOS')) {
+                        nativeSelect.options[0].selected = false;
+                    }
+                }
                 
-                // Actualizar clases de selección
-                dropdown.querySelectorAll('.custom-select-option').forEach(el => el.classList.remove('selected'));
-                optionEl.classList.add('selected');
-                
-                // Actualizar texto del disparador
-                trigger.querySelector('.trigger-text').textContent = opt.textContent;
-                
-                // Cerrar desplegable
-                container.classList.remove('active');
-                
-                // Disparar evento change en el select nativo para activar filtros del dashboard
+                const allSelectedVals = Array.from(nativeSelect.options).filter(o => o.selected).map(o => o.value);
+                optionsContainer.querySelectorAll('.custom-select-option').forEach(el => {
+                    if (el.dataset.value && allSelectedVals.includes(el.dataset.value) && el.dataset.value !== '' && el.dataset.value !== 'todos' && el.dataset.value !== 'TODOS') {
+                        el.classList.add('selected');
+                    } else {
+                        el.classList.remove('selected');
+                    }
+                });
+
+                updateTriggerText();
                 nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
             });
 
             optionsContainer.appendChild(optionEl);
         });
+
+        updateTriggerText();
     }
 
     // Inicializar opciones
     rebuildOptions();
 
-    // Observar cambios en los <option> del select nativo (poblado dinámico de datos)
-    const observer = new MutationObserver((mutations) => {
+    // Acciones del header
+    btnSelectAll.addEventListener('click', (e) => {
+        e.stopPropagation();
+        Array.from(nativeSelect.options).forEach(o => {
+            o.selected = (o.value !== '' && o.value !== 'todos' && o.value !== 'TODOS');
+        });
+        rebuildOptions();
+        nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    btnClearAll.addEventListener('click', (e) => {
+        e.stopPropagation();
+        Array.from(nativeSelect.options).forEach(o => o.selected = false);
+        if (nativeSelect.options[0]) nativeSelect.options[0].selected = true;
+        rebuildOptions();
+        nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    // Observar cambios en los <option> del select nativo
+    const observer = new MutationObserver(() => {
         rebuildOptions();
     });
     observer.observe(nativeSelect, { childList: true });
 
-    // Sincronizar hacia atrás (si el select cambia por código, ej. Limpiar Filtros)
+    // Sincronizar hacia atrás (si el select cambia por código)
     nativeSelect.addEventListener('change', () => {
-        const selectedOpt = nativeSelect.options[nativeSelect.selectedIndex];
-        if (selectedOpt) {
-            trigger.querySelector('.trigger-text').textContent = selectedOpt.textContent;
-            dropdown.querySelectorAll('.custom-select-option').forEach(el => {
-                if (el.dataset.value === nativeSelect.value) {
-                    el.classList.add('selected');
-                } else {
-                    el.classList.remove('selected');
-                }
-            });
-        } else {
-            trigger.querySelector('.trigger-text').textContent = placeholder;
-            dropdown.querySelectorAll('.custom-select-option').forEach(el => el.classList.remove('selected'));
-        }
+        const selectedVals = Array.from(nativeSelect.options).filter(o => o.selected).map(o => o.value);
+        dropdown.querySelectorAll('.custom-select-option').forEach(el => {
+            if (el.dataset.value && selectedVals.includes(el.dataset.value) && el.dataset.value !== '' && el.dataset.value !== 'todos' && el.dataset.value !== 'TODOS') {
+                el.classList.add('selected');
+            } else {
+                el.classList.remove('selected');
+            }
+        });
+        updateTriggerText();
     });
 
     // Abrir/Cerrar el desplegable
@@ -8263,7 +8391,6 @@ function initSearchableDropdown(selectId, placeholder = "Seleccionar...") {
         e.preventDefault();
         e.stopPropagation();
         
-        // Cerrar otros dropdowns abiertos
         document.querySelectorAll('.custom-select-container').forEach(c => {
             if (c !== container) c.classList.remove('active');
         });
@@ -8376,8 +8503,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateActiveFiltersBadge() {
         let activeCount = 0;
         mainFilters.forEach(id => {
-            const el = document.getElementById(id);
-            if (el && el.value && el.value !== '' && el.value !== 'todos' && el.value !== 'TODOS') {
+            const vals = getSelectValues(id);
+            if (vals.length > 0) {
                 activeCount++;
             }
         });
@@ -8396,8 +8523,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateMapActiveFiltersBadge() {
         let activeCount = 0;
         mapFilters.forEach(id => {
-            const el = document.getElementById(id);
-            if (el && el.value && el.value !== '' && el.value !== 'todos' && el.value !== 'TODOS') {
+            const vals = getSelectValues(id);
+            if (vals.length > 0) {
                 activeCount++;
             }
         });
@@ -8435,6 +8562,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnMapReset = document.getElementById('btn-map-reset');
     if (btnMapReset) {
         btnMapReset.addEventListener('click', () => {
+            window.isResettingFilters = true;
+            mapFilters.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (el.tagName === 'SELECT' && el.multiple) {
+                        Array.from(el.options).forEach(o => o.selected = false);
+                    } else {
+                        el.value = '';
+                    }
+                    el.dispatchEvent(new Event('change'));
+                }
+            });
+            window.isResettingFilters = false;
+            applyMapFilters();
             setTimeout(updateMapActiveFiltersBadge, 50);
         });
     }

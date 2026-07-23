@@ -2912,6 +2912,85 @@ select.filter-control option { font-family: var(--font-base); }
     font-style: italic;
 }
 
+/* Estilos de Selección Múltiple en Dropdowns */
+.multi-count-badge {
+    background-color: var(--color-primary);
+    color: #FFFFFF;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-select-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background-color: #F8FAFC;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 11px;
+}
+
+.custom-select-action-btn {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 11px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background-color var(--transition-fast);
+}
+
+.custom-select-action-btn:hover {
+    background-color: var(--color-primary-pale);
+}
+
+.custom-select-option .option-checkbox {
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid #CBD5E1;
+    border-radius: 3px;
+    margin-right: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.custom-select-option.selected .option-checkbox {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #FFFFFF;
+}
+
+.custom-select-option.selected .option-checkbox::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 8px;
+}
+
+.custom-select-option-content {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    overflow: hidden;
+}
+
+.custom-select-option-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* 3. Micro-interacciones de KPI Cards */
 .kpi-card {
     transition: transform var(--transition-bounce), box-shadow var(--transition-bounce), border-color var(--transition-base) !important;
