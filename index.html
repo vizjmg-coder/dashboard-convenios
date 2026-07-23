@@ -1070,19 +1070,21 @@
                 <div class="bg-white p-5 rounded-2xl flex flex-col" style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div>
-                            <h3 style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;">Avance Acumulado por Año</h3>
-                            <p style="font-size:10.5px;color:#94A3B8;font-weight:500;margin-top:3px;">Evolución del alcance acumulado por año de vigencia</p>
+                            <h3 style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;">Proyección de Avance por Año (%)</h3>
+                            <p style="font-size:10.5px;color:#94A3B8;font-weight:500;margin-top:3px;">Evolución y proyección del porcentaje de cumplimiento por año de vigencia</p>
                         </div>
                         <div class="shrink-0">
-                            <select id="select-anual-indicador" onchange="setPlanAnualFilter(this.value)" class="bg-white border border-slate-200 text-slate-700 text-[10.5px] font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-teal-500 shadow-sm" style="max-width: 250px;">
-                                <option value="todos-km">Todos los Indicadores en km</option>
-                                <option value="todos-m2">Todos los Indicadores en m²</option>
-                                <option value="AEROPUERTOS O AERÓDROMOS MEJORADOS Y EN OPERACIÓN">Aeropuertos o Aeródromos (und)</option>
-                                <option value="MUELLES O EMBARCADEROS MEJORADOS">Muelles o Embarcaderos (und)</option>
-                                <option value="VÍAS TERCIARIAS MEJORADAS. (RVT)">Vías Terciarias (km)</option>
-                                <option value="ESPACIO PUBLICO">Espacio Público (m²)</option>
-                                <option value="CABLES AÉREOS SOSTENIBLES CONSTRUIDOS Y OPERANDO">Cables Aéreos (und)</option>
-                                <option value="VÍA URBANA MEJORADA. (RVU)">Vía Urbana (km)</option>
+                            <select id="select-anual-indicador" onchange="setPlanAnualFilter(this.value)" class="bg-white border border-slate-200 text-slate-700 text-[10.5px] font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-teal-500 shadow-sm" style="max-width: 260px;">
+                                <option value="todos">Todos los Indicadores (% Proyección Global)</option>
+                                <option value="todos-km">Todos los Indicadores en km (%)</option>
+                                <option value="todos-m2">Todos los Indicadores en m² (%)</option>
+                                <option value="AEROPUERTOS O AERÓDROMOS MEJORADOS Y EN OPERACIÓN">Aeropuertos o Aeródromos (%)</option>
+                                <option value="MUELLES O EMBARCADEROS MEJORADOS">Muelles o Embarcaderos (%)</option>
+                                <option value="EQUIPAMIENTOS CONSTRUIDOS">Equipamientos Constr. (%)</option>
+                                <option value="VÍAS TERCIARIAS MEJORADAS. (RVT)">Vías Terciarias (%)</option>
+                                <option value="ESPACIO PUBLICO">Espacio Público (%)</option>
+                                <option value="CABLES AÉREOS SOSTENIBLES CONSTRUIDOS Y OPERANDO">Cables Aéreos (%)</option>
+                                <option value="VÍA URBANA MEJORADA. (RVU)">Vía Urbana (%)</option>
                             </select>
                         </div>
                     </div>

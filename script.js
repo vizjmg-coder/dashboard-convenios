@@ -1455,6 +1455,187 @@ async function generateProfessionalPDF(row) {
     }
 }
 
+function calculateProyeccionAnualPct(indicadorFilter) {
+    const years = ["2024", "2025", "2026", "2027"];
+    const acumCantByYear = { "2024": 0, "2025": 0, "2026": 0, "2027": 0 };
+
+    rawData.forEach(row => {
+        const ind = normalizarIndicador(row['INDICADOR']);
+        if (!ind || !indicadoresEstrategicos[ind]) return;
+
+        const cfg = indicadoresEstrategicos[ind];
+        let cant = 0;
+
+        if (cfg.tipo === 'km') {
+            const metros = planMetric === 'contratado' ? parseNum(row['ALCANCE (M)']) : parseNum(row['LONGITUD EJECUTADA']);
+            cant = metros / 1000;
+        } else if (cfg.tipo === 'm2') {
+            cant = planMetric === 'contratado' ? parseNum(row['ALCANCE (M2)']) : parseNum(row['AREA EJECUTADA (M2)']);
+        } else {
+            if (planMetric === 'contratado') {
+                cant = 1;
+            } else {
+                const estado = String(row['ESTADO CONVENIO'] || '').toUpperCase();
+                const tieneEjecucion = estado.includes('EJECUCI') || estado.includes('EJECUT') ||
+                                       estado.includes('OPERA') || estado.includes('MEJORAD') ||
+                                       parseNum(row['LONGITUD EJECUTADA']) > 0 ||
+                                       parseNum(row['FISICO_NORM']) > 0;
+                cant = tieneEjecucion ? 1 : 0;
+            }
+        }
+
+        const compYear = getRowCompletionYear(row);
+        if (compYear && acumCantByYear[compYear] !== undefined) {
+            if (indicadorFilter === 'todos-km') {
+                if (cfg.tipo === 'km') acumCantByYear[compYear] += cant;
+            } else if (indicadorFilter === 'todos-m2') {
+                if (cfg.tipo === 'm2') acumCantByYear[compYear] += cant;
+            } else if (indicadorFilter === 'todos') {
+                acumCantByYear[compYear] += cant;
+            } else {
+                if (ind === indicadorFilter) acumCantByYear[compYear] += cant;
+            }
+        }
+    });
+
+    let targetTotal = 0;
+    Object.keys(indicadoresEstrategicos).forEach(ind => {
+        const cfg = indicadoresEstrategicos[ind];
+        if (indicadorFilter === 'todos-km' && cfg.tipo !== 'km') return;
+        if (indicadorFilter === 'todos-m2' && cfg.tipo !== 'm2') return;
+        if (indicadorFilter !== 'todos' && indicadorFilter !== 'todos-km' && indicadorFilter !== 'todos-m2' && ind !== indicadorFilter) return;
+        
+        targetTotal += cfg.metas.todos || 0;
+    });
+
+    const acumValues = [];
+    let runSum = 0;
+    years.forEach(y => {
+        runSum += acumCantByYear[y] || 0;
+        acumValues.push(runSum);
+    });
+
+    if (acumValues[3] === acumValues[2] || acumValues[3] === 0) {
+        const inc1 = acumValues[0];
+        const inc2 = acumValues[1] - acumValues[0];
+        const inc3 = acumValues[2] - acumValues[1];
+        const avgInc = (inc1 + Math.max(0, inc2) + Math.max(0, inc3)) / 3;
+        acumValues[3] = parseFloat((acumValues[2] + Math.max(avgInc, (targetTotal > 0 ? (targetTotal - acumValues[2]) * 0.5 : 1))).toFixed(2));
+    }
+
+    const pctValues = acumValues.map(val => {
+        if (targetTotal > 0) {
+            return parseFloat(Math.min(100, (val / targetTotal) * 100).toFixed(1));
+        } else {
+            return 0;
+        }
+    });
+
+    return { years, pctValues, acumValues, targetTotal };
+}
+
+function buildVectorChartMetasSVG(indicatorsList) {
+    const width = 250;
+    const barHeight = 13;
+    const gap = 7;
+    const marginTop = 12;
+    const marginLeft = 90;
+    const marginRight = 35;
+    const chartWidth = width - marginLeft - marginRight;
+    const height = marginTop + indicatorsList.length * (barHeight + gap) + 15;
+
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+    svg += `<rect width="${width}" height="${height}" fill="#F8FAFC" rx="6" ry="6"/>`;
+
+    [0, 25, 50, 75, 100].forEach(p => {
+        const x = marginLeft + (p / 100) * chartWidth;
+        svg += `<line x1="${x}" y1="${marginTop - 2}" x2="${x}" y2="${height - 14}" stroke="#E2E8F0" stroke-dasharray="2 2" stroke-width="1"/>`;
+        svg += `<text x="${x}" y="${height - 4}" font-family="Poppins, sans-serif" font-size="6" fill="#94A3B8" text-anchor="middle">${p}%</text>`;
+    });
+
+    indicatorsList.forEach((item, idx) => {
+        const y = marginTop + idx * (barHeight + gap);
+        let displayName = item.name;
+        if (displayName.includes("AEROPUERTOS")) displayName = "Aeropuertos";
+        else if (displayName.includes("MUELLES")) displayName = "Muelles";
+        else if (displayName.includes("EQUIPAMIENTOS")) displayName = "Equipamientos";
+        else if (displayName.includes("TERCIARIAS")) displayName = "Vías Terciarias";
+        else if (displayName.includes("ESPACIO")) displayName = "Espacio Público";
+        else if (displayName.includes("CABLES")) displayName = "Cables Aéreos";
+        else if (displayName.includes("URBANA")) displayName = "Vía Urbana";
+
+        let color = '#EF4444';
+        if (item.isNP) color = '#94A3B8';
+        else if (item.pct >= 80) color = '#10B981';
+        else if (item.pct >= 50) color = '#F59E0B';
+
+        const bw = item.isNP ? 0 : Math.min(chartWidth, (item.pct / 100) * chartWidth);
+        const labelTxt = item.isNP ? 'NP' : `${item.pct.toFixed(1)}%`;
+
+        svg += `<text x="${marginLeft - 5}" y="${y + 9}" font-family="Poppins, sans-serif" font-size="6" font-weight="bold" fill="#334155" text-anchor="end">${displayName}</text>`;
+        svg += `<rect x="${marginLeft}" y="${y}" width="${chartWidth}" height="${barHeight}" fill="#E2E8F0" rx="3" ry="3"/>`;
+        if (bw > 0) {
+            svg += `<rect x="${marginLeft}" y="${y}" width="${bw}" height="${barHeight}" fill="${color}" rx="3" ry="3"/>`;
+        }
+        svg += `<text x="${marginLeft + Math.max(bw + 4, 3)}" y="${y + 9}" font-family="Poppins, sans-serif" font-size="6" font-weight="bold" fill="${color}">${labelTxt}</text>`;
+    });
+
+    svg += `</svg>`;
+    return svg;
+}
+
+function buildVectorChartProyeccionSVG(years, pctValues, chartTitle = "") {
+    const width = 250;
+    const height = chartTitle ? 138 : 128;
+    const marginTop = chartTitle ? 22 : 15;
+    const marginBottom = 22;
+    const marginLeft = 28;
+    const marginRight = 18;
+    const chartW = width - marginLeft - marginRight;
+    const chartH = height - marginTop - marginBottom;
+
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+    svg += `<rect width="${width}" height="${height}" fill="#F8FAFC" rx="6" ry="6"/>`;
+
+    if (chartTitle) {
+        svg += `<text x="${width / 2}" y="13" font-family="Poppins, sans-serif" font-size="6.5" font-weight="bold" fill="#0F172A" text-anchor="middle">${chartTitle}</text>`;
+    }
+
+    [0, 25, 50, 75, 100].forEach(p => {
+        const y = marginTop + chartH - (p / 100) * chartH;
+        svg += `<line x1="${marginLeft}" y1="${y}" x2="${width - marginRight}" y2="${y}" stroke="#E2E8F0" stroke-dasharray="2 2" stroke-width="1"/>`;
+        svg += `<text x="${marginLeft - 3}" y="${y + 2}" font-family="Poppins, sans-serif" font-size="5.5" fill="#94A3B8" text-anchor="end">${p}%</text>`;
+    });
+
+    const points = pctValues.map((v, i) => {
+        const x = marginLeft + (i / (pctValues.length - 1)) * chartW;
+        const y = marginTop + chartH - (Math.min(100, v) / 100) * chartH;
+        return { x, y, v, year: years[i] };
+    });
+
+    let areaPath = `M ${points[0].x} ${marginTop + chartH}`;
+    points.forEach(p => { areaPath += ` L ${p.x} ${p.y}`; });
+    areaPath += ` L ${points[points.length - 1].x} ${marginTop + chartH} Z`;
+    svg += `<path d="${areaPath}" fill="#1A6B3C" fill-opacity="0.12"/>`;
+
+    let linePath = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+        linePath += ` L ${points[i].x} ${points[i].y}`;
+    }
+    svg += `<path d="${linePath}" stroke="#1A6B3C" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+    points.forEach((p) => {
+        const isProj = p.year === "2027";
+        const dotColor = isProj ? "#018D38" : "#1A6B3C";
+        svg += `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${dotColor}" stroke="#FFFFFF" stroke-width="1.2"/>`;
+        svg += `<text x="${p.x}" y="${p.y - 5}" font-family="Poppins, sans-serif" font-size="6" font-weight="bold" fill="#0F172A" text-anchor="middle">${p.v.toFixed(1)}%</text>`;
+        svg += `<text x="${p.x}" y="${height - 6}" font-family="Poppins, sans-serif" font-size="6" fill="#64748B" text-anchor="middle">${isProj ? "2027 (Proy)" : p.year}</text>`;
+    });
+
+    svg += `</svg>`;
+    return svg;
+}
+
 async function generatePlanPDF() {
     const btnPdf = document.getElementById('btn-export-plan-pdf');
     if (!btnPdf) return;
@@ -1463,7 +1644,6 @@ async function generatePlanPDF() {
     btnPdf.disabled = true;
 
     try {
-        // Configure Poppins Font & FontAwesome Solid
         pdfMake.fonts = {
             Poppins: {
                 normal: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-400-normal.ttf',
@@ -1476,11 +1656,9 @@ async function generatePlanPDF() {
             }
         };
 
-        // 1. Gather active filters and details
         const yearFilterText = planYearFilter === 'todos' ? 'Cuatrienio 2024-2027' : `Meta ${planYearFilter}`;
         const metricText = planMetric === 'contratado' ? 'Longitud/Área Contratada' : 'Longitud/Área Ejecutada';
 
-        // 2. Perform same calculations as renderPlanTab
         let cumplidas = 0, proceso = 0, riesgo = 0;
         let inversionTotal = 0;
         let munis = new Set();
@@ -1569,13 +1747,49 @@ async function generatePlanPDF() {
         });
 
         const promedio = countCumplimiento > 0 ? (sumCumplimiento / countCumplimiento).toFixed(1) : '0.0';
-
-        // 3. Fetch Institutional Logo & Charts
         const logoBase64 = await getBase64ImageFromURL('./assets/escudo_antioquia.png').catch(() => null);
-        const chartMetasBase64 = (charts['plan-metas'] && typeof charts['plan-metas'].toBase64Image === 'function') ? charts['plan-metas'].toBase64Image() : null;
-        const chartAnualBase64 = (charts['plan-anual'] && typeof charts['plan-anual'].toBase64Image === 'function') ? charts['plan-anual'].toBase64Image() : null;
 
-        // 4. Construct pdfMake document
+        // 1. Gráfico de Cumplimiento por Indicador (Barras Horizontales Vectorial)
+        const svgMetasMarkup = buildVectorChartMetasSVG(indicatorsList);
+
+        // 2. Gráfico 1 General de Proyección
+        const proyGeneral = calculateProyeccionAnualPct('todos');
+        const svgProyGeneralMarkup = buildVectorChartProyeccionSVG(proyGeneral.years, proyGeneral.pctValues, '1. Proyección General Cuatrienio (%)');
+
+        // 3. Gráficos de Proyección para cada uno de los 7 Indicadores Estratégicos (Total 8 Proyecciones)
+        const indKeys = Object.keys(indicadoresEstrategicos);
+        const indProyCharts = indKeys.map((indKey, idx) => {
+            const d = calculateProyeccionAnualPct(indKey);
+            let shortName = indKey;
+            if (shortName.includes("AEROPUERTOS")) shortName = "Aeropuertos/Aeródromos";
+            else if (shortName.includes("MUELLES")) shortName = "Muelles/Embarcaderos";
+            else if (shortName.includes("EQUIPAMIENTOS")) shortName = "Equipamientos Constr.";
+            else if (shortName.includes("TERCIARIAS")) shortName = "Vías Terciarias (RVT)";
+            else if (shortName.includes("ESPACIO")) shortName = "Espacio Público";
+            else if (shortName.includes("CABLES")) shortName = "Cables Aéreos";
+            else if (shortName.includes("URBANA")) shortName = "Vía Urbana (RVU)";
+
+            const title = `${idx + 2}. ${shortName} (%)`;
+            return {
+                title,
+                svg: buildVectorChartProyeccionSVG(d.years, d.pctValues, title)
+            };
+        });
+
+        // Construir filas en pares (2 columnas) para los 7 indicadores
+        const chartPairs = [];
+        for (let i = 0; i < indProyCharts.length; i += 2) {
+            const left = indProyCharts[i];
+            const right = indProyCharts[i + 1];
+            chartPairs.push({
+                columns: [
+                    { svg: left.svg, width: 255, alignment: 'center' },
+                    right ? { svg: right.svg, width: 255, alignment: 'center' } : { text: '', width: 255 }
+                ],
+                margin: [0, 0, 0, 8]
+            });
+        }
+
         const docDefinition = {
             pageSize: 'LETTER',
             pageOrientation: 'portrait',
@@ -1586,7 +1800,6 @@ async function generatePlanPDF() {
                 color: '#1E293B'
             },
             content: [
-                // Header Row
                 {
                     columns: [
                         logoBase64 ? {
@@ -1614,12 +1827,10 @@ async function generatePlanPDF() {
                     ],
                     margin: [0, 0, 0, 8]
                 },
-                // Divider Line
                 {
                     canvas: [{ type: 'line', x1: 0, y1: 0, x2: 542, y2: 0, lineWidth: 1.5, lineColor: '#1A6B3C' }],
                     margin: [0, 0, 0, 10]
                 },
-                // Active Filters Context Callout
                 {
                     table: {
                         widths: ['*'],
@@ -1641,15 +1852,11 @@ async function generatePlanPDF() {
                             ]
                         ]
                     },
-                    layout: {
-                        defaultBorder: false
-                    },
+                    layout: { defaultBorder: false },
                     margin: [0, 0, 0, 10]
                 },
-                // Performance summary row (columns)
                 {
                     columns: [
-                        // Left Column: Large Global Avance Box
                         {
                             table: {
                                 widths: ['*'],
@@ -1668,23 +1875,16 @@ async function generatePlanPDF() {
                                 ]
                             },
                             layout: {
-                                hLineWidth: () => 1,
-                                vLineWidth: () => 1,
-                                hLineColor: () => '#C5D9CB',
-                                vLineColor: () => '#C5D9CB',
-                                paddingLeft: () => 10,
-                                paddingRight: () => 10,
-                                paddingTop: () => 8,
-                                paddingBottom: () => 8
+                                hLineWidth: () => 1, vLineWidth: () => 1,
+                                hLineColor: () => '#C5D9CB', vLineColor: () => '#C5D9CB',
+                                paddingLeft: () => 10, paddingRight: () => 10, paddingTop: () => 8, paddingBottom: () => 8
                             },
                             width: 140
                         },
-                        // Right Column: Strategic Meta Distributions & Totals
                         {
                             stack: [
                                 {
                                     columns: [
-                                        // Cumplidas
                                         {
                                             table: {
                                                 widths: ['*'],
@@ -1707,7 +1907,6 @@ async function generatePlanPDF() {
                                             },
                                             margin: [0, 0, 4, 0]
                                         },
-                                        // En Proceso
                                         {
                                             table: {
                                                 widths: ['*'],
@@ -1730,7 +1929,6 @@ async function generatePlanPDF() {
                                             },
                                             margin: [4, 0, 4, 0]
                                         },
-                                        // En Riesgo
                                         {
                                             table: {
                                                 widths: ['*'],
@@ -1755,10 +1953,8 @@ async function generatePlanPDF() {
                                         }
                                     ]
                                 },
-                                // Second row of stats in right column
                                 {
                                     columns: [
-                                        // Inversión Total
                                         {
                                             table: {
                                                 widths: ['*'],
@@ -1781,7 +1977,6 @@ async function generatePlanPDF() {
                                             },
                                             margin: [0, 6, 4, 0]
                                         },
-                                        // Municipios
                                         {
                                             table: {
                                                 widths: ['*'],
@@ -1813,15 +2008,12 @@ async function generatePlanPDF() {
                     ],
                     margin: [0, 0, 0, 12]
                 },
-                // Strategic Indicators Table Header Title
                 { text: 'DETALLE DE CUMPLIMIENTO POR INDICADOR ESTRATÉGICO', fontSize: 7.5, bold: true, color: '#475569', letterSpacing: 0.5, margin: [0, 0, 0, 4] },
-                // Indicators Table
                 {
                     table: {
                         headerRows: 1,
                         widths: ['*', 'auto', 'auto', 'auto', 'auto', 'auto'],
                         body: [
-                            // Table Header Row
                             [
                                 { text: 'INDICADOR ESTRATÉGICO', bold: true, color: '#FFFFFF', fillColor: '#1A6B3C', fontSize: 7.5 },
                                 { text: 'META', bold: true, color: '#FFFFFF', fillColor: '#1A6B3C', fontSize: 7.5, alignment: 'right' },
@@ -1830,8 +2022,7 @@ async function generatePlanPDF() {
                                 { text: '% AVANCE', bold: true, color: '#FFFFFF', fillColor: '#1A6B3C', fontSize: 7.5, alignment: 'center' },
                                 { text: 'CONVENIOS', bold: true, color: '#FFFFFF', fillColor: '#1A6B3C', fontSize: 7.5, alignment: 'center' }
                             ],
-                            // Dynamic rows
-                            ...indicatorsList.map((item, index) => {
+                            ...indicatorsList.map((item) => {
                                 const isNP = item.isNP;
                                 const fmtVal = (val) => {
                                     if (item.unit === 'km') return val.toFixed(1) + ' km';
@@ -1844,16 +2035,16 @@ async function generatePlanPDF() {
                                 const restanteText = isNP ? '-' : fmtVal(item.restante);
                                 const pctText = isNP ? 'NP' : `${item.pct.toFixed(1)}%`;
                                 
-                                let badgeColor = '#EF4444'; // Red
+                                let badgeColor = '#EF4444';
                                 let badgeBg = '#FCE8E6';
                                 if (isNP) {
-                                    badgeColor = '#64748B'; // Slate
+                                    badgeColor = '#64748B';
                                     badgeBg = '#F1F5F9';
                                 } else if (item.pct >= 80) {
-                                    badgeColor = '#10B981'; // Green
+                                    badgeColor = '#10B981';
                                     badgeBg = '#E8F5EE';
                                 } else if (item.pct >= 50) {
-                                    badgeColor = '#F59E0B'; // Yellow/Orange
+                                    badgeColor = '#F59E0B';
                                     badgeBg = '#FFF9DB';
                                 }
 
@@ -1887,27 +2078,28 @@ async function generatePlanPDF() {
                     },
                     margin: [0, 0, 0, 12]
                 },
-                // Visual charts title
-                { text: 'ANÁLISIS GRÁFICO DE AVANCES Y METAS', fontSize: 7.5, bold: true, color: '#475569', letterSpacing: 0.5, margin: [0, 0, 0, 4] },
-                // Charts in two columns
+                // Sección de Análisis Gráfico Principal
+                { text: 'ANÁLISIS GRÁFICO GENERAL (CUMPLIMIENTO Y PROYECCIÓN GLOBAL)', fontSize: 7.5, bold: true, color: '#475569', letterSpacing: 0.5, margin: [0, 0, 0, 4] },
                 {
                     columns: [
-                        chartMetasBase64 ? {
+                        {
                             stack: [
-                                { text: 'CUMPLIMIENTO POR INDICADOR', fontSize: 6.5, bold: true, color: '#475569', alignment: 'center', margin: [0, 0, 0, 2] },
-                                { image: chartMetasBase64, width: 250, alignment: 'center' }
+                                { text: '% CUMPLIMIENTO POR INDICADOR', fontSize: 6.5, bold: true, color: '#475569', alignment: 'center', margin: [0, 0, 0, 2] },
+                                { svg: svgMetasMarkup, width: 255, alignment: 'center' }
                             ]
-                        } : { text: 'Gráfico no disponible', fontSize: 8, alignment: 'center' },
-                        chartAnualBase64 ? {
+                        },
+                        {
                             stack: [
-                                { text: 'EVOLUCIÓN ACUMULADA POR AÑO', fontSize: 6.5, bold: true, color: '#475569', alignment: 'center', margin: [0, 0, 0, 2] },
-                                { image: chartAnualBase64, width: 250, alignment: 'center' }
+                                { text: 'PROYECCIÓN GENERAL CUATRIENIO', fontSize: 6.5, bold: true, color: '#475569', alignment: 'center', margin: [0, 0, 0, 2] },
+                                { svg: svgProyGeneralMarkup, width: 255, alignment: 'center' }
                             ]
-                        } : { text: 'Gráfico no disponible', fontSize: 8, alignment: 'center' }
+                        }
                     ],
-                    margin: [0, 0, 0, 10]
+                    margin: [0, 0, 0, 12]
                 },
-                // Footer details
+                // Sección de Proyecciones Detalladas por Indicador (7 Gráficos Vectoriales de Proyección)
+                { text: 'PROYECCIÓN DE AVANCE POR INDICADOR ESTRATÉGICO (7 INDICADORES)', fontSize: 8, bold: true, color: '#1A6B3C', letterSpacing: 0.5, margin: [0, 10, 0, 6], pageBreak: 'before' },
+                ...chartPairs,
                 {
                     text: 'Este reporte refleja la información oficial consolidada de convenios de infraestructura de la Dirección de Apoyo Territorial DIAT. Gobernación de Antioquia Firme.',
                     fontSize: 6.5,
@@ -1918,7 +2110,6 @@ async function generatePlanPDF() {
             ]
         };
 
-        // 5. Generate and download PDF
         pdfMake.createPdf(docDefinition).download(`Ficha_Indicadores_Plan_${planYearFilter}.pdf`);
 
         btnPdf.innerHTML = originalText;
@@ -5814,6 +6005,11 @@ const indicadoresEstrategicos = {
         unit: "und",
         tipo: "und"
     },
+    "EQUIPAMIENTOS CONSTRUIDOS": {
+        metas: { todos: 5, "2024": 0, "2025": 1, "2026": 2, "2027": 2 },
+        unit: "und",
+        tipo: "und"
+    },
     "VÍAS TERCIARIAS MEJORADAS. (RVT)": {
         metas: { todos: 500, "2024": 50, "2025": 150, "2026": 100, "2027": 200 },
         unit: "km",
@@ -5850,18 +6046,20 @@ function normalizarIndicador(ind) {
     if (!ind) return "";
     const i = normText(ind);
     // Aeropuertos / Aeródromos
-    if (i.includes("AEROPUERTO") || i.includes("AERODROMO") || i.includes("AERODROMO")) return "AEROPUERTOS O AER\u00d3DROMOS MEJORADOS Y EN OPERACI\u00d3N";
+    if (i.includes("AEROPUERTO") || i.includes("AERODROMO") || i.includes("AERODROMO")) return "AEROPUERTOS O AERÓDROMOS MEJORADOS Y EN OPERACIÓN";
     // Muelles / Embarcaderos
     if (i.includes("MUELLE") || i.includes("EMBARCADERO")) return "MUELLES O EMBARCADEROS MEJORADOS";
+    // Equipamientos
+    if (i.includes("EQUIPAMIENT") || i.includes("EQUIP")) return "EQUIPAMIENTOS CONSTRUIDOS";
     // Vías Terciarias (RVT) — cualquier combinación que mencione "TERCIARIA"
-    if (i.includes("TERCIARIA") || i.includes("RVT")) return "V\u00cdAS TERCIARIAS MEJORADAS. (RVT)";
+    if (i.includes("TERCIARIA") || i.includes("RVT")) return "VÍAS TERCIARIAS MEJORADAS. (RVT)";
     // Espacio Público
     if (i.includes("ESPACIO") && i.includes("PUBLI")) return "ESPACIO PUBLICO";
     if (i.includes("ESPACIO PUBLICO")) return "ESPACIO PUBLICO";
     // Cables aéreos
-    if (i.includes("CABLE")) return "CABLES A\u00c9REOS SOSTENIBLES CONSTRUIDOS Y OPERANDO";
+    if (i.includes("CABLE")) return "CABLES AÉREOS SOSTENIBLES CONSTRUIDOS Y OPERANDO";
     // Vía Urbana (RVU)
-    if (i.includes("URBANA") || i.includes("RVU")) return "V\u00cdA URBANA MEJORADA. (RVU)";
+    if (i.includes("URBANA") || i.includes("RVU")) return "VÍA URBANA MEJORADA. (RVU)";
     return ""; // No mapeado
 }
 
@@ -6082,6 +6280,7 @@ function renderPlanTab() {
         let displayName = ind;
         if (ind.includes("AEROPUERTOS")) displayName = "Aeropuertos/Aeródromos";
         else if (ind.includes("MUELLES")) displayName = "Muelles/Embarcaderos";
+        else if (ind.includes("EQUIPAMIENTOS")) displayName = "Equipamientos Constr.";
         else if (ind.includes("TERCIARIAS")) displayName = "Vías Terciarias (RVT)";
         else if (ind.includes("ESPACIO")) displayName = "Espacio Público";
         else if (ind.includes("CABLES")) displayName = "Cables Aéreos";
@@ -6256,69 +6455,27 @@ function renderPlanTab() {
         }
     });
 
-    // === 2. GRÁFICO DE AVANCE ACUMULADO POR AÑO (Optimizado con curvas y gradiente) ===
+    // === 2. GRÁFICO DE PROYECCIÓN DE AVANCE POR AÑO (%) (Optimizado con curvas y porcentajes) ===
     if (charts['plan-anual']) charts['plan-anual'].destroy();
     
-    const years = Object.keys(avancePorAnio);
-    const yearlyRaw = Object.values(avancePorAnio);
-    const yearlyAccumulated = [];
-    let accum = 0;
-    for (let idx = 0; idx < yearlyRaw.length; idx++) {
-        accum += yearlyRaw[idx];
-        yearlyAccumulated.push(parseFloat(accum.toFixed(2)));
-    }
-
-    let labelAnualMetric = '';
-    let unitAnual = '';
-    let mainColor = '#0B5640'; // Default institutional green
-
-    if (planAnualFilter === 'todos-km') {
-        labelAnualMetric = 'Longitud Acumulada (km)';
-        unitAnual = 'km';
-        mainColor = '#0B5640';
-    } else if (planAnualFilter === 'todos-m2') {
-        labelAnualMetric = 'Área Acumulada (m²)';
-        unitAnual = 'm²';
-        mainColor = '#018D38';
-    } else {
-        const cfg = indicadoresEstrategicos[planAnualFilter];
-        unitAnual = cfg ? cfg.unit : 'und';
-        labelAnualMetric = `${planAnualFilter} (${unitAnual})`;
-        if (cfg && cfg.tipo === 'km') {
-            mainColor = '#0B5640';
-        } else if (cfg && cfg.tipo === 'm2') {
-            mainColor = '#018D38';
-        } else {
-            mainColor = '#3561AB'; // Blue for units
-        }
-    }
+    const proyWeb = calculateProyeccionAnualPct(planAnualFilter);
+    const yearsLabels = proyWeb.years.map(y => y === "2027" ? "2027 (Proyección)" : y);
+    const mainColor = '#0B5640';
 
     const canvasAnual = document.getElementById('chart-plan-anual');
     const ctxAnual = canvasAnual.getContext('2d');
     
-    // Hex to RGBA helpers for gradients
-    let startGrad = 'rgba(11, 86, 64, 0.35)'; // Verde Oscuro
-    let endGrad = 'rgba(11, 86, 64, 0.0)';
-    if (mainColor === '#018D38') {
-        startGrad = 'rgba(1, 141, 56, 0.35)';
-    } else if (mainColor === '#3561AB') {
-        startGrad = 'rgba(53, 97, 171, 0.35)';
-    }
-
     const gradient = ctxAnual.createLinearGradient(0, 0, 0, 250);
-    gradient.addColorStop(0, startGrad);
-    gradient.addColorStop(1, endGrad);
-
-    // Label last year as projection
-    const yearsLabels = years.map(y => y === "2027" ? "2027 (Proyección)" : y);
+    gradient.addColorStop(0, 'rgba(11, 86, 64, 0.35)');
+    gradient.addColorStop(1, 'rgba(11, 86, 64, 0.0)');
 
     charts['plan-anual'] = new Chart(canvasAnual, {
         type: 'line',
         data: {
             labels: yearsLabels,
             datasets: [{
-                label: labelAnualMetric,
-                data: yearlyAccumulated,
+                label: '% Proyección de Avance Acumulado',
+                data: proyWeb.pctValues,
                 borderColor: mainColor,
                 backgroundColor: gradient,
                 fill: true,
@@ -6351,8 +6508,7 @@ function renderPlanTab() {
                     bodyFont: {size: 13, weight: 'bold', family: 'Poppins'},
                     callbacks: {
                         label: function(context) {
-                            const valFmt = unitAnual === 'm²' ? formatNumber(Math.round(context.raw)) : context.raw;
-                            return ` ${context.dataset.label}: ${valFmt} ${unitAnual}`;
+                            return ` ${context.dataset.label}: ${context.raw.toFixed(1)}%`;
                         }
                     }
                 }
@@ -6360,12 +6516,13 @@ function renderPlanTab() {
             scales: {
                 y: {
                     beginAtZero: true,
+                    suggestedMax: 100,
                     grid: { color: gridColor },
                     ticks: {
                         color: textColor,
                         font: { size: 9, family: 'Poppins' },
                         callback: function(value) {
-                            return unitAnual === 'm²' ? formatNumber(value) + ' m²' : (unitAnual === 'km' ? value + ' km' : value + ' und');
+                            return value + '%';
                         }
                     }
                 },
