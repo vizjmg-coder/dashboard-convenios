@@ -47,7 +47,7 @@ const subregionColors = {
     "BAJO CAUCA": { fill: "#dca2e8", border: "#000000" },
     "MAGDALENA MEDIO": { fill: "#ffa1a1", border: "#000000" },
     "OTRAS": { fill: "#f1f5f9", border: "#000000" }
-}; 
+};
 
 // Variables Galería Lightbox
 let currentGalleryImages = [];
@@ -71,9 +71,9 @@ const getSelectValues = (id) => {
 };
 
 const parseNum = (val) => {
-    if(!val) return 0;
-    if(typeof val === 'number') return val;
-    return parseFloat(val.toString().replace(/[^0-9.-]+/g,"")) || 0;
+    if (!val) return 0;
+    if (typeof val === 'number') return val;
+    return parseFloat(val.toString().replace(/[^0-9.-]+/g, "")) || 0;
 };
 
 const isCuatrenioAnterior = (row) => {
@@ -100,23 +100,29 @@ const getRowAreaEjecutada = (row) => {
 
 const getRowLongitudContratada = (row) => {
     if (!row) return 0;
-    if (isCuatrenioAnterior(row)) {
-        return 0;
-    }
-    return parseNum(row['ALCANCE (M)']);
+    return parseNum(row['ALCANCE (M)']) || parseNum(row['LONGITUD CONTRATADA']);
 };
 
 const getRowAreaContratada = (row) => {
     if (!row) return 0;
-    if (isCuatrenioAnterior(row)) {
-        return 0;
-    }
-    return parseNum(row['ALCANCE (M2)']);
+    return parseNum(row['ALCANCE (M2)']) || parseNum(row['AREA CONTRATADA']) || parseNum(row['ÁREA CONTRATADA']);
+};
+
+// Funciones específicas para la pestaña Indicadores (Plan de Desarrollo 2024-2027)
+// Excluyen cuatrienios anteriores (< 2024) para la medición de cumplimiento del Plan de Desarrollo
+const getRowLongitudContratadaPlan = (row) => {
+    if (!row || isCuatrenioAnterior(row)) return 0;
+    return parseNum(row['ALCANCE (M)']) || parseNum(row['LONGITUD CONTRATADA']);
+};
+
+const getRowAreaContratadaPlan = (row) => {
+    if (!row || isCuatrenioAnterior(row)) return 0;
+    return parseNum(row['ALCANCE (M2)']) || parseNum(row['AREA CONTRATADA']) || parseNum(row['ÁREA CONTRATADA']);
 };
 
 const parseExcelDate = (excelNum) => {
     if (!excelNum) return '';
-    if (typeof excelNum === 'string') return excelNum; 
+    if (typeof excelNum === 'string') return excelNum;
     if (typeof excelNum === 'number') {
         const date = new Date(Math.round((excelNum - 25569) * 86400 * 1000));
         const day = String(date.getUTCDate()).padStart(2, '0');
@@ -131,47 +137,47 @@ const parseExcelDate = (excelNum) => {
 // Se sincroniza con las variables de CSS
 function getSystemState(estado) {
     const est = String(estado || 'N/A').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
-    
+
     if (est.includes('ejecutado')) return {
         badgeClass: 'badge-ejecutado',
-        hex: '#2563EB', 
+        hex: '#2563EB',
         label: 'Ejecutado'
     };
     if (est.includes('ejecucion')) return {
         badgeClass: 'badge-ejecucion',
-        hex: '#10B981', 
+        hex: '#10B981',
         label: 'En Ejecución'
     };
     if (est.includes('proximo') || est.includes('finalizar')) return {
         badgeClass: 'badge-proximo',
-        hex: '#F59E0B', 
+        hex: '#F59E0B',
         label: 'Próximo a finalizar'
     };
     if (est.includes('suspendido') || est.includes('riesgo medio') || est.includes('medio')) return {
         badgeClass: 'badge-suspendido',
-        hex: '#8B5CF6', 
+        hex: '#8B5CF6',
         label: 'Suspendido'
     };
     if (est.includes('por liquidar') || est.includes('riesgo alto') || est.includes('alto') || est.includes('riesgo')) return {
         badgeClass: 'badge-por-liquidar',
-        hex: '#F59E0B', 
+        hex: '#F59E0B',
         label: 'Por Liquidar'
     };
     if (est.includes('liquidado')) return {
         badgeClass: 'badge-liquidado',
-        hex: '#3B82F6', 
+        hex: '#3B82F6',
         label: 'Liquidado'
     };
-    
+
     return { badgeClass: 'badge-default', hex: '#9CA3AF', label: String(estado).toUpperCase() };
 }
 
 
 // Función para copiar coordenadas al portapapeles
-window.copyCoord = function(inputId, btn) {
+window.copyCoord = function (inputId, btn) {
     const input = document.getElementById(inputId);
-    if(!input.value) return;
-    
+    if (!input.value) return;
+
     input.select();
     input.setSelectionRange(0, 99999);
     navigator.clipboard.writeText(input.value).then(() => {
@@ -179,7 +185,7 @@ window.copyCoord = function(inputId, btn) {
         btn.innerHTML = '<i class="fa-solid fa-check"></i>';
         btn.classList.add('bg-institutional-primary', 'text-white');
         btn.classList.remove('bg-slate-200', 'text-slate-600');
-        
+
         setTimeout(() => {
             btn.innerHTML = oldHtml;
             btn.classList.remove('bg-institutional-primary', 'text-white');
@@ -192,7 +198,7 @@ window.copyCoord = function(inputId, btn) {
 function renderTimeline(row) {
     const tlContainer = document.getElementById('timeline-container');
     if (!tlContainer) return;
-    
+
     // Helper flexible para encontrar columnas
     const getVal = (keywords) => {
         const key = Object.keys(row).find(k => keywords.some(kw => String(k).toUpperCase().includes(kw)));
@@ -214,7 +220,7 @@ function renderTimeline(row) {
         return;
     }
 
-    for(let i=1; i<=9; i++) setNodeState(i, 'pending', '--');
+    for (let i = 1; i <= 9; i++) setNodeState(i, 'pending', '--');
     setNodeState('3b', 'pending', '--');
     let maxActiveNode = 0;
 
@@ -233,7 +239,7 @@ function renderTimeline(row) {
         setNodeState('3b', 'failed', 'Incumplimiento');
         setNodeState(4, 'completed', 'Resolución Emitida');
         maxActiveNode = 4;
-        
+
         if (actJur.includes('REPOSICIÓN') || actJur.includes('REPOSICION')) {
             setNodeState(5, 'active', 'En proceso');
             maxActiveNode = 5;
@@ -242,7 +248,7 @@ function renderTimeline(row) {
             setNodeState(6, 'completed', 'Ejecutoriado');
             maxActiveNode = 6;
         }
-        
+
         if (faseCobro.includes('PERSUASIVO')) {
             setNodeState(7, 'active', 'En curso');
             maxActiveNode = 7;
@@ -273,20 +279,20 @@ function renderTimeline(row) {
     const tipoOblig = String(row['TIPO OBLIGACIÓN (SI APLICA)'] || getVal(['TIPO OBLIG']) || '').toUpperCase();
     const valOblig = row['VALOR OBLIGACIÓN (SI APLICA)'] || getVal(['VALOR OBLIG']) || 0;
     const valNum = parseNum(valOblig);
-    
+
     let rendVal = 0, recVal = 0;
     if (tipoOblig.includes('RENDIMIENTO')) {
         rendVal = valNum;
     } else if (tipoOblig.includes('REINTEGRO') || tipoOblig.includes('RECURSO') || tipoOblig.includes('SALDO') || tipoOblig.includes('ESPECIAL')) {
         recVal = valNum;
     } else {
-        recVal = valNum; 
+        recVal = valNum;
     }
-    
+
     document.getElementById('tl-fin-rendimientos').textContent = formatCurrency(rendVal);
     document.getElementById('tl-fin-recursos').textContent = formatCurrency(recVal);
     document.getElementById('tl-fin-total').textContent = formatCurrency(rendVal + recVal);
-    
+
     document.getElementById('tl-fin-fecha').textContent = fechaCierre;
     if (estExp.includes('CERRADO')) {
         document.getElementById('tl-fin-estado').classList.remove('hidden');
@@ -300,14 +306,14 @@ function setNodeState(index, state, dateText) {
     const badge = document.getElementById(`tl-badge-${index}`);
     const dateEl = document.getElementById(`tl-date-${index}`);
     if (!node || !badge || !dateEl) return;
-    
+
     const iconBox = node.querySelector('.icon-box');
     iconBox.className = 'w-12 h-12 rounded-full border-4 flex items-center justify-center shadow-sm transition-all icon-box';
     badge.className = 'text-[8px] px-2 py-0.5 rounded-full mt-1 font-bold tl-badge';
     dateEl.textContent = dateText;
-    
+
     let tooltipTitle = 'Pendiente';
-    
+
     if (state === 'pending') {
         iconBox.classList.add('bg-slate-100', 'border-white', 'dark:bg-slate-800', 'dark:border-slate-700', 'text-slate-400');
         badge.classList.add('bg-slate-100', 'text-slate-500');
@@ -328,7 +334,7 @@ function setNodeState(index, state, dateText) {
         badge.innerHTML = 'Incumplido <i class="fa-solid fa-xmark ml-0.5"></i>';
         tooltipTitle = `Incumplido: ${dateText}`;
     }
-    
+
     node.setAttribute('title', tooltipTitle);
 }
 
@@ -339,7 +345,7 @@ function getCoords(layer) {
         function flatten(arr) { return arr.reduce((acc, val) => Array.isArray(val) ? acc.concat(flatten(val)) : acc.concat(val), []); }
         latlngs = flatten(latlngs);
     } else if (layer.getLatLng) { latlngs = [layer.getLatLng()]; }
-    
+
     if (!latlngs || latlngs.length === 0) return null;
     return {
         start: `${latlngs[0].lat.toFixed(6)}, ${latlngs[0].lng.toFixed(6)}`,
@@ -399,12 +405,12 @@ async function getOptimizedBase64Image(url, maxDim = 600) {
 async function getBase64FromHtmlElement(elementId) {
     const el = document.getElementById(elementId);
     if (!el) return null;
-    
+
     const mapPane = el.querySelector('.leaflet-map-pane');
     let oldTransform = '';
     let oldLeft = '';
     let oldTop = '';
-    
+
     if (mapPane) {
         oldTransform = mapPane.style.transform;
         const match = oldTransform.match(/translate3d\(([-0-9.]+)px,\s*([-0-9.]+)px/);
@@ -416,16 +422,16 @@ async function getBase64FromHtmlElement(elementId) {
             mapPane.style.top = match[2] + 'px';
         }
     }
-    
+
     try {
         const canvas = await html2canvas(el, { useCORS: true, allowTaint: true, scale: 2, logging: false });
-        
+
         if (mapPane && oldTransform) {
             mapPane.style.transform = oldTransform;
             mapPane.style.left = oldLeft;
             mapPane.style.top = oldTop;
         }
-        
+
         return canvas.toDataURL('image/jpeg', 0.85);
     } catch (e) {
         console.warn('Error capturing map:', e);
@@ -523,7 +529,7 @@ async function generateAntioquiaMapBase64(municipalityName, row) {
                     .replace(/\?/g, 'Ñ')
                     .replace(/¥/g, 'Ñ')
                     .replace(/\u00A5/g, 'Ñ');
-                    
+
                 const isTarget = normMuniName(mName) === targetNorm;
                 if (isTarget) {
                     return {
@@ -552,7 +558,7 @@ async function generateAntioquiaMapBase64(municipalityName, row) {
                 }
             }
         }).addTo(tempMap);
-        
+
         // Show the entire department of Antioquia, centered, with target municipality and tramos highlighted in context
         tempMap.fitBounds(allLayer.getBounds(), { padding: [10, 10] });
     } else {
@@ -563,7 +569,7 @@ async function generateAntioquiaMapBase64(municipalityName, row) {
     let traceLayer = null;
     try {
         const r = await fetch(`./assets/mapas/${num}.geojson`);
-        if(r.ok) {
+        if (r.ok) {
             const d = await r.json();
             traceLayer = L.geoJSON(d, {
                 style: { color: '#A90F09', weight: 4, opacity: 0.9 },
@@ -581,7 +587,7 @@ async function generateAntioquiaMapBase64(municipalityName, row) {
                 }).on('error', () => res(null));
             });
         }
-    } catch(e) {}
+    } catch (e) { }
 
     if (!traceLayer) {
         const la = parseFloat(row['LATITUD']), lo = parseFloat(row['LONGITUD']);
@@ -596,7 +602,7 @@ async function generateAntioquiaMapBase64(municipalityName, row) {
     let oldTransform = '';
     let oldLeft = '';
     let oldTop = '';
-    
+
     if (mapPane) {
         oldTransform = mapPane.style.transform;
         const match = oldTransform.match(/translate3d\(([-0-9.]+)px,\s*([-0-9.]+)px/);
@@ -618,7 +624,7 @@ async function generateAntioquiaMapBase64(municipalityName, row) {
             logging: false
         });
         mapBase64 = canvas.toDataURL('image/jpeg', 0.85);
-    } catch(e) {
+    } catch (e) {
         console.error("Error capturing Antioquia map:", e);
     }
 
@@ -697,7 +703,7 @@ async function generateProfessionalPDF(row) {
 
         // ===== 1. ASYNCHRONOUS CAPTURE OF LOGOS & MAPS =====
         const logoBase64 = await getBase64ImageFromURL('./assets/escudo_antioquia.png').catch(() => null);
-        
+
         const photoElements = document.querySelectorAll('#mod-galeria img');
         const photosList = [];
         for (const img of photoElements) {
@@ -753,19 +759,19 @@ async function generateProfessionalPDF(row) {
                     },
                     {
                         stack: [
-                            { 
-                                text: String(labelText).toUpperCase(), 
-                                fontSize: isHighlighted ? 7.5 : 6.5, 
-                                bold: true, 
-                                color: isDark ? '#D1D5DB' : (isHighlighted ? '#07543A' : '#64748B'), 
-                                letterSpacing: 0.5 
+                            {
+                                text: String(labelText).toUpperCase(),
+                                fontSize: isHighlighted ? 7.5 : 6.5,
+                                bold: true,
+                                color: isDark ? '#D1D5DB' : (isHighlighted ? '#07543A' : '#64748B'),
+                                letterSpacing: 0.5
                             },
-                            { 
-                                text: String(valueText ?? '-'), 
-                                fontSize: isHighlighted ? 11 : 8, 
-                                color: isDark ? '#FFFFFF' : (isHighlighted ? '#07543A' : '#1E293B'), 
-                                bold: true, 
-                                margin: [0, 1, 0, 0] 
+                            {
+                                text: String(valueText ?? '-'),
+                                fontSize: isHighlighted ? 11 : 8,
+                                color: isDark ? '#FFFFFF' : (isHighlighted ? '#07543A' : '#1E293B'),
+                                bold: true,
+                                margin: [0, 1, 0, 0]
                             }
                         ],
                         width: '*'
@@ -810,7 +816,7 @@ async function generateProfessionalPDF(row) {
             const desembolsado = row['VALOR TOTAL DESEMBOLSADO'] || 0;
             const suspMeses = row['PRORROGA (MESES)'] || row['SUSPENSION(MESES)'] || 0;
             const tieneFotos = String(row['TIENE_FOTOS'] || 'SI').toUpperCase();
-            
+
             let termStr = row['NUEVA FECHA DE TERMINACION'] || row['FECHA DE TERMINACION'];
             let termDate = parseCOPDate(termStr);
 
@@ -900,8 +906,8 @@ async function generateProfessionalPDF(row) {
         const termNuevaStr = String(row['NUEVA FECHA DE TERMINACION'] || row['NUEVA FECHA DE TERMINACIÓN'] || row['NUEVA FECHA DE TERMINACIN'] || getVal(['NUEVA FECHA DE TERMINAC'], false) || 'Sin cambios').trim();
 
         // Logo configuration
-        const logoElement = logoBase64 
-            ? { image: logoBase64, width: 45, margin: [0, 2, 0, 0] } 
+        const logoElement = logoBase64
+            ? { image: logoBase64, width: 45, margin: [0, 2, 0, 0] }
             : {
                 table: {
                     widths: [45],
@@ -909,27 +915,27 @@ async function generateProfessionalPDF(row) {
                 },
                 layout: 'noBorders',
                 margin: [0, 2, 0, 0]
-              };
+            };
 
         const obsText = row['OBSERVACIONES'] || 'Sin observaciones adicionales registradas por el supervisor en el sistema.';
         const viasText = row['VIA_PRIORIZADA'] || 'No especificada';
-        
+
         // Parse vias into an array
         const parseVias = (text) => {
             if (!text || text === 'No especificada') return [];
             return text.split(/[\n,;\u2022]+/g)
-                       .map(s => s.trim())
-                       .filter(s => s.length > 0);
+                .map(s => s.trim())
+                .filter(s => s.length > 0);
         };
         const viasArray = parseVias(viasText);
-        
+
         let viasContent = { text: 'No especificada', fontSize: 8, color: '#334155' };
-        
+
         if (viasArray.length > 0) {
             const colVias1 = [];
             const colVias2 = [];
             const colVias3 = [];
-            
+
             viasArray.forEach((v, idx) => {
                 const viaBullet = {
                     columns: [
@@ -946,7 +952,7 @@ async function generateProfessionalPDF(row) {
                     colVias3.push(viaBullet);
                 }
             });
-            
+
             viasContent = {
                 columns: [
                     { stack: colVias1, width: '33%' },
@@ -1008,15 +1014,15 @@ async function generateProfessionalPDF(row) {
         timelineSteps.forEach((s, idx) => {
             const hasDate = s.date && s.date !== 'Pendiente' && s.date !== 'Por registrar' && s.date !== 'Sin cambios' && s.date !== 'Sin suspensiones' && s.date !== 'Sin prórrogas';
             const isLast = idx === timelineSteps.length - 1;
-            
+
             const nodeColor = hasDate ? '#0B7A53' : '#94A3B8';
             const nodeBg = hasDate ? '#E6F3ED' : '#F1F5F9';
-            
+
             const canvasItems = [
                 { type: 'circle', cx: 15, cy: 15, r: 7, color: nodeBg, lineColor: nodeColor, lineWidth: 1 },
                 { type: 'circle', cx: 15, cy: 15, r: 3, color: nodeColor }
             ];
-            
+
             if (!isLast) {
                 canvasItems.unshift({ type: 'line', x1: 15, y1: 15, x2: 15, y2: 45, lineWidth: 1.2, lineColor: '#E2E8F0', dash: { length: 3, space: 3 } });
             }
@@ -1077,12 +1083,12 @@ async function generateProfessionalPDF(row) {
             const buildPhotoCard = (photoObj, isHorizontal) => {
                 const w = isHorizontal ? 252.5 : 165;
                 const imgH = isHorizontal ? 150 : 220;
-                
+
                 let stageColor = '#475569';
                 if (photoObj.stage === 'Antes') stageColor = '#64748B';
                 else if (photoObj.stage === 'Durante') stageColor = '#D97706';
                 else if (photoObj.stage === 'Después' || photoObj.stage === 'Despues') stageColor = '#059669';
-                
+
                 return {
                     table: {
                         widths: [w],
@@ -1125,7 +1131,7 @@ async function generateProfessionalPDF(row) {
                     margin: [0, 4, 0, 8]
                 };
             };
-            
+
             const photoRows = [];
             let photoIndex = 0;
             while (photoIndex < photosList.length) {
@@ -1144,7 +1150,7 @@ async function generateProfessionalPDF(row) {
                     });
                     photoIndex += 2;
                 }
-                
+
                 // Row 2: 3 vertical (portrait) photos
                 const vertChunk = photosList.slice(photoIndex, photoIndex + 3);
                 if (vertChunk.length > 0) {
@@ -1167,8 +1173,8 @@ async function generateProfessionalPDF(row) {
         // ===== 7. CONSTRUCT CLEAN CARDS FOR PAGE 1 =====
         const progressSection = {
             columns: [
-                { stack: [ progressCard('Avance Físico Real', row['FISICO_NORM'] || 0, '#1A6B3C') ], width: '50%' },
-                { stack: [ progressCard('Avance Financiero Ejecutado', row['FINANCIERO_NORM'] || 0, '#3B82F6') ], width: '50%' }
+                { stack: [progressCard('Avance Físico Real', row['FISICO_NORM'] || 0, '#1A6B3C')], width: '50%' },
+                { stack: [progressCard('Avance Financiero Ejecutado', row['FINANCIERO_NORM'] || 0, '#3B82F6')], width: '50%' }
             ],
             columnGap: 10,
             margin: [0, 0, 0, 10]
@@ -1289,8 +1295,8 @@ async function generateProfessionalPDF(row) {
         const muniStrPdf = String(row['MUNICIPIO'] || 'N/A').trim().toUpperCase();
         const ejecStrPdf = String(row['CONVENIANTE EJECUTOR'] || '').trim().toUpperCase();
         const isEjecutorDiferentePdf = (ejecStrPdf && ejecStrPdf !== muniStrPdf && ejecStrPdf !== 'N/A');
-        const labelAporteMunPdf = isEjecutorDiferentePdf 
-            ? `APORTE CONVENIANTE EJECUTOR (${String(row['CONVENIANTE EJECUTOR']).toUpperCase()})` 
+        const labelAporteMunPdf = isEjecutorDiferentePdf
+            ? `APORTE CONVENIANTE EJECUTOR (${String(row['CONVENIANTE EJECUTOR']).toUpperCase()})`
             : 'APORTE MUNICIPIO';
 
         const inversionCard = cleanCard([
@@ -1385,16 +1391,16 @@ async function generateProfessionalPDF(row) {
                         {
                             stack: [
                                 { text: 'FICHA TÉCNICA DE CONVENIO', fontSize: 9, bold: true, color: '#1A6B3C', alignment: 'right' },
-                                { 
+                                {
                                     text: [
                                         { text: 'ESTADO: ', color: '#64748B' },
                                         { text: sysState.label.toUpperCase(), color: sysState.hex }
-                                    ], 
-                                    fontSize: 7.5, 
-                                    bold: true, 
-                                    alignment: 'right' 
+                                    ],
+                                    fontSize: 7.5,
+                                    bold: true,
+                                    alignment: 'right'
                                 },
-                                { text: `Generado: ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'})}`, fontSize: 7, color: '#94A3B8', alignment: 'right' }
+                                { text: `Generado: ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`, fontSize: 7, color: '#94A3B8', alignment: 'right' }
                             ],
                             width: 'auto'
                         }
@@ -1412,7 +1418,7 @@ async function generateProfessionalPDF(row) {
                 obsCard,
                 { text: '', margin: [0, 0, 0, 10] },
                 alertsCard,
-                
+
                 // Page 2
                 {
                     pageBreak: 'before',
@@ -1424,7 +1430,7 @@ async function generateProfessionalPDF(row) {
                 },
                 { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#1A6B3C' }], margin: [0, 0, 0, 12] },
                 inversionCard,
-                
+
                 {
                     columns: [
                         { text: 'LÍNEA DE TIEMPO Y EVENTOS CONTRACTUALES', fontSize: 12, bold: true, color: '#1A6B3C', width: '*' },
@@ -1455,7 +1461,7 @@ async function generateProfessionalPDF(row) {
                     columnGap: 10,
                     margin: [0, 0, 0, 0]
                 },
-                
+
                 // Page 3
                 {
                     pageBreak: 'before',
@@ -1505,20 +1511,20 @@ function calculateProyeccionAnualPct(indicadorFilter) {
         let cant = 0;
 
         if (cfg.tipo === 'km') {
-            const metros = planMetric === 'contratado' ? getRowLongitudContratada(row) : getRowLongitudEjecutada(row);
+            const metros = planMetric === 'contratado' ? getRowLongitudContratadaPlan(row) : getRowLongitudEjecutada(row);
             cant = metros / 1000;
         } else if (cfg.tipo === 'm2') {
-            cant = planMetric === 'contratado' ? getRowAreaContratada(row) : getRowAreaEjecutada(row);
+            cant = planMetric === 'contratado' ? getRowAreaContratadaPlan(row) : getRowAreaEjecutada(row);
         } else {
             if (planMetric === 'contratado') {
                 cant = isCuatrenioAnterior(row) ? 0 : 1;
             } else {
                 const estado = String(row['ESTADO CONVENIO'] || '').toUpperCase();
                 const tieneEjecucion = estado.includes('EJECUCI') || estado.includes('EJECUT') ||
-                                       estado.includes('OPERA') || estado.includes('MEJORAD') ||
-                                       getRowLongitudEjecutada(row) > 0 ||
-                                       getRowAreaEjecutada(row) > 0 ||
-                                       parseNum(row['FISICO_NORM']) > 0;
+                    estado.includes('OPERA') || estado.includes('MEJORAD') ||
+                    getRowLongitudEjecutada(row) > 0 ||
+                    getRowAreaEjecutada(row) > 0 ||
+                    parseNum(row['FISICO_NORM']) > 0;
                 cant = tieneEjecucion ? 1 : 0;
             }
         }
@@ -1543,7 +1549,7 @@ function calculateProyeccionAnualPct(indicadorFilter) {
         if (indicadorFilter === 'todos-km' && cfg.tipo !== 'km') return;
         if (indicadorFilter === 'todos-m2' && cfg.tipo !== 'm2') return;
         if (indicadorFilter !== 'todos' && indicadorFilter !== 'todos-km' && indicadorFilter !== 'todos-m2' && ind !== indicadorFilter) return;
-        
+
         targetTotal += cfg.metas.todos || 0;
     });
 
@@ -1717,20 +1723,20 @@ async function generatePlanPDF() {
             let cant = 0;
 
             if (cfg.tipo === 'km') {
-                const metros = planMetric === 'contratado' ? getRowLongitudContratada(row) : getRowLongitudEjecutada(row);
+                const metros = planMetric === 'contratado' ? getRowLongitudContratadaPlan(row) : getRowLongitudEjecutada(row);
                 cant = metros / 1000;
             } else if (cfg.tipo === 'm2') {
-                cant = planMetric === 'contratado' ? getRowAreaContratada(row) : getRowAreaEjecutada(row);
+                cant = planMetric === 'contratado' ? getRowAreaContratadaPlan(row) : getRowAreaEjecutada(row);
             } else {
                 if (planMetric === 'contratado') {
                     cant = isCuatrenioAnterior(row) ? 0 : 1;
                 } else {
                     const estado = String(row['ESTADO CONVENIO'] || '').toUpperCase();
                     const tieneEjecucion = estado.includes('EJECUCI') || estado.includes('EJECUT') ||
-                                           estado.includes('OPERA') || estado.includes('MEJORAD') ||
-                                           getRowLongitudEjecutada(row) > 0 ||
-                                           getRowAreaEjecutada(row) > 0 ||
-                                           parseNum(row['FISICO_NORM']) > 0;
+                        estado.includes('OPERA') || estado.includes('MEJORAD') ||
+                        getRowLongitudEjecutada(row) > 0 ||
+                        getRowAreaEjecutada(row) > 0 ||
+                        parseNum(row['FISICO_NORM']) > 0;
                     cant = tieneEjecucion ? 1 : 0;
                 }
             }
@@ -1753,10 +1759,10 @@ async function generatePlanPDF() {
             const meta = cfg.metas[planYearFilter] !== undefined ? cfg.metas[planYearFilter] : 0;
             const isNP = (meta === 0);
             const e = d.ejecutado;
-            
+
             let pct = 0;
             let restante = 0;
-            
+
             if (isNP) {
                 pct = 0;
                 restante = 0;
@@ -1860,7 +1866,7 @@ async function generatePlanPDF() {
                             stack: [
                                 { text: 'FICHA TÉCNICA DE PLAN DE DESARROLLO', fontSize: 9, bold: true, color: '#1A6B3C', alignment: 'right' },
                                 { text: 'INDICADORES ESTRATÉGICOS', fontSize: 7.5, bold: true, color: '#64748B', alignment: 'right' },
-                                { text: `Generado: ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'})}`, fontSize: 7, color: '#94A3B8', alignment: 'right' }
+                                { text: `Generado: ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`, fontSize: 7, color: '#94A3B8', alignment: 'right' }
                             ],
                             width: 'auto'
                         }
@@ -2069,12 +2075,12 @@ async function generatePlanPDF() {
                                     if (item.unit === 'm²') return val.toLocaleString('es-CO') + ' m²';
                                     return Math.round(val) + ' und';
                                 };
-                                
+
                                 const metaText = isNP ? 'NP' : fmtVal(item.meta);
                                 const ejecutadoText = fmtVal(item.ejecutado);
                                 const restanteText = isNP ? '-' : fmtVal(item.restante);
                                 const pctText = isNP ? 'NP' : `${item.pct.toFixed(1)}%`;
-                                
+
                                 let badgeColor = '#EF4444';
                                 let badgeBg = '#FCE8E6';
                                 if (isNP) {
@@ -2093,11 +2099,11 @@ async function generatePlanPDF() {
                                     { text: metaText, fontSize: 7.5, alignment: 'right', color: '#475569' },
                                     { text: ejecutadoText, fontSize: 7.5, alignment: 'right', color: '#1A6B3C', bold: true },
                                     { text: restanteText, fontSize: 7.5, alignment: 'right', color: '#EF4444' },
-                                    { 
-                                        text: pctText, 
-                                        fontSize: 7.5, 
+                                    {
+                                        text: pctText,
+                                        fontSize: 7.5,
                                         bold: true,
-                                        alignment: 'center', 
+                                        alignment: 'center',
                                         color: badgeColor,
                                         fillColor: badgeBg
                                     },
@@ -2213,19 +2219,19 @@ async function generateResumenPDF() {
         let activos = 0, porLiquidar = 0, suspendidos = 0, sumInv = 0, sumDes = 0, sumAut = 0;
         let totLonCon = 0, totLonEje = 0;
         let totAreCon = 0, totAreEje = 0;
-        
+
         filteredData.forEach(r => {
             const est = String(r['ESTADO CONVENIO'] || '').toLowerCase();
             const estNorm = est.normalize('NFD').replace(/[\u0300-\u036f]/g, "");
-            
-            if(est.includes('ejecuci')) activos++;
-            if(est.includes('por liquidar')) porLiquidar++; 
-            if(estNorm.includes('suspendido') || estNorm.includes('riesgo medio') || estNorm.includes('medio')) suspendidos++;
-            
+
+            if (est.includes('ejecuci')) activos++;
+            if (est.includes('por liquidar')) porLiquidar++;
+            if (estNorm.includes('suspendido') || estNorm.includes('riesgo medio') || estNorm.includes('medio')) suspendidos++;
+
             sumInv += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
             sumDes += r['VALOR TOTAL DESEMBOLSADO'] || 0;
             sumAut += r['VALOR TOTAL AUTORIZADO'] || 0;
-            
+
             totLonCon += getRowLongitudContratada(r);
             totLonEje += getRowLongitudEjecutada(r);
             totAreCon += getRowAreaContratada(r);
@@ -2238,7 +2244,7 @@ async function generateResumenPDF() {
         // 4. Generate native pdfMake vector chart for a premium, clean presentation
         const maxVal = Math.max(totLonCon, totLonEje);
         const chartHeight = 80;
-        
+
         const hContratado = maxVal > 0 ? (totLonCon / maxVal) * chartHeight : 0;
         const hEjecutado = maxVal > 0 ? (totLonEje / maxVal) * chartHeight : 0;
 
@@ -2363,7 +2369,7 @@ async function generateResumenPDF() {
                 const pfis = r['FISICO_NORM'] || 0;
                 const pfin = r['FINANCIERO_NORM'] || 0;
                 const sysState = getSystemState(r['ESTADO CONVENIO']);
-                
+
                 let badgeColor = '#64748B';
                 let badgeBg = '#F1F5F9';
                 if (sysState.badgeClass === 'badge-ejecutado' || sysState.badgeClass === 'badge-ejecucion') {
@@ -2438,7 +2444,7 @@ async function generateResumenPDF() {
                             stack: [
                                 { text: 'REPORTE GERENCIAL CONSOLIDADO', fontSize: 9, bold: true, color: '#1A6B3C', alignment: 'right' },
                                 { text: 'RESUMEN EJECUTIVO', fontSize: 7.5, bold: true, color: '#64748B', alignment: 'right' },
-                                { text: `Generado: ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'})}`, fontSize: 7, color: '#94A3B8', alignment: 'right' }
+                                { text: `Generado: ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`, fontSize: 7, color: '#94A3B8', alignment: 'right' }
                             ],
                             width: 'auto'
                         }
@@ -2626,7 +2632,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         const today = new Date();
         document.getElementById('fecha-actualizacion').textContent = today.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
-        
+
         // Dark mode setup
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -2634,7 +2640,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const themeIcon = document.getElementById('theme-icon');
             if (themeIcon) themeIcon.classList.replace('fa-moon', 'fa-sun');
         }
-        
+
         const btnThemeToggle = document.getElementById('btn-theme-toggle');
         if (btnThemeToggle) {
             btnThemeToggle.addEventListener('click', () => {
@@ -2646,12 +2652,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     icon.classList.replace('fa-sun', 'fa-moon');
                 }
-                
+
                 // Redraw charts to update canvas text colors
-                if(filteredData.length > 0) updateCharts();
+                if (filteredData.length > 0) updateCharts();
             });
         }
-        
+
         // Nav Alerts setup
         const btnNavAlerts = document.getElementById('btn-nav-alerts');
         const navAlertsDropdown = document.getElementById('nav-alerts-dropdown');
@@ -2684,13 +2690,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Helper: popula el panel de actualizaciones
-        window.populateUpdatesPanel = function(changes) {
+        window.populateUpdatesPanel = function (changes) {
             const list = document.getElementById('updates-list');
             const badge = document.getElementById('updates-badge');
             const subtitle = document.getElementById('updates-subtitle');
             if (!list) return;
             if (badge) { badge.textContent = changes.length; badge.classList.remove('hidden'); }
-            if (subtitle) subtitle.textContent = `${changes.length} actualización(es) — ${new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})}`;
+            if (subtitle) subtitle.textContent = `${changes.length} actualización(es) — ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`;
             list.innerHTML = changes.map(c => `
                 <div class="update-item">
                     <div class="update-item-badge"><i class="fa-solid fa-check"></i></div>
@@ -2706,11 +2712,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('btn-reset-filters').addEventListener('click', resetFilters);
         document.getElementById('btn-close-modal').addEventListener('click', closeModal);
-        
+
         document.getElementById('btn-export-pdf').addEventListener('click', () => {
             const currentConv = document.getElementById('modal-title').textContent;
             const row = rawData.find(r => String(r['CONVENIO']) === currentConv);
-            if(row) generateProfessionalPDF(row);
+            if (row) generateProfessionalPDF(row);
         });
 
         const btnExportPlanPdf = document.getElementById('btn-export-plan-pdf');
@@ -2726,13 +2732,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 generateResumenPDF();
             });
         }
-        
+
         document.getElementById('btn-first').addEventListener('click', () => { currentPage = 1; renderTable(); });
         document.getElementById('btn-prev').addEventListener('click', () => changePage(-1));
         document.getElementById('btn-next').addEventListener('click', () => changePage(1));
         document.getElementById('btn-last').addEventListener('click', () => { currentPage = Math.ceil(filteredData.length / rowsPerPage) || 1; renderTable(); });
         document.getElementById('btn-export').addEventListener('click', exportToCSV);
-        
+
         ['filter-search', 'filter-municipio', 'filter-supervisor', 'filter-indicador', 'filter-vigencia', 'filter-convenio-num', 'filter-clasificacion', 'filter-subregion', 'filter-estado'].forEach(id => {
             const el = document.getElementById(id);
             if (el) {
@@ -2746,13 +2752,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
-        
+
         document.getElementById('btn-close-lightbox').addEventListener('click', closeLightbox);
         document.getElementById('btn-prev-img').addEventListener('click', () => navigateLightbox(-1));
         document.getElementById('btn-next-img').addEventListener('click', () => navigateLightbox(1));
-        document.getElementById('modal-detalle').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
-        document.getElementById('modal-lightbox').addEventListener('click', function(e) { if (e.target === this) closeLightbox(); });
-        
+        document.getElementById('modal-detalle').addEventListener('click', function (e) { if (e.target === this) closeModal(); });
+        document.getElementById('modal-lightbox').addEventListener('click', function (e) { if (e.target === this) closeLightbox(); });
+
         document.addEventListener('keydown', (e) => {
             const lightbox = document.getElementById('modal-lightbox');
             if (!lightbox.classList.contains('hidden')) {
@@ -2763,31 +2769,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeModal();
             }
         });
-        
+
         // --- INICIALIZAR PESTAÑAS ---
         const tabBtns = document.querySelectorAll('.tab-btn');
         tabBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const targetTab = btn.getAttribute('data-tab');
-                
+
                 tabBtns.forEach(b => {
                     b.classList.remove('active', 'border-institutional-primary', 'text-institutional-primary');
                     b.classList.add('border-transparent', 'text-slate-500');
                 });
                 btn.classList.add('active', 'border-institutional-primary', 'text-institutional-primary');
                 btn.classList.remove('border-transparent', 'text-slate-500');
-                
+
                 document.querySelectorAll('.tab-content').forEach(content => {
                     content.classList.add('hidden');
                     content.classList.remove('block');
                 });
-                
+
                 const targetContent = document.getElementById(`tab-${targetTab}`);
                 if (targetContent) {
                     targetContent.classList.remove('hidden');
                     targetContent.classList.add('block');
                 }
-                
+
                 // Hooks para renderizar mapas o gráficos cuando la pestaña es visible
                 if (targetTab === 'mapa' && typeof renderMapTab === 'function') {
                     renderMapTab();
@@ -2798,7 +2804,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
-        
+
         // --- MOBILE SIDEBAR DRAWER ---
         const btnSidebarToggle = document.getElementById('btn-sidebar-toggle');
         const sidebar = document.getElementById('main-tabs-nav');
@@ -2857,8 +2863,8 @@ async function refreshDashboardData() {
 
     // 4. Guardar los valores de todos los controles de filtro
     const filterIds = [
-        'filter-search', 'filter-vigencia', 'filter-supervisor', 
-        'filter-indicador', 'filter-clasificacion', 'filter-municipio', 
+        'filter-search', 'filter-vigencia', 'filter-supervisor',
+        'filter-indicador', 'filter-clasificacion', 'filter-municipio',
         'filter-subregion', 'filter-estado', 'filter-convenio-num',
         'map-filter-vigencia', 'map-filter-supervisor', 'map-filter-indicador',
         'map-filter-clasificacion', 'map-filter-municipio', 'map-filter-subregion',
@@ -2968,14 +2974,14 @@ async function loadExcelFile() {
     const sheetId = '13c4V84sj_T1ZQxoq_HLqNHxUUXINzvZJeKWVgK_H55Q';
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx&gid=1676437891&t=${Date.now()}`;
     const localUrl = './data/convenios.xlsx';
-    
+
     try {
         const fechaEl = document.getElementById('fecha-actualizacion');
         if (fechaEl) fechaEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1 text-institutional-accent"></i>Sincronizando con nube...';
-        
+
         let response = await fetch(sheetUrl);
         if (!response.ok) throw new Error('No se pudo conectar a Google Sheets');
-        
+
         const arrayBuffer = await response.arrayBuffer();
         processExcelData(arrayBuffer);
     } catch (error) {
@@ -2983,7 +2989,7 @@ async function loadExcelFile() {
         try {
             const fallbackResponse = await fetch(localUrl);
             if (!fallbackResponse.ok) throw new Error('No se pudo cargar el archivo local');
-            
+
             const arrayBuffer = await fallbackResponse.arrayBuffer();
             processExcelData(arrayBuffer);
         } catch (localError) {
@@ -2991,7 +2997,7 @@ async function loadExcelFile() {
             const fechaEl = document.getElementById('fecha-actualizacion');
             if (fechaEl) fechaEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-red-500 mr-1"></i>Error de conexión';
         }
-    } 
+    }
 }
 
 function handleFileUpload(e) {
@@ -3011,12 +3017,12 @@ function processExcelData(data) {
     // Helper: find column tolerant to accents and encoding issues
     function col(row) {
         var keys = Object.keys(row);
-        var norm = function(s) {
-            return String(s || '').replace(/[\u00C0-\u024F]/g, function(c) {
+        var norm = function (s) {
+            return String(s || '').replace(/[\u00C0-\u024F]/g, function (c) {
                 return c.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
             }).toUpperCase().replace(/\s+/g, ' ').trim();
         };
-        return function() {
+        return function () {
             var candidates = Array.prototype.slice.call(arguments);
             for (var i = 0; i < candidates.length; i++) {
                 var c = candidates[i];
@@ -3030,7 +3036,7 @@ function processExcelData(data) {
         };
     }
 
-    rawData = json.map(function(row) {
+    rawData = json.map(function (row) {
         var c = col(row);
         var pfis = parseNum(c('% EJECUCION FISICA', '% EJECUCION FISCA'));
         if (pfis > 0 && pfis <= 1) pfis *= 100;
@@ -3086,7 +3092,7 @@ function processExcelData(data) {
     if (window.DIATDataService) {
         rawData = window.DIATDataService.mergeData(window.baseExcelData);
     }
-    
+
     const welcomeScreen = document.getElementById('welcome-screen');
     if (welcomeScreen) welcomeScreen.style.display = 'none';
     const loader = document.getElementById('dashboard-loader');
@@ -3097,7 +3103,7 @@ function processExcelData(data) {
     if (mainTabsNav) mainTabsNav.style.display = 'flex';
     const mainContent = document.getElementById('main-content');
     if (mainContent) mainContent.style.display = 'block';
-    
+
     // Asignar subregión por defecto si está vacía
     rawData.forEach(r => {
         if (!r['SUBREGION']) {
@@ -3112,11 +3118,11 @@ function processExcelData(data) {
         }
     });
 
-    applyFilters(); 
-    
+    applyFilters();
+
     const today = new Date();
     const fechaEl = document.getElementById('fecha-actualizacion');
-    if(fechaEl) {
+    if (fechaEl) {
         fechaEl.textContent = today.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
     }
 
@@ -3124,7 +3130,7 @@ function processExcelData(data) {
     if (typeof window.populateUpdatesPanel === 'function') {
         const updateInfo = [{
             convenio: 'SISTEMA',
-            fecha: today.toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}),
+            fecha: today.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
             supervisor: `${rawData.length} convenios cargados`,
             campo: 'Datos actualizados desde Google Sheets',
             valorAnterior: 'Archivo local',
@@ -3151,7 +3157,7 @@ function updateFilterOptions(currentSearch, currentVigencia, currentMunicipio, c
             return matchSearch && matchVig && matchMun && matchSup && matchConv && matchClasif && matchInd && matchSub && matchEst;
         });
         return [...new Set(validRows.map(i => {
-            if(field === 'CLASIFICACIÓN') return String(i['CLASIFICACIÓN'] || i['CLASIFICACI"N'] || '').trim();
+            if (field === 'CLASIFICACIÓN') return String(i['CLASIFICACIÓN'] || i['CLASIFICACI"N'] || '').trim();
             return String(i[field] || '').trim();
         }).filter(Boolean))].sort();
     };
@@ -3231,7 +3237,7 @@ function applyFilters() {
     const activeConv = convenioNum.length === 1 ? convenioNum[0] : '';
 
     if (activeConv && filteredData.length > 0) {
-        const selected = filteredData[0]; 
+        const selected = filteredData[0];
         document.getElementById('summary-num').textContent = selected['CONVENIO'] || 'S/N';
         const btnFicha = document.getElementById('btn-abrir-ficha');
         if (btnFicha) {
@@ -3272,7 +3278,7 @@ function applyFilters() {
         const pfis = selected['FISICO_NORM'] || 0, pfin = selected['FINANCIERO_NORM'] || 0;
         document.getElementById('summary-fisico-txt').textContent = pfis.toFixed(1) + '%';
         document.getElementById('summary-financiero-txt').textContent = pfin.toFixed(1) + '%';
-        
+
         const supervisorName = selected['SUPERVISOR'] || 'Sin Asignar';
         const supNameEl = document.getElementById('summary-supervisor-name');
         const supImgEl = document.getElementById('summary-supervisor-img');
@@ -3280,17 +3286,17 @@ function applyFilters() {
         if (supImgEl) {
             supImgEl.src = `./assets/supervisor/${supervisorName}.jpg`;
         }
-        
+
         summaryCard.classList.remove('hidden');
         setTimeout(() => {
             document.getElementById('gauge-fisico').style.strokeDashoffset = 251.2 - (251.2 * pfis / 100);
             document.getElementById('gauge-financiero').style.strokeDashoffset = 251.2 - (251.2 * pfin / 100);
         }, 50);
         setTimeout(() => { renderMap(selected, 'summary-map', 'summary-map-overlay', 'summary-map-msg', summaryMapInstance, (ni, ng) => { summaryMapInstance = ni; summaryLayerGroup = ng; }); }, 100);
-        
+
         renderTimeline(selected);
-    } else { 
-        summaryCard.classList.add('hidden'); 
+    } else {
+        summaryCard.classList.add('hidden');
         const tlCont = document.getElementById('timeline-container');
         if (tlCont) tlCont.classList.add('hidden');
     }
@@ -3319,15 +3325,15 @@ function updateDashboard() { updateKPIs(); renderTable(); updateCharts(); render
 function updateKPIs() {
     let activos = 0, porLiquidar = 0, sumInv = 0, sumDes = 0, sumAut = 0;
     let totLonCon = 0, totLonEje = 0, totAreCon = 0, totAreEje = 0;
-    
+
     filteredData.forEach(r => {
         const est = String(r['ESTADO CONVENIO']).toLowerCase();
-        if(est.includes('ejecuci')) activos++;  // tolera ejecucin / ejecucion
-        if(est.includes('por liquidar')) porLiquidar++; 
+        if (est.includes('ejecuci')) activos++;  // tolera ejecucin / ejecucion
+        if (est.includes('por liquidar')) porLiquidar++;
         sumInv += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
         sumDes += r['VALOR TOTAL DESEMBOLSADO'] || 0;
         sumAut += r['VALOR TOTAL AUTORIZADO'] || 0;
-        
+
         totLonCon += getRowLongitudContratada(r);
         totLonEje += getRowLongitudEjecutada(r);
         totAreCon += getRowAreaContratada(r);
@@ -3344,20 +3350,20 @@ function updateKPIs() {
     document.getElementById('kpi-desembolsado').title = formatCurrency(sumDes);
     document.getElementById('kpi-autorizado').textContent = formatCurrency(sumAut);
     document.getElementById('kpi-autorizado').title = formatCurrency(sumAut);
-    
+
     // Physical Execution Totals (New Graphic Scheme)
-    
+
     // Update Longitud
     const elLonEje = document.getElementById('tot-lon-eje-text');
     if (elLonEje) elLonEje.textContent = (totLonEje / 1000).toFixed(2) + ' km';
-    
+
     const elLonCon = document.getElementById('tot-lon-con-text');
     if (elLonCon) elLonCon.textContent = (totLonCon / 1000).toFixed(2) + ' km';
-    
+
     // Update Área
     const elAreEje = document.getElementById('tot-are-eje-text');
     if (elAreEje) elAreEje.textContent = formatNumber(totAreEje) + ' m²';
-    
+
     const elAreCon = document.getElementById('tot-are-con-text');
     if (elAreCon) elAreCon.textContent = formatNumber(totAreCon);
 }
@@ -3378,24 +3384,24 @@ function renderTable() {
         tr.className = 'table-row-hover cursor-pointer';
         tr.style.borderBottom = '1px solid #F1F5F9';
         tr.setAttribute('onclick', `if(!event.target.closest('button')) showSummaryCard('${row['CONVENIO']}')`);
-        
+
         const sysState = getSystemState(row['ESTADO CONVENIO']);
         const estStr = String(row['ESTADO CONVENIO'] || '').toLowerCase();
-        
+
         // Alertas automáticas
         let alertIcon = '';
         let warnings = [];
-        
+
         if (!estStr.includes('liquidado') && !estStr.includes('resciliado')) {
             if (row['FISICO_NORM'] > (row['FINANCIERO_NORM'] + 5)) {
                 warnings.push("Desfase: Avance físico es mayor al financiero.");
             }
-            
+
             const tieneGeo = String(row['TIENE_GEOJSON'] || 'SI').toUpperCase();
             const tieneFotos = String(row['TIENE_FOTOS'] || 'SI').toUpperCase();
             if (tieneGeo === 'NO') warnings.push("Falta trazado espacial.");
             if (tieneFotos === 'NO') warnings.push("Sin registro fotográfico.");
-            
+
             if (warnings.length > 0) {
                 alertIcon = `<span class="alert-icon-pulse" title="${warnings.join(' \n')}"><i class="fa-solid fa-triangle-exclamation text-xs fa-beat-fade" style="--fa-animation-duration: 2.5s;"></i></span>`;
             }
@@ -3459,7 +3465,7 @@ function renderTable() {
     });
 
     document.getElementById('table-info').textContent = `Mostrando convenios ${start + 1} - ${Math.min(start + rowsPerPage, filteredData.length)} de ${filteredData.length}`;
-    
+
     const maxPage = Math.ceil(filteredData.length / rowsPerPage) || 1;
     document.getElementById('btn-first').disabled = currentPage === 1;
     document.getElementById('btn-prev').disabled = currentPage === 1;
@@ -3493,7 +3499,7 @@ function renderAlerts() {
         const desembolsado = row['VALOR TOTAL DESEMBOLSADO'] || 0;
         const suspMeses = row['SUSPENSION(MESES)'] || row['SUSPENSI�N(MESES)'] || 0;
         const tieneFotos = String(row['TIENE_FOTOS'] || 'SI').toUpperCase();
-        
+
         let termStr = row['NUEVA FECHA DE TERMINACION'] || row['NUEVA FECHA DE TERMINACI�N'] || row['FECHA DE TERMINACION'] || row['FECHA DE TERMINACI�N'];
         let termDate = parseCOPDate(termStr);
 
@@ -3501,7 +3507,7 @@ function renderAlerts() {
         if (termDate && termDate >= today) {
             const msLeft = termDate.getTime() - today.getTime();
             const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-            
+
             if (daysLeft <= 30) {
                 alerts.push({
                     type: 'proximos', icon: 'fa-hourglass-half',
@@ -3516,14 +3522,14 @@ function renderAlerts() {
         if (termDate && termDate < today) {
             const msPassed = today.getTime() - termDate.getTime();
             const monthsPassed = msPassed / (1000 * 60 * 60 * 24 * 30.436875);
-            
+
             if (monthsPassed >= 24) {
                 const limitDate = new Date(termDate);
                 limitDate.setMonth(limitDate.getMonth() + 30);
                 const limitStr = `${String(limitDate.getDate()).padStart(2, '0')}/${String(limitDate.getMonth() + 1).padStart(2, '0')}/${limitDate.getFullYear()}`;
                 const monthsLeft = (30 - monthsPassed).toFixed(1);
-                const faltanTxt = monthsLeft > 0 
-                    ? `<strong style="color:#991B1B;">¡Faltan ${monthsLeft} meses!</strong>` 
+                const faltanTxt = monthsLeft > 0
+                    ? `<strong style="color:#991B1B;">¡Faltan ${monthsLeft} meses!</strong>`
                     : `<strong style="color:#7F1D1D;">¡Límite superado por ${Math.abs(monthsLeft).toFixed(1)} meses!</strong>`;
                 alerts.push({
                     type: 'competencia', icon: 'fa-gavel fa-beat-fade',
@@ -3611,16 +3617,16 @@ function renderAlerts() {
         else navBadge.classList.add('hidden');
     }
 
-    window.showSummaryCard = function(conv) {
+    window.showSummaryCard = function (conv) {
         const convSelect = document.getElementById('filter-convenio-num');
         if (convSelect) {
             Array.from(convSelect.options).forEach(o => o.selected = (o.value === conv));
             convSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
         applyFilters();
-        window.scrollTo({top: 0, behavior: 'smooth'});
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         const drop = document.getElementById('nav-alerts-dropdown');
-        if(drop) drop.classList.add('hidden');
+        if (drop) drop.classList.add('hidden');
     };
 
     if (navFeed) {
@@ -3651,10 +3657,10 @@ function renderAlerts() {
     }
 
     const alertTypeMap = {
-        proximos:    { borderColor: '#F28E18', iconColor: '#F28E18', bg: '#FFFFFF' },
+        proximos: { borderColor: '#F28E18', iconColor: '#F28E18', bg: '#FFFFFF' },
         competencia: { borderColor: '#A90F09', iconColor: '#A90F09', bg: '#FFFFFF' },
-        vencido:     { borderColor: '#A90F09', iconColor: '#A90F09', bg: '#FFFFFF' },
-        desfase:     { borderColor: '#3561AB', iconColor: '#3561AB', bg: '#FFFFFF' }
+        vencido: { borderColor: '#A90F09', iconColor: '#A90F09', bg: '#FFFFFF' },
+        desfase: { borderColor: '#3561AB', iconColor: '#3561AB', bg: '#FFFFFF' }
     };
 
     feed.innerHTML = finalAlerts.map(a => {
@@ -3679,7 +3685,7 @@ function renderAlerts() {
 }
 
 window.activeFisicoMetric = 'longitud';
-window.toggleFisicoMetric = function(metric) {
+window.toggleFisicoMetric = function (metric) {
     window.activeFisicoMetric = metric;
     updateCharts();
 };
@@ -3690,32 +3696,32 @@ function updateCharts() {
 
     const canvasEstado = document.getElementById('chart-estado');
     if (canvasEstado) {
-        const estMap = {}; 
+        const estMap = {};
         let totalVal = 0;
         let totalCount = filteredData.length;
 
-        filteredData.forEach(r => { 
-            const e = String(r['ESTADO CONVENIO'] || 'Sin Estado').trim(); 
+        filteredData.forEach(r => {
+            const e = String(r['ESTADO CONVENIO'] || 'Sin Estado').trim();
             if (!estMap[e]) estMap[e] = { count: 0, inversion: 0 };
-            estMap[e].count += 1; 
+            estMap[e].count += 1;
             estMap[e].inversion += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
             totalVal += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
         });
-        
+
         const labelsEstado = Object.keys(estMap).sort((a, b) => estMap[b].count - estMap[a].count);
         const dataCount = labelsEstado.map(l => estMap[l].count);
-        const bgColors = labelsEstado.map(label => getSystemState(label).hex); 
-        
+        const bgColors = labelsEstado.map(label => getSystemState(label).hex);
+
         const isDark = document.documentElement.classList.contains('dark');
         const textColor = isDark ? '#94a3b8' : '#64748b';
         const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.04)';
         const chartBorderColor = isDark ? '#1e293b' : '#ffffff';
 
-        if(charts['estado']) charts['estado'].destroy();
+        if (charts['estado']) charts['estado'].destroy();
 
         const centerTextPlugin = {
             id: 'centerText',
-            beforeDraw: function(chart) {
+            beforeDraw: function (chart) {
                 const width = chart.width, height = chart.height, ctx = chart.ctx;
                 ctx.restore();
                 const fontSize = (height / 114).toFixed(2);
@@ -3726,38 +3732,38 @@ function updateCharts() {
                 const textX = Math.round((width - ctx.measureText(text).width) / 2);
                 const textY = height / 2;
                 ctx.fillText(text, textX, textY);
-                
+
                 ctx.font = `700 ${(height / 250).toFixed(2)}em Poppins`;
                 ctx.fillStyle = isDark ? "#64748b" : "#94a3b8";
                 const text2 = "TOTAL";
                 const text2X = Math.round((width - ctx.measureText(text2).width) / 2);
-                ctx.fillText(text2, text2X, textY - (height/8));
+                ctx.fillText(text2, text2X, textY - (height / 8));
                 ctx.save();
             }
         };
 
         charts['estado'] = new Chart(canvasEstado, {
             type: 'doughnut',
-            data: { 
-                labels: labelsEstado, 
-                datasets: [{ data: dataCount, backgroundColor: bgColors, borderWidth: 2, borderColor: chartBorderColor, hoverOffset: 6 }] 
+            data: {
+                labels: labelsEstado,
+                datasets: [{ data: dataCount, backgroundColor: bgColors, borderWidth: 2, borderColor: chartBorderColor, hoverOffset: 6 }]
             },
             plugins: [centerTextPlugin],
-            options: { 
-                responsive: true, maintainAspectRatio: false, cutout: '78%', onHover: hoverCursor, 
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '78%', onHover: hoverCursor,
                 animation: { animateScale: true, animateRotate: true, duration: 800, easing: 'easeOutQuart' },
-                onClick: (e, activeEls) => { 
-                    if (activeEls.length > 0) { 
+                onClick: (e, activeEls) => {
+                    if (activeEls.length > 0) {
                         const clickedEstado = labelsEstado[activeEls[0].index];
                         const filterEl = document.getElementById('filter-estado');
                         if (filterEl) {
-                            filterEl.value = filterEl.value === clickedEstado ? '' : clickedEstado; 
-                            applyFilters(); 
+                            filterEl.value = filterEl.value === clickedEstado ? '' : clickedEstado;
+                            applyFilters();
                         }
-                    } 
-                }, 
-                plugins: { 
-                    legend: { display: false }, 
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
                     tooltip: {
                         backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                         titleColor: isDark ? '#f8fafc' : '#0f172a',
@@ -3766,11 +3772,11 @@ function updateCharts() {
                         borderWidth: 1,
                         padding: 12,
                         cornerRadius: 8,
-                        titleFont: {size: 11, family: 'Poppins'},
-                        bodyFont: {size: 13, weight: 'bold', family: 'Poppins'},
+                        titleFont: { size: 11, family: 'Poppins' },
+                        bodyFont: { size: 13, weight: 'bold', family: 'Poppins' },
                         callbacks: { label: (c) => ` ${c.label}: ${c.raw} convenios` }
-                    } 
-                } 
+                    }
+                }
             }
         });
 
@@ -3800,15 +3806,15 @@ function updateCharts() {
             }).join('');
         }
     }
-    
+
     // Gráfico de Ejecución (Barra de Progreso Personalizada Premium)
     const progressBarFill = document.getElementById('progress-bar-fill');
     if (progressBarFill) {
         window.activeFisicoMetric = window.activeFisicoMetric || 'longitud';
-        
+
         let tCon = 0, tEje = 0;
         let unit = ' km';
-        
+
         if (window.activeFisicoMetric === 'longitud') {
             filteredData.forEach(r => {
                 tCon += getRowLongitudContratada(r);
@@ -3825,10 +3831,10 @@ function updateCharts() {
             });
             unit = ' m²';
         }
-        
+
         const pct = tCon > 0 ? (tEje / tCon) * 100 : 0;
         const rest = Math.max(0, tCon - tEje);
-        
+
         // Update highlight styling of the interactive boxes
         const btnLon = document.getElementById('btn-metric-longitud');
         const btnAre = document.getElementById('btn-metric-area');
@@ -3867,32 +3873,32 @@ function updateCharts() {
                 if (txt) txt.style.color = '#0B5640';
             }
         }
-        
+
         // Actualizar elementos de la Barra de Progreso Prominente
         const pctVal = document.getElementById('progress-percentage-val');
         const innerText = document.getElementById('progress-bar-inner-text');
         const remainingText = document.getElementById('progress-remaining-text');
         const totalText = document.getElementById('progress-total-text');
-        
+
         // Animación suave del ancho
         progressBarFill.style.width = `${pct.toFixed(1)}%`;
         if (pctVal) pctVal.textContent = `${pct.toFixed(1)}%`;
-        
+
         if (innerText) {
             // Mostrar texto interno si hay suficiente espacio en la barra
-            innerText.textContent = pct >= 20 
-                ? `${tEje.toLocaleString('es-CO', {minimumFractionDigits: 1, maximumFractionDigits: 1})}${unit} Ejecutados` 
+            innerText.textContent = pct >= 20
+                ? `${tEje.toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}${unit} Ejecutados`
                 : '';
         }
-        
+
         if (remainingText) {
-            remainingText.textContent = `Falta: ${rest.toLocaleString('es-CO', {minimumFractionDigits: 1, maximumFractionDigits: 1})}${unit}`;
+            remainingText.textContent = `Falta: ${rest.toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}${unit}`;
         }
-        
+
         if (totalText) {
-            totalText.textContent = `Contratado: ${tCon.toLocaleString('es-CO', {minimumFractionDigits: 1, maximumFractionDigits: 1})}${unit}`;
+            totalText.textContent = `Contratado: ${tCon.toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}${unit}`;
         }
-        
+
         // Actualizar el Círculo de Progreso Radial (esquina superior derecha)
         const radialCircle = document.getElementById('radial-progress-circle');
         const radialText = document.getElementById('radial-progress-text');
@@ -3910,31 +3916,31 @@ function updateCharts() {
 async function renderMap(row, mapId, overlayId, msgId, inst, cb) {
     const ov = document.getElementById(overlayId), ms = document.getElementById(msgId);
     ov.classList.remove('hidden'); ms.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Trazando Geometría...';
-    
+
     let m = inst, g = null;
-    if(!m){ 
-        m = L.map(mapId, { zoomControl: false, attributionControl: false, preferCanvas: false }).setView([6.2, -75.5], 10); 
+    if (!m) {
+        m = L.map(mapId, { zoomControl: false, attributionControl: false, preferCanvas: false }).setView([6.2, -75.5], 10);
         L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 22, maxNativeZoom: 20 }).addTo(m);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { maxZoom: 22, maxNativeZoom: 19, subdomains: 'abcd' }).addTo(m);
         L.control.zoom({ position: 'bottomright' }).addTo(m);
-        g = L.layerGroup().addTo(m); 
+        g = L.layerGroup().addTo(m);
         m._currentLayerGroup = g;
         cb(m, g);
-    } else { 
+    } else {
         g = m._currentLayerGroup;
         if (g) {
             g.clearLayers();
         } else {
-            m.eachLayer(l => { if(l instanceof L.LayerGroup && !(l instanceof L.FeatureGroup)) { g = l; } });
+            m.eachLayer(l => { if (l instanceof L.LayerGroup && !(l instanceof L.FeatureGroup)) { g = l; } });
             if (g) g.clearLayers();
         }
-        m.invalidateSize(); 
+        m.invalidateSize();
     }
-    
+
     const num = String(row['CONVENIO']).trim();
     let ok = false, b = null;
-    currentExtractedFeatures = []; 
-    
+    currentExtractedFeatures = [];
+
     const tramoStyle = { color: '#A90F09', weight: 5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' };
     const highlightStyle = { color: '#018D38', weight: 8, opacity: 1, lineCap: 'round', lineJoin: 'round' };
 
@@ -3946,49 +3952,49 @@ async function renderMap(row, mapId, overlayId, msgId, inst, cb) {
             layer.on('click', () => {
                 const btnId = `btn-feat-${mapId}-${name.replace(/[^a-zA-Z0-9]/g, '-')}`;
                 const btn = document.getElementById(btnId);
-                if(btn) btn.click();
+                if (btn) btn.click();
             });
         }
     };
 
     try {
         const r = await fetch(`./assets/mapas/${num}.geojson`);
-        if(r.ok) {
+        if (r.ok) {
             const d = await r.json();
-            const l = L.geoJSON(d, { 
-                style: tramoStyle, 
+            const l = L.geoJSON(d, {
+                style: tramoStyle,
                 pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 6, fillColor: "#A90F09", color: "#fff", weight: 2, fillOpacity: 0.8 }),
                 onEachFeature: onEachFeat
             });
             g.addLayer(l); b = l.getBounds(); ok = true;
         }
-    } catch(e){}
+    } catch (e) { }
 
-    if(!ok && typeof omnivore !== 'undefined'){
+    if (!ok && typeof omnivore !== 'undefined') {
         ok = await new Promise(res => {
             const customLayer = L.geoJSON(null, {
                 style: tramoStyle,
                 pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 6, fillColor: "#A90F09", color: "#fff", weight: 2, fillOpacity: 0.8 }),
                 onEachFeature: onEachFeat
             });
-            const k = omnivore.kml(`./assets/mapas/${num}.kml`, null, customLayer).on('ready', () => { 
-                g.addLayer(k); b = k.getBounds(); res(true); 
+            const k = omnivore.kml(`./assets/mapas/${num}.kml`, null, customLayer).on('ready', () => {
+                g.addLayer(k); b = k.getBounds(); res(true);
             }).on('error', () => res(false));
         });
     }
 
-    if(!ok){
+    if (!ok) {
         const la = parseFloat(row['LATITUD']), lo = parseFloat(row['LONGITUD']);
-        if(!isNaN(la) && !isNaN(lo) && la!==0){ g.addLayer(L.marker([la, lo])); m.setView([la, lo], 15); ok = true; }
-    } else if(b && Object.keys(b).length > 0) { 
-        m.fitBounds(b, { padding: [40,40] }); 
+        if (!isNaN(la) && !isNaN(lo) && la !== 0) { g.addLayer(L.marker([la, lo])); m.setView([la, lo], 15); ok = true; }
+    } else if (b && Object.keys(b).length > 0) {
+        m.fitBounds(b, { padding: [40, 40] });
     }
-    
+
     // Panel Lateral
     const sidebar = document.getElementById(`${mapId}-sidebar`);
     const featureList = document.getElementById(`${mapId}-feature-list`);
     const featureDetails = document.getElementById('map-feature-details');
-    
+
     if (sidebar && featureList && featureDetails) {
         featureList.innerHTML = '';
         featureDetails.classList.add('hidden');
@@ -3997,7 +4003,7 @@ async function renderMap(row, mapId, overlayId, msgId, inst, cb) {
         if (currentExtractedFeatures.length > 0) {
             sidebar.classList.remove('hidden');
             sidebar.classList.add('flex');
-            
+
             currentExtractedFeatures.forEach((item) => {
                 const btn = document.createElement('button');
                 btn.id = `btn-feat-${mapId}-${item.name.replace(/[^a-zA-Z0-9]/g, '-')}`;
@@ -4043,7 +4049,7 @@ async function renderMap(row, mapId, overlayId, msgId, inst, cb) {
         }
     }
 
-    if(ok) {
+    if (ok) {
         ov.classList.add('hidden');
     } else {
         ms.innerHTML = '<i class="fa-solid fa-map-location-dot text-3xl mb-2 text-slate-400 opacity-50 block"></i>Sin trazado geográfico';
@@ -4055,7 +4061,7 @@ async function renderMap(row, mapId, overlayId, msgId, inst, cb) {
 // ------ L�"GICA MODAL DETALLE ------
 function openModal(row) {
     const sysState = getSystemState(row['ESTADO CONVENIO']);
-    
+
     // Configurar estado visual del modal
     document.getElementById('modal-state-band').style.background = sysState.hex;
     document.getElementById('modal-badge').className = `badge-estado ${sysState.badgeClass}`;
@@ -4068,14 +4074,14 @@ function openModal(row) {
     if (modalEjecStr && modalEjecStr !== modalMuniStr && modalEjecStr !== 'N/A') subTxt += ` - ${row['CONVENIANTE EJECUTOR']}`;
     subTxt += ` - VIGENCIA ${row['VIGENCIA']}`;
     document.getElementById('modal-subtitle').textContent = subTxt;
-    
+
     // Configurar enlace del PDF
     document.getElementById('btn-open-source-pdf').href = `./assets/pdfs/${String(row['CONVENIO']).trim()}.pdf`;
 
 
-    
+
     document.getElementById('mod-objeto').textContent = row['OBJETO'] || 'Sin descripción u objeto definido.';
-    
+
     document.getElementById('mod-via').textContent = row['VIA_PRIORIZADA'];
     const modAlcM = getRowLongitudContratada(row);
     const modAlcM2 = getRowAreaContratada(row);
@@ -4103,7 +4109,7 @@ function openModal(row) {
 
     document.getElementById('mod-suscripcion').textContent = row['FECHA DE SUSCRIPCION'] || row['FECHA DE SUSCRIPCI�N'] || 'Por definir';
     document.getElementById('mod-inicio').textContent = row['FECHA DE ACTA DE INICIO'] || 'Por definir';
-    
+
     let plazoVal = 0;
     for (let key in row) {
         if (key.toUpperCase().trim() === 'PLAZO INICIAL' || key.toUpperCase().trim().includes('PLAZO INICIAL')) {
@@ -4111,10 +4117,10 @@ function openModal(row) {
             break;
         }
     }
-    
+
     const prorrogasVal = parseNum(row['PRORROGA (MESES)'] || row['PR�RROGA (MESES)']) || 0;
     const plazoTotal = plazoVal + prorrogasVal;
-    
+
     document.getElementById('mod-plazo-inicial').textContent = plazoVal + ' Meses';
     document.getElementById('mod-plazo-total').textContent = plazoTotal + ' Meses';
     document.getElementById('mod-terminacion').textContent = row['FECHA DE TERMINACION'] || row['FECHA DE TERMINACI�N'] || '-';
@@ -4122,7 +4128,7 @@ function openModal(row) {
     document.getElementById('mod-prorrogas').textContent = prorrogasVal + ' Meses';
     document.getElementById('mod-suspensiones').textContent = (row['SUSPENSION(MESES)'] || row['SUSPENSI�N(MESES)'] || 0) + ' Meses';
     document.getElementById('mod-observaciones').innerHTML = row['OBSERVACIONES'] ? row['OBSERVACIONES'].replace(/\n/g, '<br>') : 'Sin observaciones adicionales registradas.';
-    
+
     const pf = row['FISICO_NORM'] || 0, pfn = row['FINANCIERO_NORM'] || 0;
     document.getElementById('mod-txt-fisico').textContent = pf.toFixed(1) + '%';
     document.getElementById('mod-bar-fisico').style.width = pf + '%';
@@ -4142,7 +4148,7 @@ function openModal(row) {
                 convenioVisits.forEach(v => {
                     const item = document.createElement('div');
                     item.className = 'p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition cursor-pointer';
-                    
+
                     let photosCountHtml = '';
                     if (v.photos && v.photos.length > 0) {
                         photosCountHtml = `<span class="text-institutional-primary font-bold"><i class="fa-solid fa-camera mr-1"></i>${v.photos.length} foto${v.photos.length > 1 ? 's' : ''}</span>`;
@@ -4170,11 +4176,11 @@ function openModal(row) {
 
     document.getElementById('modal-detalle').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
-    
-    setTimeout(() => { 
-        renderMap(row, 'map', 'map-overlay', 'map-msg', mapInstance, (ni, ng) => { 
-            mapInstance = ni; currentLayerGroup = ng; 
-        }); 
+
+    setTimeout(() => {
+        renderMap(row, 'map', 'map-overlay', 'map-msg', mapInstance, (ni, ng) => {
+            mapInstance = ni; currentLayerGroup = ng;
+        });
     }, 250);
 
     const emp = document.getElementById('mod-galeria-empty');
@@ -4194,7 +4200,7 @@ function openModal(row) {
         } else {
             emp.classList.remove('hidden');
         }
-        
+
         [
             { gal: galAntes },
             { gal: galDurante },
@@ -4219,9 +4225,9 @@ function openModal(row) {
         domImg.setAttribute('data-folder', label);
         domImg.onload = () => { container.appendChild(domImg); updateGalleryVisibility(); };
         domImg.onerror = () => domImg.remove();
-        domImg.onclick = () => { 
-            currentGalleryImages = Array.from(document.querySelectorAll('#mod-galeria img')).map(e => e.src); 
-            openLightbox(currentGalleryImages.indexOf(domImg.src)); 
+        domImg.onclick = () => {
+            currentGalleryImages = Array.from(document.querySelectorAll('#mod-galeria img')).map(e => e.src);
+            openLightbox(currentGalleryImages.indexOf(domImg.src));
         };
         domImg.src = src;
     };
@@ -4273,7 +4279,7 @@ function openModal(row) {
                             addPhotoToGallery(`./assets/fotos/${n}/${relPath}`, label, container);
                         });
                     };
-                    loadFromIndex(idx.antes,   galAntes,   'Antes');
+                    loadFromIndex(idx.antes, galAntes, 'Antes');
                     loadFromIndex(idx.durante, galDurante, 'Durante');
                     loadFromIndex(idx.despues, galDespues, 'Después');
                 } else {
@@ -4317,7 +4323,7 @@ function openModal(row) {
                         addPhotoToGallery(url, label, container);
                     });
                 };
-                loadFromIndex(idx.antes,   galAntes,   'Antes');
+                loadFromIndex(idx.antes, galAntes, 'Antes');
                 loadFromIndex(idx.durante, galDurante, 'Durante');
                 loadFromIndex(idx.despues, galDespues, 'Después');
                 loadLocalStoragePhotos();
@@ -4336,21 +4342,21 @@ function closeModal() { document.getElementById('modal-detalle').classList.add('
 function openLightbox(i) { currentImageIndex = i; updateLightbox(); document.getElementById('modal-lightbox').classList.remove('hidden'); }
 function closeLightbox() { document.getElementById('modal-lightbox').classList.add('hidden'); }
 function updateLightbox() {
-    if(currentGalleryImages.length === 0) return;
+    if (currentGalleryImages.length === 0) return;
     const im = document.getElementById('lightbox-img'); im.style.opacity = 0;
     setTimeout(() => { im.src = currentGalleryImages[currentImageIndex]; im.style.opacity = 1; }, 150);
     document.getElementById('lightbox-counter').textContent = `${currentImageIndex + 1} / ${currentGalleryImages.length}`;
     const bp = document.getElementById('btn-prev-img'), bn = document.getElementById('btn-next-img');
-    if(currentGalleryImages.length > 1){ bp.classList.remove('hidden'); bn.classList.remove('hidden'); } else { bp.classList.add('hidden'); bn.classList.add('hidden'); }
+    if (currentGalleryImages.length > 1) { bp.classList.remove('hidden'); bn.classList.remove('hidden'); } else { bp.classList.add('hidden'); bn.classList.add('hidden'); }
 }
 function navigateLightbox(d) {
-    if(currentGalleryImages.length <= 1) return;
+    if (currentGalleryImages.length <= 1) return;
     currentImageIndex = (currentImageIndex + d + currentGalleryImages.length) % currentGalleryImages.length;
     updateLightbox();
 }
 
 function changePage(d) { currentPage += d; renderTable(); }
-function sortTable(c) { currentSort.asc = (currentSort.column === c) ? !currentSort.asc : true; currentSort.column = c; filteredData.sort((a,b) => (a[c] > b[c] ? 1 : -1) * (currentSort.asc ? 1 : -1)); renderTable(); }
+function sortTable(c) { currentSort.asc = (currentSort.column === c) ? !currentSort.asc : true; currentSort.column = c; filteredData.sort((a, b) => (a[c] > b[c] ? 1 : -1) * (currentSort.asc ? 1 : -1)); renderTable(); }
 function exportToCSV() { const ws = XLSX.utils.json_to_sheet(filteredData); const csv = XLSX.utils.sheet_to_csv(ws); const blob = new Blob(["\ufeff", csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "convenios_margarita.csv"; link.click(); }
 
 document.addEventListener('click', (e) => {
@@ -4378,41 +4384,41 @@ let currentMLPopup = null;   // Popup informativo activo en el mapa
 
 // Estado de visibilidad de capas
 let mlLayersState = {
-    municipios:   false,
-    subregiones:  false,
-    primaria:     true,
-    secundaria:   true,
-    terciaria:    true,
-    tramosKml:    true,
-    terrain:      false
+    municipios: false,
+    subregiones: false,
+    primaria: true,
+    secundaria: true,
+    terciaria: true,
+    tramosKml: true,
+    terrain: false
 };
 
 // Colores simbología
 const ML_COLORS = {
-    kml:        '#0066FF',    // Azul eléctrico — convenios (prioridad 1)
-    primaria:   '#e53e3e',    // Rojo — vías primarias
+    kml: '#0066FF',    // Azul eléctrico — convenios (prioridad 1)
+    primaria: '#e53e3e',    // Rojo — vías primarias
     secundaria: '#38a169',    // Verde — vías secundarias
     terciaria_municipal: '#d69e2e', // Amarillo — terciaria municipal
-    terciaria_invias:    '#ed8936', // Naranja — terciaria INVIAS
-    municipios_fill:  'transparent',
-    municipios_line:  '#94a3b8',
+    terciaria_invias: '#ed8936', // Naranja — terciaria INVIAS
+    municipios_fill: 'transparent',
+    municipios_line: '#94a3b8',
     sub_colors: {
         'VALLE DE ABURRÁ': '#c68664', 'VALLE DE ABURRA': '#c68664',
-        'ORIENTE':         '#ffb74d',
-        'NORDESTE':        '#fefb9e',
-        'NORTE':           '#faa4b1',
-        'OCCIDENTE':       '#ffee55',
-        'SUROESTE':        '#df9ae1',
-        'URABÁ':           '#a2d984', 'URABA': '#a2d984',
-        'BAJO CAUCA':      '#dca2e8',
+        'ORIENTE': '#ffb74d',
+        'NORDESTE': '#fefb9e',
+        'NORTE': '#faa4b1',
+        'OCCIDENTE': '#ffee55',
+        'SUROESTE': '#df9ae1',
+        'URABÁ': '#a2d984', 'URABA': '#a2d984',
+        'BAJO CAUCA': '#dca2e8',
         'MAGDALENA MEDIO': '#ffa1a1',
-        'OTRAS':           '#e2e8f0'
+        'OTRAS': '#e2e8f0'
     }
 };
 
 // ── Helper: construye HTML del popup ──────────────────────────────────────────
 function buildMLPopupHTML(props, headerColor, badgeText, titleText, showFichaBtn, rowData) {
-    const skip = new Set(['styleUrl','visibility','name','Name','NAME','description','Description','FolderName']);
+    const skip = new Set(['styleUrl', 'visibility', 'name', 'Name', 'NAME', 'description', 'Description', 'FolderName']);
     const rows = Object.entries(props || {})
         .filter(([k, v]) => !skip.has(k) && v !== null && v !== undefined && String(v).trim() !== '')
         .map(([k, v]) => `<tr><td>${k}</td><td>${String(v)}</td></tr>`)
@@ -4423,7 +4429,7 @@ function buildMLPopupHTML(props, headerColor, badgeText, titleText, showFichaBtn
         : `<p style="font-size:10px;color:#94a3b8;font-style:italic;padding:4px 0">Sin atributos disponibles.</p>`;
 
     const fichaBtn = showFichaBtn && rowData
-        ? `<button class="ml-popup-action-btn" onclick="(function(){document.querySelector('.maplibregl-popup-close-button')?.click();openModal(${JSON.stringify(rowData).replace(/"/g,"'")})})()">
+        ? `<button class="ml-popup-action-btn" onclick="(function(){document.querySelector('.maplibregl-popup-close-button')?.click();openModal(${JSON.stringify(rowData).replace(/"/g, "'")})})()">
                <i class="fa-solid fa-folder-open mr-1"></i> Ver Ficha Técnica del Convenio
            </button>`
         : '';
@@ -4445,11 +4451,11 @@ function showMLPopup(lngLat, html) {
     if (currentMLPopup) {
         currentMLPopup.remove();
     }
-    currentMLPopup = new maplibregl.Popup({ 
-        closeButton: true, 
-        maxWidth: '320px', 
-        offset: 0, 
-        className: 'map-info-popup' 
+    currentMLPopup = new maplibregl.Popup({
+        closeButton: true,
+        maxWidth: '320px',
+        offset: 0,
+        className: 'map-info-popup'
     })
         .setLngLat(lngLat)
         .setHTML(html)
@@ -4529,7 +4535,7 @@ async function renderMapTab() {
 
         mlMap.setStyle('https://tiles.openfreemap.org/styles/bright', {
             transformStyle: (previousStyle, nextStyle) => {
-                nextStyle.projection = {type: 'globe'};
+                nextStyle.projection = { type: 'globe' };
                 nextStyle.sources = {
                     ...nextStyle.sources,
                     satelliteSource: {
@@ -4578,18 +4584,18 @@ async function renderMapTab() {
                 nextStyle.layers = nextStyle.layers.filter(layer => {
                     const layerId = (layer.id || '').toLowerCase();
                     const sourceLayer = (layer['source-layer'] || '').toLowerCase();
-                    
-                    const isBaseRoad = layerId.includes('road') || 
-                                       layerId.includes('highway') || 
-                                       layerId.includes('transport') || 
-                                       layerId.includes('street') || 
-                                       layerId.includes('tunnel') || 
-                                       layerId.includes('bridge') || 
-                                       layerId.includes('path') || 
-                                       layerId.includes('track') || 
-                                       layerId.includes('way') ||
-                                       sourceLayer.includes('transportation') || 
-                                       sourceLayer.includes('road');
+
+                    const isBaseRoad = layerId.includes('road') ||
+                        layerId.includes('highway') ||
+                        layerId.includes('transport') ||
+                        layerId.includes('street') ||
+                        layerId.includes('tunnel') ||
+                        layerId.includes('bridge') ||
+                        layerId.includes('path') ||
+                        layerId.includes('track') ||
+                        layerId.includes('way') ||
+                        sourceLayer.includes('transportation') ||
+                        sourceLayer.includes('road');
 
                     return !isBaseRoad;
                 });
@@ -4654,42 +4660,42 @@ async function renderMapTab() {
                     });
 
                     // Enriquecer con subregión
-                        // Normalizador robusto
-                        const normMuniName = (s) => String(s)
-                            .toUpperCase()
-                            .normalize('NFD')
-                            .replace(/[\u0300-\u036f]/g, '') // quita tildes/diacríticos: ñ→n, é→e, etc.
-                            .replace(/[^A-Z ]/g, '')         // quita cualquier otro char no alfabético
-                            .replace(/\s+/g, ' ')
-                            .trim();
+                    // Normalizador robusto
+                    const normMuniName = (s) => String(s)
+                        .toUpperCase()
+                        .normalize('NFD')
+                        .replace(/[\u0300-\u036f]/g, '') // quita tildes/diacríticos: ñ→n, é→e, etc.
+                        .replace(/[^A-Z ]/g, '')         // quita cualquier otro char no alfabético
+                        .replace(/\s+/g, ' ')
+                        .trim();
 
-                        mpioData.features.forEach((f, idx) => {
-                            f.id = idx + 1;
-                            // Limpiar caracteres corruptos en las propiedades del municipio para mostrar la Ñ correcta
-                            ['NOMBRE_MPI', 'MPIO_CNMBR', 'NOM_MPIO'].forEach(key => {
-                                if (f.properties[key]) {
-                                    f.properties[key] = String(f.properties[key])
-                                        .replace(/\uFFFD/g, 'Ñ')
-                                        .replace(/\?/g, 'Ñ')
-                                        .replace(/¥/g, 'Ñ')
-                                        .replace(/\u00A5/g, 'Ñ');
-                                }
-                            });
+                    mpioData.features.forEach((f, idx) => {
+                        f.id = idx + 1;
+                        // Limpiar caracteres corruptos en las propiedades del municipio para mostrar la Ñ correcta
+                        ['NOMBRE_MPI', 'MPIO_CNMBR', 'NOM_MPIO'].forEach(key => {
+                            if (f.properties[key]) {
+                                f.properties[key] = String(f.properties[key])
+                                    .replace(/\uFFFD/g, 'Ñ')
+                                    .replace(/\?/g, 'Ñ')
+                                    .replace(/¥/g, 'Ñ')
+                                    .replace(/\u00A5/g, 'Ñ');
+                            }
+                        });
 
-                            const rawName = f.properties.NOMBRE_MPI || f.properties.MPIO_CNMBR || f.properties.NOM_MPIO || '';
-                            const muniNorm = normMuniName(rawName);
-                            let subregion = 'OTRAS';
-                            outer:
-                            for (const [sub, munis] of Object.entries(antioquiaSubregiones)) {
-                                for (const m of munis) {
-                                    if (normMuniName(m) === muniNorm) {
-                                        subregion = sub;
-                                        break outer;
-                                    }
+                        const rawName = f.properties.NOMBRE_MPI || f.properties.MPIO_CNMBR || f.properties.NOM_MPIO || '';
+                        const muniNorm = normMuniName(rawName);
+                        let subregion = 'OTRAS';
+                        outer:
+                        for (const [sub, munis] of Object.entries(antioquiaSubregiones)) {
+                            for (const m of munis) {
+                                if (normMuniName(m) === muniNorm) {
+                                    subregion = sub;
+                                    break outer;
                                 }
                             }
-                            f.properties._subregion = subregion;
-                        });
+                        }
+                        f.properties._subregion = subregion;
+                    });
 
 
                     // --- DISOLVER MUNICIPIOS EN SUBREGIONES Y DEPARTAMENTO CON TURF.JS ---
@@ -4804,7 +4810,7 @@ async function renderMapTab() {
                             bearing: 0,
                             animate: false
                         });
-                    } catch (fitErr) {}
+                    } catch (fitErr) { }
 
                     // 1. Capa: Relleno por subregión (usando las disueltas)
                     mlMap.addLayer({
@@ -4992,7 +4998,7 @@ async function renderMapTab() {
                                     ['==', ['upcase', ['coalesce', ['get', 'COMPETENTE'], ['get', 'ADMINISTR'], '']], 'INVIAS'],
                                     ML_COLORS.terciaria_invias,
                                     ML_COLORS.terciaria_municipal
-                                  ]
+                                ]
                                 : color,
                             'line-width': ['interpolate', ['linear'], ['zoom'],
                                 7, width * 0.6,
@@ -5082,9 +5088,9 @@ async function renderMapTab() {
             });
 
             // ── Cargar viales en paralelo (secundaria y terciaria son grandes) ──
-            await loadVialSource('primaria',   './data/Primaria.geojson',   ML_COLORS.primaria,   3, 6);
+            await loadVialSource('primaria', './data/Primaria.geojson', ML_COLORS.primaria, 3, 6);
             await loadVialSource('secundaria', './data/Secundaria.geojson', ML_COLORS.secundaria, 2.5, 7);
-            await loadVialSource('terciaria',  './data/Terciaria.geojson',  ML_COLORS.terciaria_municipal, 2, 8);
+            await loadVialSource('terciaria', './data/Terciaria.geojson', ML_COLORS.terciaria_municipal, 2, 8);
 
             if (loadingEl) loadingEl.classList.add('hidden');
 
@@ -5280,7 +5286,7 @@ async function renderMapTab() {
         });
 
         // Listeners de filtros del mapa
-        ['vigencia','supervisor','indicador','clasificacion','municipio','subregion','estado','convenio-num'].forEach(f => {
+        ['vigencia', 'supervisor', 'indicador', 'clasificacion', 'municipio', 'subregion', 'estado', 'convenio-num'].forEach(f => {
             const el = document.getElementById(`map-filter-${f}`);
             if (el) el.addEventListener('change', applyMapFilters);
         });
@@ -5299,11 +5305,11 @@ async function renderMapTab() {
 }
 
 function resetMapFilters() {
-    ['map-filter-search','map-filter-vigencia','map-filter-supervisor','map-filter-indicador','map-filter-clasificacion',
-     'map-filter-municipio','map-filter-subregion','map-filter-estado','map-filter-convenio-num'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-    });
+    ['map-filter-search', 'map-filter-vigencia', 'map-filter-supervisor', 'map-filter-indicador', 'map-filter-clasificacion',
+        'map-filter-municipio', 'map-filter-subregion', 'map-filter-estado', 'map-filter-convenio-num'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
     applyMapFilters();
 }
 
@@ -5315,12 +5321,12 @@ function toggleMLLayer(layerKey, isVisible) {
     const vis = isVisible ? 'visible' : 'none';
 
     const layerMap = {
-        municipios:  ['municipios-line', 'municipios-labels'],
+        municipios: ['municipios-line', 'municipios-labels'],
         subregiones: ['subregiones-fill', 'subregiones-fill-hover'],
-        primaria:    ['vial-primaria-glow', 'vial-primaria', 'vial-primaria-hover'],
-        secundaria:  ['vial-secundaria', 'vial-secundaria-hover'],
-        terciaria:   ['vial-terciaria', 'vial-terciaria-hover'],
-        tramosKml:   ['kml-convenios-glow', 'kml-convenios', 'kml-convenios-hover']
+        primaria: ['vial-primaria-glow', 'vial-primaria', 'vial-primaria-hover'],
+        secundaria: ['vial-secundaria', 'vial-secundaria-hover'],
+        terciaria: ['vial-terciaria', 'vial-terciaria-hover'],
+        tramosKml: ['kml-convenios-glow', 'kml-convenios', 'kml-convenios-hover']
     };
 
     const layers = layerMap[layerKey] || [];
@@ -5348,13 +5354,13 @@ function toggleMLLayer(layerKey, isVisible) {
 // ── Inicializar control de capas ──────────────────────────────────────────────
 function initMLLayerControl() {
     const checkboxMap = {
-        'layer-chk-municipios':  'municipios',
+        'layer-chk-municipios': 'municipios',
         'layer-chk-subregiones': 'subregiones',
-        'layer-chk-primaria':    'primaria',
-        'layer-chk-secundaria':  'secundaria',
-        'layer-chk-terciaria':   'terciaria',
-        'layer-chk-tramosKml':   'tramosKml',
-        'layer-chk-terrain':     'terrain'
+        'layer-chk-primaria': 'primaria',
+        'layer-chk-secundaria': 'secundaria',
+        'layer-chk-terciaria': 'terciaria',
+        'layer-chk-tramosKml': 'tramosKml',
+        'layer-chk-terrain': 'terrain'
     };
 
     for (const [chkId, layerKey] of Object.entries(checkboxMap)) {
@@ -5433,13 +5439,13 @@ async function renderMLMapFeatures() {
                         f.properties = f.properties || {};
                         f.properties.CONVENIO = num;
                         f.properties._estado = sysState.label;
-                        f.properties._color  = sysState.hex;
+                        f.properties._color = sysState.hex;
                         allFeatures.push(f);
                     }
                 });
                 return;
             }
-        } catch (e) {}
+        } catch (e) { }
 
         // Intentar KML via omnivore (Leaflet helper) — parsear a GeoJSON
         if (typeof omnivore !== 'undefined') {
@@ -5455,7 +5461,7 @@ async function renderMLMapFeatures() {
                                     f.properties = f.properties || {};
                                     f.properties.CONVENIO = num;
                                     f.properties._estado = sysState.label;
-                                    f.properties._color  = sysState.hex;
+                                    f.properties._color = sysState.hex;
                                     allFeatures.push(f);
                                 }
                             });
@@ -5464,7 +5470,7 @@ async function renderMLMapFeatures() {
                         .on('error', () => res());
                 });
                 return;
-            } catch (e) {}
+            } catch (e) { }
         }
 
         // Fallback: punto en LATITUD/LONGITUD
@@ -5796,7 +5802,7 @@ function initMLMapSearch() {
                             const targetSource = item.type === 'municipio'
                                 ? 'municipios-src'
                                 : (item.type === 'kml' ? 'kml-convenios-src' : `vial-${item.layerId}`);
-                            
+
                             console.log("Iniciando parpadeo para:", targetSource, "feature ID:", feature.id);
 
                             if (feature.id !== undefined && feature.id !== null) {
@@ -5840,27 +5846,27 @@ function initMLMapSearch() {
 let currentMapData = [];
 
 function applyMapFilters() {
-    const search      = document.getElementById('map-filter-search')?.value.toLowerCase().trim() || '';
-    const vigencia    = getSelectValues('map-filter-vigencia');
-    const municipio   = getSelectValues('map-filter-municipio');
-    const supervisor  = getSelectValues('map-filter-supervisor');
+    const search = document.getElementById('map-filter-search')?.value.toLowerCase().trim() || '';
+    const vigencia = getSelectValues('map-filter-vigencia');
+    const municipio = getSelectValues('map-filter-municipio');
+    const supervisor = getSelectValues('map-filter-supervisor');
     const clasificacion = getSelectValues('map-filter-clasificacion');
-    const subregion   = getSelectValues('map-filter-subregion');
-    const estado      = getSelectValues('map-filter-estado');
+    const subregion = getSelectValues('map-filter-subregion');
+    const estado = getSelectValues('map-filter-estado');
     const convenioNum = getSelectValues('map-filter-convenio-num');
-    const indicador   = getSelectValues('map-filter-indicador');
+    const indicador = getSelectValues('map-filter-indicador');
 
     currentMapData = rawData.filter(row => {
         const rowValsStr = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
-        const matchSearch    = !search      || rowValsStr.includes(search);
-        const matchVig       = vigencia.length === 0    || vigencia.includes(String(row['VIGENCIA'] || '').trim());
-        const matchMun       = municipio.length === 0   || municipio.includes(String(row['MUNICIPIO'] || '').trim());
-        const matchSup       = supervisor.length === 0  || supervisor.includes(String(row['SUPERVISOR'] || '').trim());
-        const matchClasif    = clasificacion.length === 0 || clasificacion.includes(String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim());
-        const matchSub       = subregion.length === 0   || subregion.includes(String(row['SUBREGION'] || '').trim());
-        const matchEstado    = estado.length === 0      || estado.includes(String(row['ESTADO CONVENIO'] || '').trim());
-        const matchConv      = convenioNum.length === 0 || convenioNum.includes(String(row['CONVENIO'] || '').trim());
-        const matchInd       = indicador.length === 0   || indicador.includes(String(row['INDICADOR'] || '').trim());
+        const matchSearch = !search || rowValsStr.includes(search);
+        const matchVig = vigencia.length === 0 || vigencia.includes(String(row['VIGENCIA'] || '').trim());
+        const matchMun = municipio.length === 0 || municipio.includes(String(row['MUNICIPIO'] || '').trim());
+        const matchSup = supervisor.length === 0 || supervisor.includes(String(row['SUPERVISOR'] || '').trim());
+        const matchClasif = clasificacion.length === 0 || clasificacion.includes(String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim());
+        const matchSub = subregion.length === 0 || subregion.includes(String(row['SUBREGION'] || '').trim());
+        const matchEstado = estado.length === 0 || estado.includes(String(row['ESTADO CONVENIO'] || '').trim());
+        const matchConv = convenioNum.length === 0 || convenioNum.includes(String(row['CONVENIO'] || '').trim());
+        const matchInd = indicador.length === 0 || indicador.includes(String(row['INDICADOR'] || '').trim());
         return matchSearch && matchVig && matchMun && matchSup && matchClasif && matchSub && matchEstado && matchConv && matchInd;
     });
 
@@ -5874,14 +5880,14 @@ function updateMapFilterSelects(cSearch, cVig, cMun, cSup, cClas, cSub, cEst, cC
         const valid = rawData.filter(row => {
             const rowValsStr = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
             const matchSearch = !cSearch || rowValsStr.includes(cSearch);
-            const matchVig    = exclude === 'VIGENCIA'         ? true : (cVig.length === 0  || cVig.includes(String(row['VIGENCIA']).trim()));
-            const matchMun    = exclude === 'MUNICIPIO'        ? true : (cMun.length === 0  || cMun.includes(String(row['MUNICIPIO'] || '').trim()));
-            const matchSup    = exclude === 'SUPERVISOR'       ? true : (cSup.length === 0  || cSup.includes(String(row['SUPERVISOR'] || '').trim()));
-            const matchClas   = exclude === 'CLASIFICACIÓN'    ? true : (cClas.length === 0 || cClas.includes(String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim()));
-            const matchSub    = exclude === 'SUBREGION'        ? true : (cSub.length === 0  || cSub.includes(String(row['SUBREGION'] || '').trim()));
-            const matchEst    = exclude === 'ESTADO CONVENIO'  ? true : (cEst.length === 0  || cEst.includes(String(row['ESTADO CONVENIO'] || '').trim()));
-            const matchConv   = exclude === 'CONVENIO'         ? true : (cConv.length === 0 || cConv.includes(String(row['CONVENIO'] || '').trim()));
-            const matchInd    = exclude === 'INDICADOR'        ? true : (cInd.length === 0  || cInd.includes(String(row['INDICADOR'] || '').trim()));
+            const matchVig = exclude === 'VIGENCIA' ? true : (cVig.length === 0 || cVig.includes(String(row['VIGENCIA']).trim()));
+            const matchMun = exclude === 'MUNICIPIO' ? true : (cMun.length === 0 || cMun.includes(String(row['MUNICIPIO'] || '').trim()));
+            const matchSup = exclude === 'SUPERVISOR' ? true : (cSup.length === 0 || cSup.includes(String(row['SUPERVISOR'] || '').trim()));
+            const matchClas = exclude === 'CLASIFICACIÓN' ? true : (cClas.length === 0 || cClas.includes(String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim()));
+            const matchSub = exclude === 'SUBREGION' ? true : (cSub.length === 0 || cSub.includes(String(row['SUBREGION'] || '').trim()));
+            const matchEst = exclude === 'ESTADO CONVENIO' ? true : (cEst.length === 0 || cEst.includes(String(row['ESTADO CONVENIO'] || '').trim()));
+            const matchConv = exclude === 'CONVENIO' ? true : (cConv.length === 0 || cConv.includes(String(row['CONVENIO'] || '').trim()));
+            const matchInd = exclude === 'INDICADOR' ? true : (cInd.length === 0 || cInd.includes(String(row['INDICADOR'] || '').trim()));
             return matchSearch && matchVig && matchMun && matchSup && matchClas && matchSub && matchEst && matchConv && matchInd;
         });
         return [...new Set(valid.map(i => {
@@ -5903,13 +5909,13 @@ function updateMapFilterSelects(cSearch, cVig, cMun, cSup, cClas, cSub, cEst, cC
         });
     };
 
-    upd('map-filter-vigencia',     getValid('VIGENCIA', 'VIGENCIA').reverse(), cVig);
-    upd('map-filter-supervisor',   getValid('SUPERVISOR', 'SUPERVISOR'), cSup);
-    upd('map-filter-indicador',    getValid('INDICADOR', 'INDICADOR'), cInd);
-    upd('map-filter-clasificacion',getValid('CLASIFICACIÓN', 'CLASIFICACIÓN'), cClas);
-    upd('map-filter-municipio',    getValid('MUNICIPIO', 'MUNICIPIO'), cMun);
-    upd('map-filter-subregion',    getValid('SUBREGION', 'SUBREGION'), cSub);
-    upd('map-filter-estado',       getValid('ESTADO CONVENIO', 'ESTADO CONVENIO'), cEst);
+    upd('map-filter-vigencia', getValid('VIGENCIA', 'VIGENCIA').reverse(), cVig);
+    upd('map-filter-supervisor', getValid('SUPERVISOR', 'SUPERVISOR'), cSup);
+    upd('map-filter-indicador', getValid('INDICADOR', 'INDICADOR'), cInd);
+    upd('map-filter-clasificacion', getValid('CLASIFICACIÓN', 'CLASIFICACIÓN'), cClas);
+    upd('map-filter-municipio', getValid('MUNICIPIO', 'MUNICIPIO'), cMun);
+    upd('map-filter-subregion', getValid('SUBREGION', 'SUBREGION'), cSub);
+    upd('map-filter-estado', getValid('ESTADO CONVENIO', 'ESTADO CONVENIO'), cEst);
     upd('map-filter-convenio-num', getValid('CONVENIO', 'CONVENIO'), cConv);
 }
 
@@ -5920,11 +5926,11 @@ function updateMapKPIs() {
     currentMapData.forEach(r => {
         const est = String(r['ESTADO CONVENIO'] || '').toUpperCase();
         if (est.includes('EJECUCI')) act++;
-        kmEjecutados  += getRowLongitudEjecutada(r) / 1000;
+        kmEjecutados += getRowLongitudEjecutada(r) / 1000;
         kmContratados += getRowLongitudContratada(r) / 1000;
-        areaEjecutada  += getRowAreaEjecutada(r);
+        areaEjecutada += getRowAreaEjecutada(r);
         areaContratada += getRowAreaContratada(r);
-        inv  += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
+        inv += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
     });
 
     const mKpi = document.getElementById('kpi-map-mun');
@@ -5937,7 +5943,7 @@ function updateMapKPIs() {
     if (aKpi) aKpi.innerHTML = `${formatNumber(areaEjecutada)} m² <span class="text-xs font-semibold text-slate-400 dark:text-slate-500">de ${formatNumber(areaContratada)} m² contratados</span>`;
     const iKpi = document.getElementById('kpi-map-inv');
     if (iKpi) iKpi.textContent = formatCurrency(inv);
-    const acKpi= document.getElementById('kpi-map-activos');
+    const acKpi = document.getElementById('kpi-map-activos');
     if (acKpi) acKpi.textContent = act;
 
     updateMapCharts();
@@ -5970,11 +5976,11 @@ function updateMapCharts() {
         const el = document.getElementById(id);
         if (!el) return;
         if (charts[id]) charts[id].destroy();
-        
+
         const isDark = document.documentElement.classList.contains('dark');
         const textColor = isDark ? '#94a3b8' : '#64748b';
         const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.04)';
-        
+
         charts[id] = new Chart(el, {
             type,
             data: {
@@ -5984,8 +5990,8 @@ function updateMapCharts() {
             options: {
                 indexAxis: (type === 'bar' && (id.includes('top-mun') || id.includes('sub-inv'))) ? 'y' : 'x',
                 responsive: true, maintainAspectRatio: false,
-                plugins: { 
-                    legend: { display: false }, 
+                plugins: {
+                    legend: { display: false },
                     tooltip: {
                         backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                         titleColor: isDark ? '#f8fafc' : '#0f172a',
@@ -5994,32 +6000,32 @@ function updateMapCharts() {
                         borderWidth: 1,
                         padding: 12,
                         cornerRadius: 8,
-                        titleFont: {size: 11, family: 'Poppins'},
-                        bodyFont: {size: 13, weight: 'bold', family: 'Poppins'},
+                        titleFont: { size: 11, family: 'Poppins' },
+                        bodyFont: { size: 13, weight: 'bold', family: 'Poppins' },
                         callbacks: { label: (c) => ` ${formatCb(c.raw)}` }
-                    } 
+                    }
                 },
-                scales: { 
-                    x: { 
-                        grid: { color: (type === 'bar' && (id.includes('top-mun') || id.includes('sub-inv'))) ? gridColor : 'transparent' }, 
-                        ticks: { color: textColor, font: { size: 9, family: 'Poppins', weight: '500' } } 
-                    }, 
-                    y: { 
-                        grid: { color: (type === 'bar' && (id.includes('top-mun') || id.includes('sub-inv'))) ? 'transparent' : gridColor }, 
-                        ticks: { color: textColor, font: { size: 9, family: 'Poppins', weight: '500' } } 
-                    } 
+                scales: {
+                    x: {
+                        grid: { color: (type === 'bar' && (id.includes('top-mun') || id.includes('sub-inv'))) ? gridColor : 'transparent' },
+                        ticks: { color: textColor, font: { size: 9, family: 'Poppins', weight: '500' } }
+                    },
+                    y: {
+                        grid: { color: (type === 'bar' && (id.includes('top-mun') || id.includes('sub-inv'))) ? 'transparent' : gridColor },
+                        ticks: { color: textColor, font: { size: 9, family: 'Poppins', weight: '500' } }
+                    }
                 }
             }
         });
     };
 
-    drawChart('chart-sub-long',     'bar', sL, v => formatNumber(v) + ' m', '#018D38');
-    drawChart('chart-sub-inv',      'bar', sI, v => formatCurrency(v),       '#3561AB');
+    drawChart('chart-sub-long', 'bar', sL, v => formatNumber(v) + ' m', '#018D38');
+    drawChart('chart-sub-inv', 'bar', sI, v => formatCurrency(v), '#3561AB');
     drawChart('chart-top-mun-long', 'bar', mL, v => formatNumber(v) + ' m', '#018D38');
-    drawChart('chart-top-mun-inv',  'bar', mI, v => formatCurrency(v),       '#3561AB');
+    drawChart('chart-top-mun-inv', 'bar', mI, v => formatCurrency(v), '#3561AB');
 }
 
-window.setMapMetric = function(val) {
+window.setMapMetric = function (val) {
     mapMetric = val;
     const btnContratado = document.getElementById('btn-map-metric-contratado');
     const btnEjecutado = document.getElementById('btn-map-metric-ejecutado');
@@ -6111,7 +6117,7 @@ function normalizarIndicador(ind) {
     return ""; // No mapeado
 }
 
-window.setPlanMetric = function(val) {
+window.setPlanMetric = function (val) {
     planMetric = val;
     const btnContratado = document.getElementById('btn-plan-metric-contratado');
     const btnEjecutado = document.getElementById('btn-plan-metric-ejecutado');
@@ -6131,7 +6137,7 @@ window.setPlanMetric = function(val) {
     renderPlanTab();
 };
 
-window.setPlanAnualFilter = function(val) {
+window.setPlanAnualFilter = function (val) {
     planAnualFilter = val;
     // Map metric type for backward compatibility
     if (val === 'todos-m2' || val === 'ESPACIO PUBLICO') {
@@ -6147,7 +6153,7 @@ window.setPlanAnualFilter = function(val) {
     renderPlanTab();
 };
 
-window.setPlanAnualMetric = function(val) {
+window.setPlanAnualMetric = function (val) {
     if (val === 'longitud') {
         window.setPlanAnualFilter('todos-km');
     } else {
@@ -6190,7 +6196,7 @@ function getRowCompletionYear(row) {
     return null;
 }
 
-window.setPlanYearFilter = function(val) {
+window.setPlanYearFilter = function (val) {
     planYearFilter = val;
     renderPlanTab();
 };
@@ -6237,20 +6243,20 @@ function renderPlanTab() {
         let cant = 0;
 
         if (cfg.tipo === 'km') {
-            const metros = planMetric === 'contratado' ? getRowLongitudContratada(row) : getRowLongitudEjecutada(row);
+            const metros = planMetric === 'contratado' ? getRowLongitudContratadaPlan(row) : getRowLongitudEjecutada(row);
             cant = metros / 1000;
         } else if (cfg.tipo === 'm2') {
-            cant = planMetric === 'contratado' ? getRowAreaContratada(row) : getRowAreaEjecutada(row);
+            cant = planMetric === 'contratado' ? getRowAreaContratadaPlan(row) : getRowAreaEjecutada(row);
         } else {
             if (planMetric === 'contratado') {
                 cant = isCuatrenioAnterior(row) ? 0 : 1;
             } else {
                 const estado = String(row['ESTADO CONVENIO'] || '').toUpperCase();
                 const tieneEjecucion = estado.includes('EJECUCI') || estado.includes('EJECUT') ||
-                                       estado.includes('OPERA') || estado.includes('MEJORAD') ||
-                                       getRowLongitudEjecutada(row) > 0 ||
-                                       getRowAreaEjecutada(row) > 0 ||
-                                       parseNum(row['FISICO_NORM']) > 0;
+                    estado.includes('OPERA') || estado.includes('MEJORAD') ||
+                    getRowLongitudEjecutada(row) > 0 ||
+                    getRowAreaEjecutada(row) > 0 ||
+                    parseNum(row['FISICO_NORM']) > 0;
                 cant = tieneEjecucion ? 1 : 0;
             }
         }
@@ -6305,10 +6311,10 @@ function renderPlanTab() {
         const meta = cfg.metas[planYearFilter] !== undefined ? cfg.metas[planYearFilter] : 0;
         const isNP = (meta === 0);
         const e = d.ejecutado;
-        
+
         let pct = 0;
         let restante = 0;
-        
+
         if (isNP) {
             pct = 0;
             restante = 0;
@@ -6348,20 +6354,20 @@ function renderPlanTab() {
         let barColor = 'bg-red-500';
         let bgClass = 'bg-red-50/60 dark:bg-red-900/10';
         let chartColor = 'rgba(239, 68, 68, 0.85)';
-        
+
         if (isNP) {
             colorClass = 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-900/20 dark:text-slate-400 dark:border-slate-800';
             barColor = 'bg-slate-300';
             bgClass = 'bg-slate-50/60 dark:bg-slate-900/10';
             chartColor = 'rgba(148, 163, 184, 0.5)';
-        } else if (pct >= 80)  { 
-            colorClass = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'; 
-            barColor = 'bg-emerald-500'; 
+        } else if (pct >= 80) {
+            colorClass = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800';
+            barColor = 'bg-emerald-500';
             bgClass = 'bg-emerald-50/60 dark:bg-emerald-900/10';
             chartColor = 'rgba(16, 185, 129, 0.85)';
-        } else if (pct >= 50) { 
-            colorClass = 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'; 
-            barColor = 'bg-amber-500'; 
+        } else if (pct >= 50) {
+            colorClass = 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800';
+            barColor = 'bg-amber-500';
             bgClass = 'bg-amber-50/60 dark:bg-amber-900/10';
             chartColor = 'rgba(245, 158, 11, 0.85)';
         }
@@ -6433,7 +6439,7 @@ function renderPlanTab() {
 
     // === 1. GRÁFICO: Cumplimiento Global (Horizontal Bar Chart) ===
     if (charts['plan-metas']) charts['plan-metas'].destroy();
-    
+
     const isDark = document.documentElement.classList.contains('dark');
     const textColor = isDark ? '#94a3b8' : '#64748b';
     const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.04)';
@@ -6465,10 +6471,10 @@ function renderPlanTab() {
                     borderWidth: 1,
                     padding: 12,
                     cornerRadius: 8,
-                    titleFont: {size: 11, family: 'Poppins'},
-                    bodyFont: {size: 12, family: 'Poppins'},
+                    titleFont: { size: 11, family: 'Poppins' },
+                    bodyFont: { size: 12, family: 'Poppins' },
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             const index = context.dataIndex;
                             const info = chartMetasRawInfo[index];
                             if (info.isNP) {
@@ -6490,7 +6496,7 @@ function renderPlanTab() {
                     ticks: {
                         color: textColor,
                         font: { size: 9, family: 'Poppins' },
-                        callback: function(value) { return value + '%'; }
+                        callback: function (value) { return value + '%'; }
                     }
                 },
                 y: {
@@ -6506,14 +6512,14 @@ function renderPlanTab() {
 
     // === 2. GRÁFICO DE PROYECCIÓN DE AVANCE POR AÑO (%) (Optimizado con curvas y porcentajes) ===
     if (charts['plan-anual']) charts['plan-anual'].destroy();
-    
+
     const proyWeb = calculateProyeccionAnualPct(planAnualFilter);
     const yearsLabels = proyWeb.years.map(y => y === "2027" ? "2027 (Proyección)" : y);
     const mainColor = '#0B5640';
 
     const canvasAnual = document.getElementById('chart-plan-anual');
     const ctxAnual = canvasAnual.getContext('2d');
-    
+
     const gradient = ctxAnual.createLinearGradient(0, 0, 0, 250);
     gradient.addColorStop(0, 'rgba(11, 86, 64, 0.35)');
     gradient.addColorStop(1, 'rgba(11, 86, 64, 0.0)');
@@ -6553,10 +6559,10 @@ function renderPlanTab() {
                     borderWidth: 1,
                     padding: 12,
                     cornerRadius: 8,
-                    titleFont: {size: 11, family: 'Poppins'},
-                    bodyFont: {size: 13, weight: 'bold', family: 'Poppins'},
+                    titleFont: { size: 11, family: 'Poppins' },
+                    bodyFont: { size: 13, weight: 'bold', family: 'Poppins' },
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return ` ${context.dataset.label}: ${context.raw.toFixed(1)}%`;
                         }
                     }
@@ -6570,7 +6576,7 @@ function renderPlanTab() {
                     ticks: {
                         color: textColor,
                         font: { size: 9, family: 'Poppins' },
-                        callback: function(value) {
+                        callback: function (value) {
                             return value + '%';
                         }
                     }
@@ -6597,7 +6603,7 @@ window.editUploadedPhotos = [];
 function alertToast(title, desc, type = "success") {
     const toast = document.getElementById('toast-notification');
     if (!toast) return;
-    
+
     const titleEl = toast.querySelector('h4');
     const descEl = toast.querySelector('p');
     const iconEl = toast.querySelector('i');
@@ -6622,7 +6628,7 @@ function alertToast(title, desc, type = "success") {
     toast.classList.remove('opacity-0', 'translate-y-20');
     toast.style.opacity = '1';
     toast.style.transform = 'translateY(0)';
-    
+
     setTimeout(() => {
         toast.classList.add('opacity-0', 'translate-y-20');
         toast.style.opacity = '0';
@@ -6721,7 +6727,7 @@ function initSupervisorPortal() {
                     email: userDef.email,
                     initials: userDef.initials || userDef.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
                 };
-                
+
                 const rememberMe = document.getElementById('login-remember') && document.getElementById('login-remember').checked;
                 if (rememberMe) {
                     localStorage.setItem('diat_logged_user', JSON.stringify(userObj));
@@ -6730,15 +6736,15 @@ function initSupervisorPortal() {
                     sessionStorage.setItem('diat_logged_user', JSON.stringify(userObj));
                     localStorage.removeItem('diat_logged_user');
                 }
-                
+
                 document.getElementById('modal-login').classList.add('hidden');
-                
+
                 checkAuthStatus();
-                
+
                 // Redirigir a pestaña del Portal y sub-pestaña dashboard
                 const portalTabBtn = document.querySelector('.tab-btn[data-tab="portal"]');
                 if (portalTabBtn) portalTabBtn.click();
-                
+
                 alertToast('Sesión Iniciada', 'Bienvenido, ' + userDef.name + '.');
             } else {
                 alertToast('Credenciales Incorrectas', 'Usuario o contraseña inválidos.', 'error');
@@ -6897,7 +6903,7 @@ function initSupervisorPortal() {
                         const lng = position.coords.longitude;
                         document.getElementById('visit-gps-lat').value = lat.toFixed(6);
                         document.getElementById('visit-gps-lng').value = lng.toFixed(6);
-                        
+
                         if (window.visitMapInstance && window.visitMarker) {
                             const pos = L.latLng(lat, lng);
                             window.visitMarker.setLatLng(pos);
@@ -6967,13 +6973,13 @@ function initSupervisorPortal() {
                 draggable: true
             }).addTo(window.visitMapInstance);
 
-            window.visitMarker.on('dragend', function() {
+            window.visitMarker.on('dragend', function () {
                 const pos = window.visitMarker.getLatLng();
                 document.getElementById('visit-gps-lat').value = pos.lat.toFixed(6);
                 document.getElementById('visit-gps-lng').value = pos.lng.toFixed(6);
             });
 
-            window.visitMapInstance.on('click', function(e) {
+            window.visitMapInstance.on('click', function (e) {
                 window.visitMarker.setLatLng(e.latlng);
                 document.getElementById('visit-gps-lat').value = e.latlng.lat.toFixed(6);
                 document.getElementById('visit-gps-lng').value = e.latlng.lng.toFixed(6);
@@ -7021,7 +7027,7 @@ function initSupervisorPortal() {
     }
 
     // Modal para visualizar detalle de visita técnica
-    window.openVisitDetailModal = function(visitId) {
+    window.openVisitDetailModal = function (visitId) {
         const visits = window.DIATDataService.getTechnicalVisits();
         const v = visits.find(visit => visit.id === visitId);
         if (!v) return;
@@ -7051,7 +7057,7 @@ function initSupervisorPortal() {
         const photosContainer = document.getElementById('visit-detail-photos');
         const emptyPhotos = document.getElementById('visit-detail-photos-empty');
         photosContainer.innerHTML = '';
-        
+
         if (v.photos && v.photos.length > 0) {
             emptyPhotos.classList.add('hidden');
             photosContainer.classList.remove('hidden');
@@ -7099,7 +7105,7 @@ function initSupervisorPortal() {
 
     window.editingVisitId = null;
 
-    window.openEditVisitModal = function(visitId) {
+    window.openEditVisitModal = function (visitId) {
         const visits = window.DIATDataService.getTechnicalVisits();
         const v = visits.find(visit => visit.id === visitId);
         if (!v) return;
@@ -7129,7 +7135,7 @@ function initSupervisorPortal() {
         document.getElementById('visit-obs').value = v.observaciones || '';
         document.getElementById('visit-compromisos').value = v.compromisos || '';
         document.getElementById('visit-riesgos').value = v.riesgos || '';
-        
+
         window.visitUploadedPhotos = v.photos || [];
         renderVisitPhotoPreviews();
 
@@ -7449,7 +7455,7 @@ function initSupervisorPortal() {
 
                 // Retraso de propagación para que Google Sheets procese los cambios en el XLSX de exportación
                 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-                
+
                 if (progressText && progressBar && progressPct) {
                     progressBar.style.width = '60%';
                     progressPct.textContent = '60%';
@@ -7490,7 +7496,7 @@ function initSupervisorPortal() {
                     // Cerrar modal
                     document.getElementById('modal-actualizar-convenio').style.display = 'none';
                     document.getElementById('modal-actualizar-convenio').classList.add('hidden');
-                    
+
                     // Restaurar botones para la siguiente apertura
                     progressContainer.classList.add('hidden');
                     actionsContainer.classList.remove('hidden');
@@ -7607,11 +7613,11 @@ function handleLogout() {
     localStorage.removeItem('diat_logged_user');
     sessionStorage.removeItem('diat_logged_user');
     checkAuthStatus();
-    
+
     // Regresar a la pestaña principal (Resumen)
     const resumenTabBtn = document.querySelector('.tab-btn[data-tab="resumen"]');
     if (resumenTabBtn) resumenTabBtn.click();
-    
+
     alertToast("Sesión Cerrada", "Has salido del portal de supervisores.");
 }
 
@@ -7626,10 +7632,10 @@ function checkAndRenderPortal() {
 // Renderizado principal del dashboard y subpestañas del Portal del Supervisor
 function renderSupervisorPortal() {
     const supervisorRows = getSupervisorRows();
-    
+
     // 1. Calcular KPIs
     let activos = 0, porLiquidar = 0, finalizados = 0, sumInv = 0, sumLong = 0;
-    
+
     supervisorRows.forEach(r => {
         const state = getSystemState(r['ESTADO CONVENIO']).label;
         if (state === 'En Ejecución') activos++;
@@ -7777,7 +7783,7 @@ function renderSupervisorCharts(supervisorRows) {
                         bodyFont: { family: 'Poppins', size: 12 },
                         cornerRadius: 8,
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 return ` ${context.dataset.label}: ${context.raw.toFixed(1)}%`;
                             }
                         }
@@ -7798,7 +7804,7 @@ function renderSupervisorCharts(supervisorRows) {
                         ticks: {
                             font: { family: 'Poppins', size: 9 },
                             color: '#64748B',
-                            callback: function(value) { return value + '%'; }
+                            callback: function (value) { return value + '%'; }
                         }
                     }
                 }
@@ -7886,7 +7892,7 @@ function getAlertsCount(supervisorRows) {
     supervisorRows.forEach(row => {
         const estStr = String(row['ESTADO CONVENIO'] || '').toLowerCase();
         if (estStr.includes('liquidado') || estStr.includes('resciliado')) return;
-        
+
         let termStr = row['NUEVA FECHA DE TERMINACION'] || row['FECHA DE TERMINACION'];
         let termDate = parseCOPDate(termStr);
         const fisico = row['FISICO_NORM'] || 0;
@@ -7927,13 +7933,13 @@ function initEditMap(lat, lng) {
             draggable: true
         }).addTo(window.editMapInstance);
 
-        window.editMarker.on('dragend', function() {
+        window.editMarker.on('dragend', function () {
             const pos = window.editMarker.getLatLng();
             document.getElementById('edit-gps-lat').value = pos.lat.toFixed(6);
             document.getElementById('edit-gps-lng').value = pos.lng.toFixed(6);
         });
 
-        window.editMapInstance.on('click', function(e) {
+        window.editMapInstance.on('click', function (e) {
             window.editMarker.setLatLng(e.latlng);
             document.getElementById('edit-gps-lat').value = e.latlng.lat.toFixed(6);
             document.getElementById('edit-gps-lng').value = e.latlng.lng.toFixed(6);
@@ -8007,16 +8013,16 @@ function renderVisitPhotoPreviews() {
     });
 }
 
-window.deleteVisitPhoto = function(index) {
+window.deleteVisitPhoto = function (index) {
     window.visitUploadedPhotos.splice(index, 1);
     renderVisitPhotoPreviews();
 };
 
-window.openVisitPhotoLightbox = function(visitId, photoIndex) {
+window.openVisitPhotoLightbox = function (visitId, photoIndex) {
     const visits = window.DIATDataService.getTechnicalVisits();
     const visit = visits.find(v => v.id === visitId);
     if (!visit || !visit.photos || visit.photos.length === 0) return;
-    
+
     currentGalleryImages = visit.photos;
     openLightbox(photoIndex);
 };
@@ -8093,7 +8099,7 @@ function simulateSyncProgress() {
 }
 
 // Abre el modal de edición de convenio y carga sus datos correspondientes
-window.openEditConvenioModal = function(convenioId) {
+window.openEditConvenioModal = function (convenioId) {
     const row = rawData.find(r => String(r['CONVENIO']).trim() === String(convenioId).trim());
     if (!row) return;
 
@@ -8117,7 +8123,7 @@ window.openEditConvenioModal = function(convenioId) {
     document.getElementById('edit-general-ejec').value = row['CONVENIANTE EJECUTOR'] || '';
     document.getElementById('edit-general-sup').value = row['SUPERVISOR'] || 'Jonathan Marín Gallego';
     document.getElementById('edit-general-valor').value = formatCurrency(row['VALOR TOTAL'] || 0);
-    
+
     let plazoVal = 0;
     for (let key in row) {
         if (key.toUpperCase().trim() === 'PLAZO INICIAL' || key.toUpperCase().trim().includes('PLAZO INICIAL')) {
@@ -8152,7 +8158,7 @@ window.openEditConvenioModal = function(convenioId) {
     document.getElementById('edit-seg-area').value = getRowAreaEjecutada(row);
     document.getElementById('edit-seg-desembolsado').value = row['VALOR TOTAL DESEMBOLSADO'] || 0;
     document.getElementById('edit-seg-autorizado').value = row['VALOR TOTAL AUTORIZADO DEPARTAMENTO'] || 0;
-    
+
     const corteStr = row['FECHA DE CORTE'] || row['FECHA_CORTE'] || '';
     document.getElementById('edit-seg-corte').value = toDateInputValue(corteStr);
     document.getElementById('edit-seg-obs').value = row['OBSERVACIONES'] || '';
@@ -8175,7 +8181,7 @@ window.openEditConvenioModal = function(convenioId) {
 };
 
 // Elimina una imagen cargada de la lista
-window.deleteUploadedPhoto = function(index) {
+window.deleteUploadedPhoto = function (index) {
     window.editUploadedPhotos.splice(index, 1);
     renderPhotoPreviews();
 };
@@ -8202,7 +8208,7 @@ function renderEditModalVisitsList(convenioId) {
     filtered.forEach(v => {
         const item = document.createElement('div');
         item.className = 'bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1 text-left';
-        
+
         let photosHtml = '';
         if (v.photos && v.photos.length > 0) {
             photosHtml = `
@@ -8252,7 +8258,7 @@ function renderSupervisorVisitasTable(supervisorRows) {
         const tr = document.createElement('tr');
         tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition-all';
         tr.style.cursor = 'pointer';
-        
+
         tr.addEventListener('click', (e) => {
             if (e.target.closest('button') || e.target.closest('img')) return;
             window.openVisitDetailModal(v.id);
@@ -8336,7 +8342,7 @@ function renderSupervisorAlertas(supervisorRows) {
         const municipio = row['MUNICIPIO'] || 'N/A';
         const fisico = row['FISICO_NORM'] || 0;
         const financiero = row['FINANCIERO_NORM'] || 0;
-        
+
         let termStr = row['NUEVA FECHA DE TERMINACION'] || row['FECHA DE TERMINACION'];
         let termDate = parseCOPDate(termStr);
         const estStr = String(row['ESTADO CONVENIO'] || '').toLowerCase();
@@ -8472,7 +8478,7 @@ function initSearchableDropdown(selectId, placeholder = "Seleccionar...") {
     function updateTriggerText() {
         const selectedOpts = Array.from(nativeSelect.options).filter(o => o.selected && o.value !== '' && o.value !== 'todos' && o.value !== 'TODOS');
         const triggerText = trigger.querySelector('.trigger-text');
-        
+
         if (selectedOpts.length === 0) {
             triggerText.textContent = placeholder;
             const badge = trigger.querySelector('.multi-count-badge');
@@ -8503,7 +8509,7 @@ function initSearchableDropdown(selectId, placeholder = "Seleccionar...") {
     function rebuildOptions() {
         optionsContainer.innerHTML = '';
         const options = Array.from(nativeSelect.options);
-        
+
         if (options.length === 0) {
             optionsContainer.innerHTML = `<div class="custom-select-no-results">No hay opciones disponibles</div>`;
             updateTriggerText();
@@ -8514,9 +8520,9 @@ function initSearchableDropdown(selectId, placeholder = "Seleccionar...") {
             const optionEl = document.createElement('div');
             optionEl.className = 'custom-select-option';
             optionEl.dataset.value = opt.value;
-            
+
             const isAllOption = opt.value === '' || opt.value === 'todos' || opt.value === 'TODOS';
-            
+
             if (opt.selected && !isAllOption) {
                 optionEl.classList.add('selected');
             }
@@ -8529,7 +8535,7 @@ function initSearchableDropdown(selectId, placeholder = "Seleccionar...") {
 
             optionEl.addEventListener('click', (e) => {
                 e.stopPropagation();
-                
+
                 if (isAllOption) {
                     Array.from(nativeSelect.options).forEach(o => o.selected = false);
                     if (nativeSelect.options[0]) nativeSelect.options[0].selected = true;
@@ -8543,7 +8549,7 @@ function initSearchableDropdown(selectId, placeholder = "Seleccionar...") {
                         nativeSelect.options[0].selected = false;
                     }
                 }
-                
+
                 const allSelectedVals = Array.from(nativeSelect.options).filter(o => o.selected).map(o => o.value);
                 optionsContainer.querySelectorAll('.custom-select-option').forEach(el => {
                     if (el.dataset.value && allSelectedVals.includes(el.dataset.value) && el.dataset.value !== '' && el.dataset.value !== 'todos' && el.dataset.value !== 'TODOS') {
@@ -8607,11 +8613,11 @@ function initSearchableDropdown(selectId, placeholder = "Seleccionar...") {
     trigger.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        
+
         document.querySelectorAll('.custom-select-container').forEach(c => {
             if (c !== container) c.classList.remove('active');
         });
-        
+
         container.classList.toggle('active');
         if (container.classList.contains('active')) {
             searchInput.value = '';
@@ -8664,7 +8670,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Alternancia de Filtros Avanzados (Resumen)
     const btnToggleFilters = document.getElementById('btn-toggle-filters');
     const filterPanel = document.getElementById('filter-panel-collapsible');
-    
+
     if (btnToggleFilters && filterPanel) {
         btnToggleFilters.addEventListener('click', (e) => {
             e.preventDefault();
@@ -8676,7 +8682,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Alternancia de Filtros Avanzados (Mapa)
     const btnToggleMapFilters = document.getElementById('btn-toggle-map-filters');
     const mapFilterPanel = document.getElementById('map-filter-panel-collapsible');
-    
+
     if (btnToggleMapFilters && mapFilterPanel) {
         btnToggleMapFilters.addEventListener('click', (e) => {
             e.preventDefault();
@@ -8706,14 +8712,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Contador de filtros activos
     const mainFilters = [
-        'filter-vigencia', 'filter-supervisor', 'filter-indicador', 
-        'filter-clasificacion', 'filter-municipio', 'filter-subregion', 
+        'filter-vigencia', 'filter-supervisor', 'filter-indicador',
+        'filter-clasificacion', 'filter-municipio', 'filter-subregion',
         'filter-estado', 'filter-convenio-num'
     ];
 
     const mapFilters = [
-        'map-filter-vigencia', 'map-filter-supervisor', 'map-filter-indicador', 
-        'map-filter-clasificacion', 'map-filter-municipio', 'map-filter-subregion', 
+        'map-filter-vigencia', 'map-filter-supervisor', 'map-filter-indicador',
+        'map-filter-clasificacion', 'map-filter-municipio', 'map-filter-subregion',
         'map-filter-estado', 'map-filter-convenio-num'
     ];
 
@@ -8725,7 +8731,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 activeCount++;
             }
         });
-        
+
         const badge = document.getElementById('active-filters-badge');
         if (badge) {
             if (activeCount > 0) {
@@ -8745,7 +8751,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 activeCount++;
             }
         });
-        
+
         const badge = document.getElementById('map-active-filters-badge');
         if (badge) {
             if (activeCount > 0) {
@@ -8800,12 +8806,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Alternancia de Pantalla Completa para el Mapa
     const btnMapFullscreen = document.getElementById('btn-map-fullscreen');
     const mapWrapper = document.getElementById('map-wrapper');
-    
+
     if (btnMapFullscreen && mapWrapper) {
         btnMapFullscreen.addEventListener('click', (e) => {
             e.preventDefault();
             const isFullscreen = mapWrapper.classList.toggle('fullscreen');
-            
+
             // Cambiar icono
             const icon = btnMapFullscreen.querySelector('i');
             if (icon) {
@@ -8813,7 +8819,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon.classList.toggle('fa-expand', !isFullscreen);
                 icon.classList.toggle('fa-compress', isFullscreen);
             }
-            
+
             // Redimensionar MapLibre GL
             if (mlMap) {
                 setTimeout(() => {
@@ -8821,7 +8827,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 100);
             }
         });
-        
+
         // Cerrar con la tecla Esc
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && mapWrapper.classList.contains('fullscreen')) {
