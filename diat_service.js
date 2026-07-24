@@ -94,6 +94,12 @@ class DIATDataService {
                 });
 
                 // Mapear campos con nombres alternativos utilizados en el frontend
+                if (changes[id]['LONGITUD EJECUTADA CUATRENIO(m)'] !== undefined) {
+                    mergedRow['LONGITUD EJECUTADA CUATRENIO'] = parseFloat(changes[id]['LONGITUD EJECUTADA CUATRENIO(m)']) || 0;
+                }
+                if (changes[id]['AREA EJECUTADA CUATRENIO (m2)'] !== undefined) {
+                    mergedRow['AREA EJECUTADA CUATRENIO (M2)'] = parseFloat(changes[id]['AREA EJECUTADA CUATRENIO (m2)']) || 0;
+                }
                 if (changes[id]['LONGITUD EJECUTADA (m)'] !== undefined) {
                     mergedRow['LONGITUD EJECUTADA'] = parseFloat(changes[id]['LONGITUD EJECUTADA (m)']) || 0;
                 }
@@ -102,10 +108,12 @@ class DIATDataService {
                 }
 
                 // Recalcular avances físicos y financieros para que el frontend los muestre actualizados
-                const alcanceM = parseFloat(mergedRow['ALCANCE (m)'] || mergedRow['ALCANCE (M)']) || 0;
-                const alcanceM2 = parseFloat(mergedRow['ALCANCE (m2)'] || mergedRow['ALCANCE (M2)']) || 0;
-                const longitud = parseFloat(mergedRow['LONGITUD EJECUTADA']) || 0;
-                const area = parseFloat(mergedRow['AREA EJECUTADA (M2)']) || 0;
+                const v = parseInt(mergedRow['VIGENCIA'], 10);
+                const isAnterior = !isNaN(v) && v < 2024;
+                const alcanceM = isAnterior ? 0 : (parseFloat(mergedRow['ALCANCE (m)'] || mergedRow['ALCANCE (M)']) || 0);
+                const alcanceM2 = isAnterior ? 0 : (parseFloat(mergedRow['ALCANCE (m2)'] || mergedRow['ALCANCE (M2)']) || 0);
+                const longitud = isAnterior ? (parseFloat(mergedRow['LONGITUD EJECUTADA CUATRENIO']) || 0) : (parseFloat(mergedRow['LONGITUD EJECUTADA']) || 0);
+                const area = isAnterior ? (parseFloat(mergedRow['AREA EJECUTADA CUATRENIO (M2)']) || 0) : (parseFloat(mergedRow['AREA EJECUTADA (M2)']) || 0);
 
                 let pfis = 0;
                 if (alcanceM > 0) {

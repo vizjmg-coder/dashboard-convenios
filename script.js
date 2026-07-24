@@ -76,6 +76,44 @@ const parseNum = (val) => {
     return parseFloat(val.toString().replace(/[^0-9.-]+/g,"")) || 0;
 };
 
+const isCuatrenioAnterior = (row) => {
+    if (!row) return false;
+    const v = parseInt(row['VIGENCIA'], 10);
+    return !isNaN(v) && v < 2024;
+};
+
+const getRowLongitudEjecutada = (row) => {
+    if (!row) return 0;
+    if (isCuatrenioAnterior(row)) {
+        return parseNum(row['LONGITUD EJECUTADA CUATRENIO']);
+    }
+    return parseNum(row['LONGITUD EJECUTADA']);
+};
+
+const getRowAreaEjecutada = (row) => {
+    if (!row) return 0;
+    if (isCuatrenioAnterior(row)) {
+        return parseNum(row['AREA EJECUTADA CUATRENIO (M2)']);
+    }
+    return parseNum(row['AREA EJECUTADA (M2)']);
+};
+
+const getRowLongitudContratada = (row) => {
+    if (!row) return 0;
+    if (isCuatrenioAnterior(row)) {
+        return 0;
+    }
+    return parseNum(row['ALCANCE (M)']);
+};
+
+const getRowAreaContratada = (row) => {
+    if (!row) return 0;
+    if (isCuatrenioAnterior(row)) {
+        return 0;
+    }
+    return parseNum(row['ALCANCE (M2)']);
+};
+
 const parseExcelDate = (excelNum) => {
     if (!excelNum) return '';
     if (typeof excelNum === 'string') return excelNum; 
@@ -809,8 +847,8 @@ async function generateProfessionalPDF(row) {
         // ===== 4. GENERAL INFORMATION VALUES =====
         let labelContratado = 'Alcance Contratado';
         let valContratado = '';
-        const rawAlcanceM = row['ALCANCE (M)'] || getVal(['ALCANCE (M)']);
-        const rawAlcanceM2 = row['ALCANCE (M2)'] || getVal(['ALCANCE (M2)']);
+        const rawAlcanceM = getRowLongitudContratada(row);
+        const rawAlcanceM2 = getRowAreaContratada(row);
         const hasM = rawAlcanceM && Number(rawAlcanceM) > 0;
         const hasM2 = rawAlcanceM2 && Number(rawAlcanceM2) > 0;
         if (hasM && hasM2) {
@@ -829,8 +867,8 @@ async function generateProfessionalPDF(row) {
 
         let labelEjecutado = 'Ejecución Realizada';
         let valEjecutado = '';
-        const rawEjecutadoM = row['LONGITUD EJECUTADA'] || getVal(['LONGITUD EJECUTADA']);
-        const rawEjecutadoM2 = row['AREA EJECUTADA (M2)'] || getVal(['AREA EJECUTADA (M2)']) || row['AREA_EJECUTADA'];
+        const rawEjecutadoM = getRowLongitudEjecutada(row);
+        const rawEjecutadoM2 = getRowAreaEjecutada(row);
         const hasExeM = rawEjecutadoM && Number(rawEjecutadoM) > 0;
         const hasExeM2 = rawEjecutadoM2 && Number(rawEjecutadoM2) > 0;
         if (hasExeM && hasExeM2) {
@@ -1467,18 +1505,19 @@ function calculateProyeccionAnualPct(indicadorFilter) {
         let cant = 0;
 
         if (cfg.tipo === 'km') {
-            const metros = planMetric === 'contratado' ? parseNum(row['ALCANCE (M)']) : parseNum(row['LONGITUD EJECUTADA']);
+            const metros = planMetric === 'contratado' ? getRowLongitudContratada(row) : getRowLongitudEjecutada(row);
             cant = metros / 1000;
         } else if (cfg.tipo === 'm2') {
-            cant = planMetric === 'contratado' ? parseNum(row['ALCANCE (M2)']) : parseNum(row['AREA EJECUTADA (M2)']);
+            cant = planMetric === 'contratado' ? getRowAreaContratada(row) : getRowAreaEjecutada(row);
         } else {
             if (planMetric === 'contratado') {
-                cant = 1;
+                cant = isCuatrenioAnterior(row) ? 0 : 1;
             } else {
                 const estado = String(row['ESTADO CONVENIO'] || '').toUpperCase();
                 const tieneEjecucion = estado.includes('EJECUCI') || estado.includes('EJECUT') ||
                                        estado.includes('OPERA') || estado.includes('MEJORAD') ||
-                                       parseNum(row['LONGITUD EJECUTADA']) > 0 ||
+                                       getRowLongitudEjecutada(row) > 0 ||
+                                       getRowAreaEjecutada(row) > 0 ||
                                        parseNum(row['FISICO_NORM']) > 0;
                 cant = tieneEjecucion ? 1 : 0;
             }
@@ -1678,18 +1717,19 @@ async function generatePlanPDF() {
             let cant = 0;
 
             if (cfg.tipo === 'km') {
-                const metros = planMetric === 'contratado' ? parseNum(row['ALCANCE (M)']) : parseNum(row['LONGITUD EJECUTADA']);
+                const metros = planMetric === 'contratado' ? getRowLongitudContratada(row) : getRowLongitudEjecutada(row);
                 cant = metros / 1000;
             } else if (cfg.tipo === 'm2') {
-                cant = planMetric === 'contratado' ? parseNum(row['ALCANCE (M2)']) : parseNum(row['AREA EJECUTADA (M2)']);
+                cant = planMetric === 'contratado' ? getRowAreaContratada(row) : getRowAreaEjecutada(row);
             } else {
                 if (planMetric === 'contratado') {
-                    cant = 1;
+                    cant = isCuatrenioAnterior(row) ? 0 : 1;
                 } else {
                     const estado = String(row['ESTADO CONVENIO'] || '').toUpperCase();
                     const tieneEjecucion = estado.includes('EJECUCI') || estado.includes('EJECUT') ||
                                            estado.includes('OPERA') || estado.includes('MEJORAD') ||
-                                           parseNum(row['LONGITUD EJECUTADA']) > 0 ||
+                                           getRowLongitudEjecutada(row) > 0 ||
+                                           getRowAreaEjecutada(row) > 0 ||
                                            parseNum(row['FISICO_NORM']) > 0;
                     cant = tieneEjecucion ? 1 : 0;
                 }
@@ -2186,10 +2226,10 @@ async function generateResumenPDF() {
             sumDes += r['VALOR TOTAL DESEMBOLSADO'] || 0;
             sumAut += r['VALOR TOTAL AUTORIZADO'] || 0;
             
-            totLonCon += r['ALCANCE (M)'] || 0;
-            totLonEje += r['LONGITUD EJECUTADA'] || 0;
-            totAreCon += r['ALCANCE (M2)'] || 0;
-            totAreEje += r['AREA EJECUTADA (M2)'] || 0;
+            totLonCon += getRowLongitudContratada(r);
+            totLonEje += getRowLongitudEjecutada(r);
+            totAreCon += getRowAreaContratada(r);
+            totAreEje += getRowAreaEjecutada(r);
         });
 
         // 3. Fetch institutional logo
@@ -3011,13 +3051,15 @@ function processExcelData(data) {
             'VALOR TOTAL AUTORIZADO': parseNum(c('VALOR TOTAL AUTORIZADO DEPARTAMENTO', 'VALOR TOTAL AUTORIZADO')),
             'VALOR TOTAL AUTORIZADO DEPARTAMENTO': parseNum(c('VALOR TOTAL AUTORIZADO DEPARTAMENTO', 'VALOR TOTAL AUTORIZADO')),
             'VIA_PRIORIZADA': c('NOMBRE VIAS PRIORIZADAS', 'NOMBRE VIAS PRIORITARIAS') || 'No especificada',
-            'ALCANCE (M)': parseNum(c('ALCANCE (M)')),
-            'ALCANCE (M2)': parseNum(c('ALCANCE (M2)')),
+            'ALCANCE (M)': parseNum(c('ALCANCE (M)', 'ALCANCE (m)')),
+            'ALCANCE (M2)': parseNum(c('ALCANCE (M2)', 'ALCANCE (m2)')),
             'LONGITUD EJECUTADA': parseNum(c('LONGITUD EJECUTADA (m)', 'LONGITUD EJECUTADA (M)', 'LONGITUD EJECUTADA')),
+            'AREA EJECUTADA (M2)': parseNum(c('AREA EJECUTADA (M2)', 'AREA EJECUTADA (m2)', 'AREA EJECUTADA')),
+            'LONGITUD EJECUTADA CUATRENIO': parseNum(c('LONGITUD EJECUTADA CUATRENIO(m)', 'LONGITUD EJECUTADA CUATRENIO (m)', 'LONGITUD EJECUTADA CUATRENIO (M)', 'LONGITUD EJECUTADA CUATRENIO')),
+            'AREA EJECUTADA CUATRENIO (M2)': parseNum(c('AREA EJECUTADA CUATRENIO (m2)', 'AREA EJECUTADA CUATRENIO (M2)', 'AREA EJECUTADA CUATRENIO')),
             'CONVENIANTE EJECUTOR': c('CONVENIANTE EJECUTOR', 'EJECUTOR'),
             'SUBREGION': String(c('SUBREGION', 'SUBREGIÓN', 'SUB REGIÓN') || '').trim().toUpperCase(),
             'INDICADOR': String(c('INDICADOR', 'INDICADOR PLAN DE DESARROLLO') || '').trim(),
-            'AREA EJECUTADA (M2)': parseNum(c('AREA EJECUTADA (M2)')),
             'FISICO_NORM': pfis,
             'FINANCIERO_NORM': pfin,
             'FECHA DE ACTA DE INICIO': parseExcelDate(c('FECHA DE ACTA DE INICIO')),
@@ -3208,8 +3250,10 @@ function applyFilters() {
                 ejecutorContainer.classList.add('hidden');
             }
         }
-        const alcM = selected['ALCANCE (M)'] || 0, alcM2 = selected['ALCANCE (M2)'] || 0;
-        const ejM = selected['LONGITUD EJECUTADA'] || 0, ejM2 = selected['AREA EJECUTADA (M2)'] || 0;
+        const alcM = getRowLongitudContratada(selected);
+        const alcM2 = getRowAreaContratada(selected);
+        const ejM = getRowLongitudEjecutada(selected);
+        const ejM2 = getRowAreaEjecutada(selected);
         if (alcM2 > 0 && alcM === 0) {
             document.getElementById('lbl-alcance').textContent = "Área Contratada";
             document.getElementById('summary-alcance').textContent = formatNumber(alcM2);
@@ -3284,10 +3328,10 @@ function updateKPIs() {
         sumDes += r['VALOR TOTAL DESEMBOLSADO'] || 0;
         sumAut += r['VALOR TOTAL AUTORIZADO'] || 0;
         
-        totLonCon += r['ALCANCE (M)'] || 0;
-        totLonEje += r['LONGITUD EJECUTADA'] || 0;
-        totAreCon += r['ALCANCE (M2)'] || 0;
-        totAreEje += r['AREA EJECUTADA (M2)'] || 0;
+        totLonCon += getRowLongitudContratada(r);
+        totLonEje += getRowLongitudEjecutada(r);
+        totAreCon += getRowAreaContratada(r);
+        totAreEje += getRowAreaEjecutada(r);
     });
 
     document.getElementById('kpi-total').textContent = filteredData.length;
@@ -3767,8 +3811,8 @@ function updateCharts() {
         
         if (window.activeFisicoMetric === 'longitud') {
             filteredData.forEach(r => {
-                tCon += r['ALCANCE (M)'] || 0;
-                tEje += r['LONGITUD EJECUTADA'] || 0;
+                tCon += getRowLongitudContratada(r);
+                tEje += getRowLongitudEjecutada(r);
             });
             // Convertir a kilómetros para visualización en la barra prominente
             tCon = tCon / 1000;
@@ -3776,8 +3820,8 @@ function updateCharts() {
             unit = ' km';
         } else {
             filteredData.forEach(r => {
-                tCon += r['ALCANCE (M2)'] || 0;
-                tEje += r['AREA EJECUTADA (M2)'] || r['AREA_EJECUTADA'] || r['ÁREA EJECUTADA'] || 0;
+                tCon += getRowAreaContratada(r);
+                tEje += getRowAreaEjecutada(r);
             });
             unit = ' m²';
         }
@@ -4033,8 +4077,12 @@ function openModal(row) {
     document.getElementById('mod-objeto').textContent = row['OBJETO'] || 'Sin descripción u objeto definido.';
     
     document.getElementById('mod-via').textContent = row['VIA_PRIORIZADA'];
-    document.getElementById('mod-alcance').textContent = `${formatNumber(row['ALCANCE (M)'])} m / ${formatNumber(row['ALCANCE (M2)'])} m²`;
-    document.getElementById('mod-ejecutado-areas').textContent = `${formatNumber(row['LONGITUD EJECUTADA'])} m / ${formatNumber(row['AREA EJECUTADA (M2)'])} m²`;
+    const modAlcM = getRowLongitudContratada(row);
+    const modAlcM2 = getRowAreaContratada(row);
+    const modEjM = getRowLongitudEjecutada(row);
+    const modEjM2 = getRowAreaEjecutada(row);
+    document.getElementById('mod-alcance').textContent = `${formatNumber(modAlcM)} m / ${formatNumber(modAlcM2)} m²`;
+    document.getElementById('mod-ejecutado-areas').textContent = `${formatNumber(modEjM)} m / ${formatNumber(modEjM2)} m²`;
 
     document.getElementById('mod-valor-total').textContent = formatCurrency(row['VALOR TOTAL']);
     document.getElementById('mod-aporte-depto').textContent = formatCurrency(row['APORTE DEPARTAMENTO']);
@@ -5872,10 +5920,10 @@ function updateMapKPIs() {
     currentMapData.forEach(r => {
         const est = String(r['ESTADO CONVENIO'] || '').toUpperCase();
         if (est.includes('EJECUCI')) act++;
-        kmEjecutados  += (r['LONGITUD EJECUTADA'] || 0) / 1000;
-        kmContratados += (r['ALCANCE (M)'] || 0) / 1000;
-        areaEjecutada  += (r['AREA EJECUTADA (M2)'] || 0);
-        areaContratada += (r['ALCANCE (M2)'] || 0);
+        kmEjecutados  += getRowLongitudEjecutada(r) / 1000;
+        kmContratados += getRowLongitudContratada(r) / 1000;
+        areaEjecutada  += getRowAreaEjecutada(r);
+        areaContratada += getRowAreaContratada(r);
         inv  += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
     });
 
@@ -5900,7 +5948,7 @@ function updateMapCharts() {
     currentMapData.forEach(r => {
         const s = r['SUBREGION'] || 'OTRAS';
         const m = r['MUNICIPIO'] || 'N/A';
-        const l = mapMetric === 'contratado' ? (r['ALCANCE (M)'] || 0) : (r['LONGITUD EJECUTADA'] || 0);
+        const l = mapMetric === 'contratado' ? getRowLongitudContratada(r) : getRowLongitudEjecutada(r);
         const i = (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
         subL[s] = (subL[s] || 0) + l;
         subI[s] = (subI[s] || 0) + i;
@@ -6189,18 +6237,19 @@ function renderPlanTab() {
         let cant = 0;
 
         if (cfg.tipo === 'km') {
-            const metros = planMetric === 'contratado' ? parseNum(row['ALCANCE (M)']) : parseNum(row['LONGITUD EJECUTADA']);
+            const metros = planMetric === 'contratado' ? getRowLongitudContratada(row) : getRowLongitudEjecutada(row);
             cant = metros / 1000;
         } else if (cfg.tipo === 'm2') {
-            cant = planMetric === 'contratado' ? parseNum(row['ALCANCE (M2)']) : parseNum(row['AREA EJECUTADA (M2)']);
+            cant = planMetric === 'contratado' ? getRowAreaContratada(row) : getRowAreaEjecutada(row);
         } else {
             if (planMetric === 'contratado') {
-                cant = 1;
+                cant = isCuatrenioAnterior(row) ? 0 : 1;
             } else {
                 const estado = String(row['ESTADO CONVENIO'] || '').toUpperCase();
                 const tieneEjecucion = estado.includes('EJECUCI') || estado.includes('EJECUT') ||
                                        estado.includes('OPERA') || estado.includes('MEJORAD') ||
-                                       parseNum(row['LONGITUD EJECUTADA']) > 0 ||
+                                       getRowLongitudEjecutada(row) > 0 ||
+                                       getRowAreaEjecutada(row) > 0 ||
                                        parseNum(row['FISICO_NORM']) > 0;
                 cant = tieneEjecucion ? 1 : 0;
             }
@@ -7347,14 +7396,25 @@ function initSupervisorPortal() {
                 }
             }
 
+            const isAnterior = isCuatrenioAnterior(row);
             const updatedFields = {
                 'ESTADO CONVENIO': estado,
-                'LONGITUD EJECUTADA (m)': longitud,
-                'AREA EJECUTADA (m2)': area,
                 'VALOR TOTAL DESEMBOLSADO': desembolsado,
                 'VALOR TOTAL AUTORIZADO DEPARTAMENTO': autorizado,
                 'OBSERVACIONES': observaciones
             };
+
+            if (isAnterior) {
+                updatedFields['LONGITUD EJECUTADA CUATRENIO(m)'] = longitud;
+                updatedFields['AREA EJECUTADA CUATRENIO (m2)'] = area;
+                row['LONGITUD EJECUTADA CUATRENIO'] = longitud;
+                row['AREA EJECUTADA CUATRENIO (M2)'] = area;
+            } else {
+                updatedFields['LONGITUD EJECUTADA (m)'] = longitud;
+                updatedFields['AREA EJECUTADA (m2)'] = area;
+                row['LONGITUD EJECUTADA'] = longitud;
+                row['AREA EJECUTADA (M2)'] = area;
+            }
 
             const user = getLoggedUser();
             const username = user ? user.name : 'Jonathan Marín';
@@ -7577,7 +7637,7 @@ function renderSupervisorPortal() {
         else if (state === 'Liquidado' || state === 'Ejecutado') finalizados++;
 
         sumInv += (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
-        sumLong += r['LONGITUD EJECUTADA'] || 0;
+        sumLong += getRowLongitudEjecutada(r);
     });
 
     const alertsCount = getAlertsCount(supervisorRows);
@@ -8083,13 +8143,13 @@ window.openEditConvenioModal = function(convenioId) {
     }
 
     // Cargar sección de Seguimiento
-    document.getElementById('edit-alcance-m').value = row['ALCANCE (m)'] || row['ALCANCE (M)'] || 0;
-    document.getElementById('edit-alcance-m2').value = row['ALCANCE (m2)'] || row['ALCANCE (M2)'] || 0;
+    document.getElementById('edit-alcance-m').value = getRowLongitudContratada(row);
+    document.getElementById('edit-alcance-m2').value = getRowAreaContratada(row);
 
     document.getElementById('edit-seg-fisico').value = (row['FISICO_NORM'] || 0).toFixed(1);
     document.getElementById('edit-seg-financiero').value = (row['FINANCIERO_NORM'] || 0).toFixed(1);
-    document.getElementById('edit-seg-longitud').value = row['LONGITUD EJECUTADA'] || 0;
-    document.getElementById('edit-seg-area').value = row['AREA EJECUTADA (M2)'] || 0;
+    document.getElementById('edit-seg-longitud').value = getRowLongitudEjecutada(row);
+    document.getElementById('edit-seg-area').value = getRowAreaEjecutada(row);
     document.getElementById('edit-seg-desembolsado').value = row['VALOR TOTAL DESEMBOLSADO'] || 0;
     document.getElementById('edit-seg-autorizado').value = row['VALOR TOTAL AUTORIZADO DEPARTAMENTO'] || 0;
     
