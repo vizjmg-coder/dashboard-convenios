@@ -1,7 +1,7 @@
 /* ============================================================
    PREMIUM DESIGN SYSTEM — DASHBOARD DIAT v3.0
    Diseñador Web Senior — Gobernación de Antioquia
-   Sistema de Diseño Exclusivo Modo Claro
+   Sistema de Diseño Exclusivo Modo Claro & Glassmorphism
    ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
@@ -15,53 +15,54 @@
     --font-body:     'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-base:     'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
-    /* Paleta Institucional Refinada */
-    --color-primary:          #1A6B3C;
-    --color-primary-hover:    #155630;
-    --color-primary-light:    #22924F;
-    --color-primary-subtle:   #E8F5EE;
-    --color-primary-pale:     rgba(26, 107, 60, 0.07);
-    --color-primary-glow:     rgba(26, 107, 60, 0.15);
+    /* Paleta Institucional Refinada — Verde Esmeralda Gobernación */
+    --color-primary:          #0B5640;
+    --color-primary-hover:    #064E3B;
+    --color-primary-light:    #059669;
+    --color-primary-accent:   #10B981;
+    --color-primary-subtle:   #ECFDF5;
+    --color-primary-pale:     rgba(11, 86, 64, 0.06);
+    --color-primary-glow:     rgba(16, 185, 129, 0.22);
 
     /* Canvas & Surfaces */
-    --color-bg:               #F2F6F3;
-    --color-canvas:           #F2F6F3;
+    --color-bg:               #F8FAFC;
+    --color-canvas:           #F8FAFC;
     --color-surface:          #FFFFFF;
-    --color-surface-hover:    #F7FAF8;
-    --color-surface-subtle:   #F0F4F1;
+    --color-surface-hover:    #F1F5F9;
+    --color-surface-subtle:   #F8FAFC;
 
     /* Textos Refinados */
-    --color-text-primary:     #0F1F14;
-    --color-text-secondary:   #4A6652;
-    --color-text-muted:       #7A9E84;
-    --color-text-placeholder: #A5C4AC;
+    --color-text-primary:     #0F172A;
+    --color-text-secondary:   #334155;
+    --color-text-muted:       #64748B;
+    --color-text-placeholder: #94A3B8;
 
     /* Bordes */
-    --color-border:           #DDE9E1;
-    --color-border-strong:    #C5D9CB;
+    --color-border:           rgba(226, 232, 240, 0.85);
+    --color-border-strong:    #CBD5E1;
 
     /* Sidebar */
-    --sidebar-bg-from:        #163D26;
-    --sidebar-bg-to:          #0D2718;
-    --sidebar-width:          240px;
+    --sidebar-bg-from:        #063826;
+    --sidebar-bg-to:          #021810;
+    --sidebar-width:          256px;
 
     /* Estados semánticos */
     --color-success:          #10B981;
-    --color-success-bg:       rgba(16, 185, 129, 0.10);
+    --color-success-bg:       rgba(16, 185, 129, 0.08);
     --color-warning:          #F59E0B;
-    --color-warning-bg:       rgba(245, 158, 11, 0.10);
+    --color-warning-bg:       rgba(245, 158, 11, 0.08);
     --color-danger:           #EF4444;
-    --color-danger-bg:        rgba(239, 68, 68, 0.10);
+    --color-danger-bg:        rgba(239, 68, 68, 0.08);
     --color-info:             #3B82F6;
-    --color-info-bg:          rgba(59, 130, 246, 0.10);
+    --color-info-bg:          rgba(59, 130, 246, 0.08);
 
-    /* Sombras de tono verde */
-    --shadow-xs:      0 1px 2px rgba(15, 42, 25, 0.04);
-    --shadow-sm:      0 1px 4px rgba(15, 42, 25, 0.04), 0 4px 12px rgba(15, 42, 25, 0.05);
-    --shadow-md:      0 2px 8px rgba(15, 42, 25, 0.05), 0 8px 28px rgba(15, 42, 25, 0.07);
-    --shadow-lg:      0 4px 16px rgba(15, 42, 25, 0.07), 0 16px 48px rgba(15, 42, 25, 0.09);
-    --shadow-premium: 0 1px 3px rgba(15, 42, 25, 0.04), 0 6px 20px rgba(15, 42, 25, 0.06);
-    --shadow-glow-primary: 0 4px 20px rgba(26, 107, 60, 0.22);
+    /* Sombras multicapa elegantes */
+    --shadow-xs:      0 1px 2px rgba(15, 23, 42, 0.03);
+    --shadow-sm:      0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03);
+    --shadow-md:      0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+    --shadow-lg:      0 10px 30px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+    --shadow-premium: 0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px -4px rgba(11, 86, 64, 0.08);
+    --shadow-glow-primary: 0 4px 20px rgba(16, 185, 129, 0.25);
 
     /* Radios de Esquinas */
     --radius-xs:   4px;
@@ -84,6 +85,7 @@ body {
     color: var(--color-text-primary) !important;
     font-size: 13px !important;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 .map-container-wrapper {
@@ -102,6 +104,10 @@ h1, h2, h3, h4, h5, h6,
     font-family: var(--font-headline) !important;
 }
 
+.kpi-value, [class*="kpi-val"], .stat-number {
+    font-variant-numeric: tabular-nums !important;
+}
+
 p, span, td, th, label, select, input, button, textarea,
 .filter-control, .alert-item-meta, .alert-item-tag,
 .tab-label, .sidebar-logo-text h2, .sidebar-logo-text p {
@@ -118,14 +124,14 @@ p, span, td, th, label, select, input, button, textarea,
     padding: 0;
 }
 
-/* Canvas de fondo con patrón sutil */
+/* Canvas de fondo con patrón sutil y gradientes de ambiente */
 #app-layout::after {
     content: '';
     position: fixed;
     inset: 0;
     background-image:
-        radial-gradient(ellipse at 20% 10%, rgba(26, 107, 60, 0.035) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 90%, rgba(26, 107, 60, 0.025) 0%, transparent 50%);
+        radial-gradient(ellipse at 15% 10%, rgba(16, 185, 129, 0.04) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 90%, rgba(59, 130, 246, 0.03) 0%, transparent 55%);
     pointer-events: none;
     z-index: 0;
 }
@@ -137,15 +143,15 @@ main {
 }
 
 /* ============================================================
-   4. SIDEBAR PREMIUM — VERDE BOSQUE REFINADO
+   4. SIDEBAR PREMIUM — VERDE BOSQUE REFINADO CON RESPLANDOR
    ============================================================ */
 
 .sidebar-nav {
-    background: linear-gradient(170deg, #1C4A2E 0%, #122E1D 60%, #0D2216 100%) !important;
+    background: linear-gradient(180deg, #063826 0%, #032418 55%, #021810 100%) !important;
     width: var(--sidebar-width) !important;
     min-width: var(--sidebar-width) !important;
     border-radius: 0 !important;
-    box-shadow: 2px 0 20px rgba(0,0,0,0.15), inset -1px 0 0 rgba(255,255,255,0.04) !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.18), inset -1px 0 0 rgba(255,255,255,0.06) !important;
     padding: 28px 16px 20px !important;
     position: relative;
     overflow: hidden;
@@ -361,135 +367,212 @@ main {
 }
 
 /* ============================================================
-   5. HEADER PREMIUM
+   5. HEADER PREMIUM — GLASSMORPHISM & ELEVACIÓN
    ============================================================ */
 
 header {
-    background: rgba(255,255,255,0.95) !important;
-    backdrop-filter: blur(20px) saturate(200%) !important;
-    border-bottom: 1px solid var(--color-border) !important;
-    box-shadow: 0 1px 0 rgba(15, 42, 25, 0.05) !important;
-    height: 60px !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.03) !important;
+    height: 64px !important;
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+}
+
+.header-search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.header-search-icon {
+    position: absolute;
+    left: 14px;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    pointer-events: none;
+    transition: color 200ms ease;
 }
 
 .header-search-input {
-    background: var(--color-surface-subtle) !important;
-    border: 1.5px solid var(--color-border) !important;
-    border-radius: var(--radius-md) !important;
+    background: #F8FAFC !important;
+    border: 1.5px solid rgba(226, 232, 240, 0.9) !important;
+    border-radius: var(--radius-full) !important;
     font-family: var(--font-body) !important;
-    font-size: 13px !important;
+    font-size: 12.5px !important;
     color: var(--color-text-primary) !important;
-    transition: all 200ms ease !important;
+    padding: 8px 16px 8px 36px !important;
+    width: 240px;
+    transition: all 250ms cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .header-search-input:focus {
-    border-color: var(--color-primary) !important;
+    width: 300px;
+    border-color: #10B981 !important;
     background: #FFFFFF !important;
-    box-shadow: 0 0 0 3px rgba(26, 107, 60, 0.12) !important;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04) !important;
+}
+
+.header-search-wrapper:focus-within .header-search-icon {
+    color: #0B5640;
 }
 
 .header-date-badge {
-    background: var(--color-surface-subtle) !important;
-    border: 1.5px solid var(--color-border) !important;
+    background: #F8FAFC !important;
+    border: 1.5px solid rgba(226, 232, 240, 0.9) !important;
     border-radius: var(--radius-full) !important;
-    font-size: 12px !important;
+    font-size: 11.5px !important;
     font-weight: 600 !important;
     color: var(--color-text-secondary) !important;
+    padding: 6px 14px !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03) !important;
 }
 
 .header-profile {
-    background: var(--color-surface-subtle) !important;
-    border: 1.5px solid var(--color-border) !important;
+    background: #F8FAFC !important;
+    border: 1.5px solid rgba(226, 232, 240, 0.9) !important;
     border-radius: var(--radius-full) !important;
+    padding: 4px 12px 4px 4px !important;
+    gap: 8px !important;
+    transition: all 200ms ease !important;
 }
 
 .header-profile:hover {
-    border-color: var(--color-primary) !important;
-    background: var(--color-primary-subtle) !important;
+    border-color: rgba(16, 185, 129, 0.4) !important;
+    background: #ECFDF5 !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1) !important;
+}
+
+.header-profile-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 99px !important;
+    overflow: hidden;
+    border: 1.5px solid #FFFFFF;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.user-menu-dropdown {
+    border: 1px solid rgba(226, 232, 240, 0.9) !important;
+    border-radius: 18px !important;
+    box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04) !important;
+    backdrop-filter: blur(16px) !important;
+}
+
+.user-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 150ms ease;
+}
+
+.user-menu-item:hover {
+    background: #ECFDF5;
+    color: #0B5640;
 }
 
 /* ============================================================
    6. KPI CARDS — NUEVO DISEÑO CON ICONO CIRCULAR
    ============================================================ */
 
+/* ============================================================
+   6. KPI CARDS — NUEVO DISEÑO CON ICONO CIRCULAR & ELEVACIÓN
+   ============================================================ */
+
 .kpi-card {
     background: #FFFFFF !important;
     border: 1px solid var(--color-border) !important;
     border-radius: var(--radius-xl) !important;
-    padding: 22px 22px 18px !important;
-    box-shadow: var(--shadow-sm) !important;
-    transition: transform 200ms ease, box-shadow 200ms ease !important;
+    padding: 20px 22px 18px !important;
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.02) !important;
+    transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 250ms cubic-bezier(0.16, 1, 0.3, 1), border-color 250ms ease !important;
     position: relative;
     overflow: hidden;
 }
 
-/* Eliminar barra lateral de color */
-.kpi-card::after {
-    display: none !important;
-}
-
-/* Patrón decorativo sutil en KPI */
+/* Barra superior de acento sutil según tipo */
 .kpi-card::before {
     content: '';
     position: absolute;
-    top: -20px; right: -20px;
-    width: 80px; height: 80px;
-    border-radius: 50%;
-    opacity: 0.04;
-    background: currentColor;
-    pointer-events: none;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: transparent;
+    transition: opacity 200ms ease;
 }
 
+.kpi-total::before       { background: linear-gradient(90deg, #64748B, #94A3B8); }
+.kpi-ejecucion::before   { background: linear-gradient(90deg, #059669, #10B981); }
+.kpi-por-liquidar::before{ background: linear-gradient(90deg, #D97706, #F59E0B); }
+.kpi-inversion::before   { background: linear-gradient(90deg, #7C3AED, #A855F7); }
+.kpi-desembolsado::before{ background: linear-gradient(90deg, #2563EB, #3B82F6); }
+.kpi-autorizado::before  { background: linear-gradient(90deg, #0B5640, #059669); }
+
 .kpi-card:hover {
-    transform: translateY(-4px) !important;
-    box-shadow: var(--shadow-md) !important;
-    border-color: var(--color-border-strong) !important;
+    transform: translateY(-4px) scale(1.01) !important;
+    box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04) !important;
+    border-color: rgba(16, 185, 129, 0.35) !important;
 }
 
 .kpi-label {
     font-family: var(--font-body) !important;
-    font-size: 10px !important;
+    font-size: 10.5px !important;
     font-weight: 700 !important;
-    letter-spacing: 0.10em !important;
+    letter-spacing: 0.08em !important;
     text-transform: uppercase !important;
     color: var(--color-text-muted) !important;
-    margin-bottom: 8px !important;
+    margin-bottom: 6px !important;
     display: block !important;
 }
 
 .kpi-value {
     font-family: var(--font-headline) !important;
-    font-size: 26px !important;
+    font-size: 27px !important;
     font-weight: 800 !important;
     color: var(--color-text-primary) !important;
     line-height: 1.1 !important;
     letter-spacing: -0.03em !important;
+    font-variant-numeric: tabular-nums !important;
 }
 
 .kpi-value-large {
-    font-size: 19px !important;
+    font-size: 19.5px !important;
     letter-spacing: -0.02em !important;
 }
 
-/* Icono de KPI — rediseño circular tonal */
+/* Icono de KPI — rediseño tonal redondeado */
 .kpi-icon {
     width: 44px !important;
     height: 44px !important;
-    border-radius: 12px !important;
+    border-radius: 14px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     font-size: 17px !important;
     flex-shrink: 0 !important;
+    transition: transform 200ms ease !important;
+}
+
+.kpi-card:hover .kpi-icon {
+    transform: scale(1.08);
 }
 
 /* Colores de iconos por categoría */
-.kpi-total .kpi-icon      { background: rgba(107, 114, 128, 0.10) !important; color: #6B7280 !important; }
-.kpi-ejecucion .kpi-icon  { background: rgba(16, 185, 129, 0.10) !important; color: #059669 !important; }
-.kpi-por-liquidar .kpi-icon { background: rgba(245, 158, 11, 0.10) !important; color: #D97706 !important; }
-.kpi-inversion .kpi-icon  { background: rgba(139, 74, 151, 0.10) !important; color: #7C3AED !important; }
-.kpi-desembolsado .kpi-icon { background: rgba(59, 130, 246, 0.10) !important; color: #2563EB !important; }
-.kpi-autorizado .kpi-icon { background: rgba(26, 107, 60, 0.10) !important; color: #1A6B3C !important; }
+.kpi-total .kpi-icon        { background: rgba(100, 116, 139, 0.10) !important; color: #475569 !important; }
+.kpi-ejecucion .kpi-icon    { background: rgba(16, 185, 129, 0.12) !important; color: #059669 !important; }
+.kpi-por-liquidar .kpi-icon { background: rgba(245, 158, 11, 0.12) !important; color: #D97706 !important; }
+.kpi-inversion .kpi-icon    { background: rgba(139, 92, 246, 0.12) !important; color: #7C3AED !important; }
+.kpi-desembolsado .kpi-icon { background: rgba(59, 130, 246, 0.12) !important; color: #2563EB !important; }
+.kpi-autorizado .kpi-icon   { background: rgba(11, 86, 64, 0.12) !important; color: #0B5640 !important; }
 
 /* Trend badges */
 .kpi-trend {
@@ -529,19 +612,21 @@ header {
     border: none !important;
 }
 .badge-ejecucion {
-    background: rgba(16, 185, 129, 0.12) !important;
-    color: #059669 !important;
+    background: rgba(16, 185, 129, 0.14) !important;
+    color: #047857 !important;
     border: none !important;
 }
 .badge-liquidado,
 .badge-ejecutado {
-    background: rgba(59, 130, 246, 0.10) !important;
-    color: #2563EB !important;
+    background: rgba(59, 130, 246, 0.12) !important;
+    color: #1D4ED8 !important;
     border: none !important;
 }
 .badge-suspendido {
-    background: rgba(139, 92, 246, 0.10) !important;
-    color: #7C3AED !important;
+    background: rgba(139, 92, 246, 0.12) !important;
+    color: #6D28D9 !important;
+    border: none !important;
+}
     border: none !important;
 }
 .badge-proximo {
@@ -676,24 +761,29 @@ button[id*="export"]:hover {
    9. CHART CARDS — PANELES DE GRÁFICAS PREMIUM
    ============================================================ */
 
+/* ============================================================
+   9. CHART CARDS — PANELES DE GRÁFICAS PREMIUM
+   ============================================================ */
+
 .chart-card {
     background: #FFFFFF !important;
     border: 1px solid var(--color-border) !important;
     border-radius: var(--radius-xl) !important;
-    box-shadow: var(--shadow-sm) !important;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05) !important;
     padding: 22px 22px 18px !important;
-    transition: box-shadow 200ms ease, transform 200ms ease !important;
+    transition: box-shadow 250ms cubic-bezier(0.16, 1, 0.3, 1), transform 250ms cubic-bezier(0.16, 1, 0.3, 1), border-color 200ms ease !important;
 }
 
 .chart-card:hover {
-    box-shadow: var(--shadow-md) !important;
+    box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.09) !important;
     transform: translateY(-2px) !important;
+    border-color: rgba(16, 185, 129, 0.25) !important;
 }
 
 .chart-title {
     font-family: var(--font-headline) !important;
-    font-size: 14px !important;
-    font-weight: 700 !important;
+    font-size: 14.5px !important;
+    font-weight: 800 !important;
     color: var(--color-text-primary) !important;
     text-transform: none !important;
     letter-spacing: -0.01em !important;
@@ -701,10 +791,10 @@ button[id*="export"]:hover {
 
 .chart-subtitle {
     font-family: var(--font-body) !important;
-    font-size: 12px !important;
+    font-size: 11.5px !important;
     color: var(--color-text-muted) !important;
     margin-top: 2px !important;
-    font-weight: 400 !important;
+    font-weight: 500 !important;
 }
 
 /* ============================================================
@@ -715,28 +805,29 @@ button[id*="export"]:hover {
     background: #FFFFFF !important;
     border: 1px solid var(--color-border) !important;
     border-radius: var(--radius-xl) !important;
-    box-shadow: var(--shadow-sm) !important;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05) !important;
     overflow: hidden !important;
 }
 
 .table-section h2 {
     font-family: var(--font-headline) !important;
-    font-size: 16px !important;
-    font-weight: 700 !important;
+    font-size: 17px !important;
+    font-weight: 800 !important;
     color: var(--color-text-primary) !important;
     letter-spacing: -0.01em !important;
 }
 
 .sticky-header th {
-    background: var(--color-surface-subtle) !important;
+    background: #F8FAFC !important;
     font-family: var(--font-body) !important;
-    font-size: 10.5px !important;
-    font-weight: 700 !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
     color: var(--color-text-muted) !important;
     text-transform: uppercase !important;
     letter-spacing: 0.08em !important;
-    border-bottom: 1px solid var(--color-border) !important;
-    box-shadow: none !important;
+    border-bottom: 1.5px solid rgba(226, 232, 240, 0.9) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02) !important;
+    padding: 14px 18px !important;
 }
 
 .table-row-hover {
@@ -744,43 +835,45 @@ button[id*="export"]:hover {
 }
 
 .table-row-hover:hover {
-    background: var(--color-surface-hover) !important;
+    background: #F0FDF4 !important;
 }
 
 .table-row-hover td {
     font-family: var(--font-body) !important;
-    font-size: 13px !important;
+    font-size: 12.5px !important;
     color: var(--color-text-primary) !important;
-    border-bottom: 1px solid var(--color-border) !important;
+    border-bottom: 1px solid rgba(241, 245, 249, 0.9) !important;
+    padding: 13px 18px !important;
 }
 
 /* Chip de municipio */
 .municipio-chip {
     font-family: var(--font-body) !important;
-    font-size: 11px !important;
-    font-weight: 600 !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.04em !important;
-    color: var(--color-text-secondary) !important;
-    background: var(--color-surface-subtle) !important;
-    border: 1px solid var(--color-border) !important;
-    border-radius: 6px !important;
-    padding: 2px 8px !important;
+    color: #064E3B !important;
+    background: #ECFDF5 !important;
+    border: 1px solid rgba(16, 185, 129, 0.25) !important;
+    border-radius: 8px !important;
+    padding: 3px 9px !important;
+    display: inline-block;
 }
 
 /* Botón FICHA — outline premium */
 .btn-gestion {
-    background: transparent !important;
-    color: var(--color-primary) !important;
-    border: 1.5px solid var(--color-primary) !important;
-    border-radius: var(--radius-sm) !important;
+    background: #FFFFFF !important;
+    color: #0B5640 !important;
+    border: 1.5px solid #0B5640 !important;
+    border-radius: var(--radius-md) !important;
     font-family: var(--font-body) !important;
-    font-size: 10.5px !important;
+    font-size: 11px !important;
     font-weight: 700 !important;
-    letter-spacing: 0.04em !important;
-    padding: 6px 12px !important;
-    box-shadow: none !important;
-    transition: all 200ms ease !important;
+    letter-spacing: 0.03em !important;
+    padding: 6px 13px !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+    transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1) !important;
     cursor: pointer;
 }
 
@@ -789,21 +882,22 @@ button[id*="export"]:hover {
 }
 
 .btn-gestion:hover {
-    background: var(--color-primary) !important;
+    background: #0B5640 !important;
     color: #FFFFFF !important;
     transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(26, 107, 60, 0.25) !important;
+    box-shadow: 0 4px 14px rgba(11, 86, 64, 0.25) !important;
 }
 
 /* Progress bars refinadas */
 .progress-track {
-    height: 6px !important;
-    background: var(--color-border) !important;
+    height: 7px !important;
+    background: #E2E8F0 !important;
     border-radius: var(--radius-full) !important;
+    overflow: hidden;
 }
 
 .progress-fisico {
-    background: linear-gradient(90deg, #1A6B3C, #22924F) !important;
+    background: linear-gradient(90deg, #0B5640, #10B981) !important;
     border-radius: var(--radius-full) !important;
 }
 
@@ -1654,6 +1748,34 @@ td .convenio-id,
 /* Ajustes gráficos ligeros y minimalistas */
 .chart-card {
     border-radius: 18px !important;
+}
+
+/* ============================================================
+   28. MODALES GLASSMORPHIC & TOAST NOTIFICATION PREMIUM
+   ============================================================ */
+
+.modal-overlay {
+    background: rgba(15, 23, 42, 0.45) !important;
+    backdrop-filter: blur(8px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(140%) !important;
+}
+
+.modal-overlay > div {
+    border-radius: 24px !important;
+    box-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.8) inset !important;
+}
+
+#toast-notification {
+    background: linear-gradient(135deg, #0B5640, #059669) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 12px 32px rgba(11, 86, 64, 0.35) !important;
+    backdrop-filter: blur(12px) !important;
+}
+
+/* Transición suave para botones y selectores */
+button, select, input, .tab-btn, .kpi-card, .alert-filter-btn {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 
