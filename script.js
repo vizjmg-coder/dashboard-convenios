@@ -84,17 +84,11 @@ const isCuatrenioAnterior = (row) => {
 
 const getRowLongitudEjecutada = (row) => {
     if (!row) return 0;
-    if (isCuatrenioAnterior(row)) {
-        return parseNum(row['LONGITUD EJECUTADA CUATRENIO']);
-    }
     return parseNum(row['LONGITUD EJECUTADA']);
 };
 
 const getRowAreaEjecutada = (row) => {
     if (!row) return 0;
-    if (isCuatrenioAnterior(row)) {
-        return parseNum(row['AREA EJECUTADA CUATRENIO (M2)']);
-    }
     return parseNum(row['AREA EJECUTADA (M2)']);
 };
 
@@ -118,6 +112,22 @@ const getRowLongitudContratadaPlan = (row) => {
 const getRowAreaContratadaPlan = (row) => {
     if (!row || isCuatrenioAnterior(row)) return 0;
     return parseNum(row['ALCANCE (M2)']) || parseNum(row['AREA CONTRATADA']) || parseNum(row['ÁREA CONTRATADA']);
+};
+
+const getRowLongitudEjecutadaPlan = (row) => {
+    if (!row) return 0;
+    if (isCuatrenioAnterior(row)) {
+        return parseNum(row['LONGITUD EJECUTADA CUATRENIO']);
+    }
+    return parseNum(row['LONGITUD EJECUTADA']);
+};
+
+const getRowAreaEjecutadaPlan = (row) => {
+    if (!row) return 0;
+    if (isCuatrenioAnterior(row)) {
+        return parseNum(row['AREA EJECUTADA CUATRENIO (M2)']);
+    }
+    return parseNum(row['AREA EJECUTADA (M2)']);
 };
 
 const parseExcelDate = (excelNum) => {
@@ -1511,10 +1521,10 @@ function calculateProyeccionAnualPct(indicadorFilter) {
         let cant = 0;
 
         if (cfg.tipo === 'km') {
-            const metros = planMetric === 'contratado' ? getRowLongitudContratadaPlan(row) : getRowLongitudEjecutada(row);
+            const metros = planMetric === 'contratado' ? getRowLongitudContratadaPlan(row) : getRowLongitudEjecutadaPlan(row);
             cant = metros / 1000;
         } else if (cfg.tipo === 'm2') {
-            cant = planMetric === 'contratado' ? getRowAreaContratadaPlan(row) : getRowAreaEjecutada(row);
+            cant = planMetric === 'contratado' ? getRowAreaContratadaPlan(row) : getRowAreaEjecutadaPlan(row);
         } else {
             if (planMetric === 'contratado') {
                 cant = isCuatrenioAnterior(row) ? 0 : 1;
@@ -1522,8 +1532,8 @@ function calculateProyeccionAnualPct(indicadorFilter) {
                 const estado = String(row['ESTADO CONVENIO'] || '').toUpperCase();
                 const tieneEjecucion = estado.includes('EJECUCI') || estado.includes('EJECUT') ||
                     estado.includes('OPERA') || estado.includes('MEJORAD') ||
-                    getRowLongitudEjecutada(row) > 0 ||
-                    getRowAreaEjecutada(row) > 0 ||
+                    getRowLongitudEjecutadaPlan(row) > 0 ||
+                    getRowAreaEjecutadaPlan(row) > 0 ||
                     parseNum(row['FISICO_NORM']) > 0;
                 cant = tieneEjecucion ? 1 : 0;
             }
@@ -1723,10 +1733,10 @@ async function generatePlanPDF() {
             let cant = 0;
 
             if (cfg.tipo === 'km') {
-                const metros = planMetric === 'contratado' ? getRowLongitudContratadaPlan(row) : getRowLongitudEjecutada(row);
+                const metros = planMetric === 'contratado' ? getRowLongitudContratadaPlan(row) : getRowLongitudEjecutadaPlan(row);
                 cant = metros / 1000;
             } else if (cfg.tipo === 'm2') {
-                cant = planMetric === 'contratado' ? getRowAreaContratadaPlan(row) : getRowAreaEjecutada(row);
+                cant = planMetric === 'contratado' ? getRowAreaContratadaPlan(row) : getRowAreaEjecutadaPlan(row);
             } else {
                 if (planMetric === 'contratado') {
                     cant = isCuatrenioAnterior(row) ? 0 : 1;
@@ -1734,8 +1744,8 @@ async function generatePlanPDF() {
                     const estado = String(row['ESTADO CONVENIO'] || '').toUpperCase();
                     const tieneEjecucion = estado.includes('EJECUCI') || estado.includes('EJECUT') ||
                         estado.includes('OPERA') || estado.includes('MEJORAD') ||
-                        getRowLongitudEjecutada(row) > 0 ||
-                        getRowAreaEjecutada(row) > 0 ||
+                        getRowLongitudEjecutadaPlan(row) > 0 ||
+                        getRowAreaEjecutadaPlan(row) > 0 ||
                         parseNum(row['FISICO_NORM']) > 0;
                     cant = tieneEjecucion ? 1 : 0;
                 }
@@ -6243,10 +6253,10 @@ function renderPlanTab() {
         let cant = 0;
 
         if (cfg.tipo === 'km') {
-            const metros = planMetric === 'contratado' ? getRowLongitudContratadaPlan(row) : getRowLongitudEjecutada(row);
+            const metros = planMetric === 'contratado' ? getRowLongitudContratadaPlan(row) : getRowLongitudEjecutadaPlan(row);
             cant = metros / 1000;
         } else if (cfg.tipo === 'm2') {
-            cant = planMetric === 'contratado' ? getRowAreaContratadaPlan(row) : getRowAreaEjecutada(row);
+            cant = planMetric === 'contratado' ? getRowAreaContratadaPlan(row) : getRowAreaEjecutadaPlan(row);
         } else {
             if (planMetric === 'contratado') {
                 cant = isCuatrenioAnterior(row) ? 0 : 1;
@@ -6254,8 +6264,8 @@ function renderPlanTab() {
                 const estado = String(row['ESTADO CONVENIO'] || '').toUpperCase();
                 const tieneEjecucion = estado.includes('EJECUCI') || estado.includes('EJECUT') ||
                     estado.includes('OPERA') || estado.includes('MEJORAD') ||
-                    getRowLongitudEjecutada(row) > 0 ||
-                    getRowAreaEjecutada(row) > 0 ||
+                    getRowLongitudEjecutadaPlan(row) > 0 ||
+                    getRowAreaEjecutadaPlan(row) > 0 ||
                     parseNum(row['FISICO_NORM']) > 0;
                 cant = tieneEjecucion ? 1 : 0;
             }

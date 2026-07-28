@@ -54,7 +54,7 @@ class DIATDataService {
                 Object.keys(changes[id]).forEach(field => {
                     const baseVal = row[field];
                     const overrideVal = changes[id][field];
-                    
+
                     if (baseVal !== undefined) {
                         let match = false;
                         if (typeof overrideVal === 'number' || typeof baseVal === 'number') {
@@ -87,7 +87,7 @@ class DIATDataService {
             const id = String(row['CONVENIO']).trim();
             if (changes[id]) {
                 const mergedRow = { ...row };
-                
+
                 // Mezclar todos los campos locales actualizados
                 Object.keys(changes[id]).forEach(field => {
                     mergedRow[field] = changes[id][field];
@@ -174,7 +174,7 @@ class DIATDataService {
         } catch (corsError) {
             if (corsError instanceof TypeError) {
                 console.warn("Fallo en intento principal (posible bloqueo CORS o falta de nueva publicación de Apps Script). Reintentando en modo de compatibilidad sin CORS...", corsError);
-                
+
                 try {
                     // Intento 2: Modo no-cors (Modo compatible de una vía).
                     // Envía la petición HTTP de forma segura a Google pero no lee la respuesta, evitando bloqueos de CORS del navegador.
@@ -189,7 +189,7 @@ class DIATDataService {
                             updatedFields: updatedFields
                         })
                     });
-                    
+
                     // En modo no-cors no podemos validar la respuesta, por lo que asumimos que se envió correctamente
                     isSuccess = true;
                 } catch (fallbackError) {
@@ -210,7 +210,7 @@ class DIATDataService {
             if (!changes[convenioId]) {
                 changes[convenioId] = {};
             }
-            
+
             const history = this.getChangeHistory();
             const now = new Date();
             const fecha = now.toLocaleDateString('es-CO');
@@ -238,7 +238,7 @@ class DIATDataService {
             this.saveChangeHistory(history);
             return true;
         }
-        
+
         return false;
     }
 
