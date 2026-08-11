@@ -1309,40 +1309,72 @@ async function generateProfessionalPDF(row) {
             ? `APORTE CONVENIANTE EJECUTOR (${String(row['CONVENIANTE EJECUTOR']).toUpperCase()})`
             : 'APORTE MUNICIPIO';
 
+        const adicDeptoPdf = parseFloat(row['ADICION DEPARTAMENTO']) || 0;
+        const adicMunPdf = parseFloat(row['ADICION MUNICIPIO']) || 0;
+        const aporteDeptoPdf = parseFloat(row['APORTE DEPARTAMENTO']) || 0;
+        const totalDeptoCompromisoPdf = aporteDeptoPdf + adicDeptoPdf;
+        const valAutorizadoPdf = parseFloat(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO'] || row['VALOR TOTAL AUTORIZADO']) || 0;
+        const pctAutorizadoPdf = totalDeptoCompromisoPdf > 0 
+            ? (valAutorizadoPdf / totalDeptoCompromisoPdf) * 100 
+            : (row['FINANCIERO_NORM'] || 0);
+        const pctFormattedPdf = Number(pctAutorizadoPdf.toFixed(1));
+
+        const inversionTableBody = [
+            [
+                { text: 'INVERSIÓN TOTAL', fontSize: 9, bold: true, color: '#1A6B3C', margin: [5, 5, 5, 5] },
+                { text: formatCurrency((row['APORTE DEPARTAMENTO'] || 0) + (row['APORTE MUNICIPIO'] || 0) + (row['ADICION DEPARTAMENTO'] || 0) + (row['ADICION MUNICIPIO'] || 0)), fontSize: 9.5, bold: true, color: '#1A6B3C', alignment: 'right', margin: [5, 5, 5, 5] }
+            ],
+            [
+                { text: 'APORTE DEPARTAMENTO', fontSize: 8.5, bold: true, color: '#1A6B3C', fillColor: '#F0FDF4', margin: [5, 5, 5, 5] },
+                { text: formatCurrency(row['APORTE DEPARTAMENTO']), fontSize: 8.5, bold: true, color: '#1A6B3C', fillColor: '#F0FDF4', alignment: 'right', margin: [5, 5, 5, 5] }
+            ],
+            [
+                { text: labelAporteMunPdf, fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
+                { text: formatCurrency(row['APORTE MUNICIPIO']), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
+            ]
+        ];
+
+        if (adicDeptoPdf > 0) {
+            inversionTableBody.push([
+                { text: 'ADICIÓN DEPARTAMENTO', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
+                { text: formatCurrency(row['ADICION DEPARTAMENTO']), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
+            ]);
+        }
+
+        if (adicMunPdf > 0) {
+            inversionTableBody.push([
+                { text: 'ADICIÓN MUNICIPIO', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
+                { text: formatCurrency(row['ADICION MUNICIPIO']), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
+            ]);
+        }
+
+        const valDesembolsadoPdf = parseFloat(row['VALOR TOTAL DESEMBOLSADO']) || 0;
+        const saldoIdeaPdf = Math.max(0, valDesembolsadoPdf - valAutorizadoPdf);
+        const pctSaldoPdf = totalDeptoCompromisoPdf > 0 
+            ? (saldoIdeaPdf / totalDeptoCompromisoPdf) * 100 
+            : 0;
+        const pctSaldoFormattedPdf = Number(pctSaldoPdf.toFixed(1));
+
+        inversionTableBody.push([
+            { text: 'VALOR DESEMBOLSADO EN EL IDEA', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
+            { text: formatCurrency(valDesembolsadoPdf), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
+        ]);
+
+        inversionTableBody.push([
+            { text: `VALOR AUTORIZADO POR EL DEPARTAMENTO (${pctFormattedPdf}%)`, fontSize: 8.5, bold: true, color: '#3B82F6', fillColor: '#EFF6FF', margin: [5, 5, 5, 5] },
+            { text: formatCurrency(valAutorizadoPdf), fontSize: 8.5, bold: true, color: '#3B82F6', fillColor: '#EFF6FF', alignment: 'right', margin: [5, 5, 5, 5] }
+        ]);
+
+        inversionTableBody.push([
+            { text: `SALDO EN EL IDEA (${pctSaldoFormattedPdf}%)`, fontSize: 8.5, bold: true, color: '#0F766E', fillColor: '#F0FDF4', margin: [5, 5, 5, 5] },
+            { text: formatCurrency(saldoIdeaPdf), fontSize: 8.5, bold: true, color: '#0F766E', fillColor: '#F0FDF4', alignment: 'right', margin: [5, 5, 5, 5] }
+        ]);
+
         const inversionCard = cleanCard([
             {
                 table: {
                     widths: ['*', 150],
-                    body: [
-                        [
-                            { text: 'INVERSIÓN TOTAL', fontSize: 9, bold: true, color: '#1A6B3C', margin: [5, 5, 5, 5] },
-                            { text: formatCurrency((row['APORTE DEPARTAMENTO'] || 0) + (row['APORTE MUNICIPIO'] || 0) + (row['ADICION DEPARTAMENTO'] || 0) + (row['ADICION MUNICIPIO'] || 0)), fontSize: 9.5, bold: true, color: '#1A6B3C', alignment: 'right', margin: [5, 5, 5, 5] }
-                        ],
-                        [
-                            { text: 'APORTE DEPARTAMENTO', fontSize: 8.5, bold: true, color: '#1A6B3C', fillColor: '#F0FDF4', margin: [5, 5, 5, 5] },
-                            { text: formatCurrency(row['APORTE DEPARTAMENTO']), fontSize: 8.5, bold: true, color: '#1A6B3C', fillColor: '#F0FDF4', alignment: 'right', margin: [5, 5, 5, 5] }
-                        ],
-                        [
-                            { text: labelAporteMunPdf, fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
-                            { text: formatCurrency(row['APORTE MUNICIPIO']), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
-                        ],
-                        [
-                            { text: 'ADICIÓN DEPARTAMENTO', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
-                            { text: formatCurrency(row['ADICION DEPARTAMENTO']), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
-                        ],
-                        [
-                            { text: 'ADICIÓN MUNICIPIO', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
-                            { text: formatCurrency(row['ADICION MUNICIPIO']), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
-                        ],
-                        [
-                            { text: 'TOTAL DESEMBOLSADO', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
-                            { text: formatCurrency(row['VALOR TOTAL DESEMBOLSADO']), fontSize: 8, bold: true, color: '#3B82F6', alignment: 'right', margin: [5, 5, 5, 5] }
-                        ],
-                        [
-                            { text: 'TOTAL AUTORIZADO DEPARTAMENTO', fontSize: 8.5, bold: true, color: '#1A6B3C', fillColor: '#F0FDF4', margin: [5, 5, 5, 5] },
-                            { text: formatCurrency(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO'] || row['VALOR TOTAL AUTORIZADO']), fontSize: 8.5, bold: true, color: '#1A6B3C', fillColor: '#F0FDF4', alignment: 'right', margin: [5, 5, 5, 5] }
-                        ]
-                    ]
+                    body: inversionTableBody
                 },
                 layout: {
                     hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 0 : 0.5,
