@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 
 <head>
@@ -50,6 +50,7 @@
     <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
     <!-- Turf.js para disolver municipios en subregiones y contorno del departamento -->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="premium.css">
@@ -105,13 +106,6 @@
                         </span>
                         <span class="active-dot"></span>
                     </button>
-                    <button class="tab-btn" data-tab="mapa">
-                        <span class="tab-btn-content">
-                            <span class="tab-icon"><i class="fa-solid fa-map-location-dot"></i></span>
-                            <span class="tab-label">Mapa Territorial</span>
-                        </span>
-                        <span class="active-dot hidden"></span>
-                    </button>
                     <button class="tab-btn" data-tab="plan">
                         <span class="tab-btn-content">
                             <span class="tab-icon"><i class="fa-solid fa-flag-checkered"></i></span>
@@ -129,8 +123,16 @@
                 </nav>
             </div>
 
-            <!-- Badge Versión Beta -->
+            <!-- Badge Versión Beta y Nota de Actualización -->
             <div class="sidebar-bottom">
+                <!-- Aviso de Actualización -->
+                <div class="sidebar-notice-card" style="margin-bottom:10px;padding:9px 11px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-left:3px solid #10B981;border-radius:10px;display:flex;gap:8px;align-items:flex-start;">
+                    <i class="fa-solid fa-circle-info" style="color:#4ADE80;font-size:11px;margin-top:2px;flex-shrink:0;"></i>
+                    <p style="font-size:9.5px;line-height:1.4;color:rgba(255,255,255,0.72);margin:0;font-weight:400;">
+                        El dashboard se encuentra en proceso de actualización. Actualmente, se están terminando de cargar los datos de georreferenciación de cada convenio, así como el registro fotográfico correspondiente.
+                    </p>
+                </div>
+
                 <div class="sidebar-version-badge">
                     <i class="fa-solid fa-code-branch"></i>
                     <div>
@@ -789,6 +791,14 @@
                                                     </label>
                                                     <label
                                                         class="flex items-center gap-2 cursor-pointer select-none hover:text-slate-900">
+                                                        <input type="checkbox" id="syn-chk-subregiones" checked
+                                                            class="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
+                                                        <span
+                                                            class="w-3.5 h-2.5 rounded-xs border border-dashed border-slate-700 inline-block shrink-0 bg-transparent"></span>
+                                                        <span class="truncate font-semibold text-slate-800">Límites Subregiones (9)</span>
+                                                    </label>
+                                                    <label
+                                                        class="flex items-center gap-2 cursor-pointer select-none hover:text-slate-900">
                                                         <input type="checkbox" id="syn-chk-municipios" checked
                                                             class="rounded text-emerald-700 focus:ring-emerald-500 w-3.5 h-3.5">
                                                         <span
@@ -1358,280 +1368,7 @@
                         <!-- Fin tab-resumen -->
 
                         <!-- ================================================================
-             PESTAÑA 2: MAPA TERRITORIAL
-             ================================================================ -->
-                        <div id="tab-mapa" class="tab-content hidden space-y-6">
-
-                            <!-- FILTROS MAPA -->
-                            <section class="filter-section">
-                                <div class="filter-section-header">
-                                    <div class="flex items-center gap-2">
-                                        <div class="filter-section-title">
-                                            <i class="fa-solid fa-map"></i>
-                                            Filtros del Mapa
-                                        </div>
-                                        <span id="map-active-filters-badge"
-                                            class="hidden px-2 py-0.5 text-[10px] font-extrabold bg-teal-50 text-teal-800 rounded-full border border-teal-200/50">0
-                                            activos</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <button id="btn-toggle-map-filters"
-                                            class="btn-filter-toggle flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider transition-all border border-slate-200/60">
-                                            <i class="fa-solid fa-sliders"></i>
-                                            <span>Filtros Avanzados</span>
-                                            <i class="fa-solid fa-chevron-down transition-transform duration-200"
-                                                id="btn-toggle-map-filters-icon"></i>
-                                        </button>
-                                        <button id="btn-map-reset" class="btn-reset">
-                                            <i class="fa-solid fa-eraser"></i> Limpiar Filtros
-                                        </button>
-                                    </div>
-                                </div>
-                                <div id="map-filter-panel-collapsible" class="filter-panel-collapsible">
-                                    <div
-                                        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-4 pt-2">
-                                        <div><label class="filter-label">Vigencia</label><select
-                                                id="map-filter-vigencia" class="filter-control" multiple></select></div>
-                                        <div><label class="filter-label">Supervisor</label><select
-                                                id="map-filter-supervisor" class="filter-control" multiple></select>
-                                        </div>
-                                        <div><label class="filter-label">Indicador</label><select
-                                                id="map-filter-indicador" class="filter-control" multiple></select>
-                                        </div>
-                                        <div><label class="filter-label">Clasificación</label><select
-                                                id="map-filter-clasificacion" class="filter-control" multiple></select>
-                                        </div>
-                                        <div><label class="filter-label">Municipio</label><select
-                                                id="map-filter-municipio" class="filter-control" multiple></select>
-                                        </div>
-                                        <div><label class="filter-label">Subregión</label><select
-                                                id="map-filter-subregion" class="filter-control" multiple></select>
-                                        </div>
-                                        <div><label class="filter-label">Estado</label><select id="map-filter-estado"
-                                                class="filter-control" multiple></select></div>
-                                        <div><label class="filter-label">N° Convenio</label><select
-                                                id="map-filter-convenio-num" class="filter-control" multiple></select>
-                                        </div>
-                                    </div>
-                                </div>
-                            </section>
-
-                            <!-- KPIs MAPA — Indicadores Territoriales -->
-                            <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div class="kpi-card kpi-total">
-                                    <div class="flex items-start justify-between mb-3">
-                                        <div class="kpi-icon"
-                                            style="background:rgba(100, 116, 139, 0.08);color:#64748B;"><i
-                                                class="fa-solid fa-location-dot"></i></div>
-                                        <span class="kpi-trend neutral" style="font-size:9px;">Territorial</span>
-                                    </div>
-                                    <span class="kpi-label">Municipios Impactados</span>
-                                    <h3 class="kpi-value" id="kpi-map-mun">0</h3>
-                                </div>
-                                <div class="kpi-card kpi-ejecucion">
-                                    <div class="flex items-start justify-between mb-3">
-                                        <div class="kpi-icon" style="background:rgba(1, 141, 56, 0.08);color:#018D38;">
-                                            <i class="fa-solid fa-draw-polygon"></i></div>
-                                        <span class="kpi-trend" style="color:#018D38;font-size:9px;">Cobertura</span>
-                                    </div>
-                                    <span class="kpi-label">Subregiones</span>
-                                    <h3 class="kpi-value" id="kpi-map-sub">0</h3>
-                                </div>
-                                <div class="kpi-card kpi-autorizado">
-                                    <div class="flex items-start justify-between mb-3">
-                                        <div class="kpi-icon" style="background:rgba(11, 86, 64, 0.08);color:#0B5640;">
-                                            <i class="fa-solid fa-route"></i></div>
-                                        <span class="kpi-trend up" style="color:#0B5640;font-size:9px;">km</span>
-                                    </div>
-                                    <span class="kpi-label">Km Intervenidos</span>
-                                    <h3 class="kpi-value" id="kpi-map-km">0</h3>
-                                </div>
-                                <div class="kpi-card kpi-desembolsado">
-                                    <div class="flex items-start justify-between mb-3">
-                                        <div class="kpi-icon" style="background:rgba(53, 97, 171, 0.08);color:#3561AB;">
-                                            <i class="fa-solid fa-person-digging"></i></div>
-                                        <span class="kpi-trend" style="color:#3561AB;font-size:9px;">Activos</span>
-                                    </div>
-                                    <span class="kpi-label">En Ejecución</span>
-                                    <h3 class="kpi-value" id="kpi-map-activos">0</h3>
-                                </div>
-                            </div>
-
-                            <!-- KPI Área adicional (oculto visualmente pero mantenido para JS) -->
-                            <div class="hidden">
-                                <h3 id="kpi-map-area">0</h3>
-                            </div>
-
-                            <!-- MAPA PRINCIPAL -->
-                            <div id="map-wrapper"
-                                class="map-container-wrapper bg-white flex flex-col overflow-hidden relative"
-                                style="border:1.5px solid #E2E8F0;border-radius:20px;box-shadow:0 8px 24px rgba(15,23,42,0.06);transition: all 0.3s ease;">
-                                <div class="flex justify-between items-center shrink-0 z-10"
-                                    style="padding:16px 20px;border-bottom:1.5px solid #E2E8F0;background:#F8FAFC;">
-                                    <h2
-                                        style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:8px;">
-                                        <i class="fa-solid fa-map" style="color:#0B5640;"></i> Mapa Interactivo de
-                                        Antioquia
-                                    </h2>
-                                    <div class="flex items-center gap-3">
-                                        <span id="main-map-loading" class="hidden"
-                                            style="font-size:11px;font-weight:700;color:#64748B;">
-                                            <i class="fa-solid fa-spinner fa-spin mr-1"></i> Sincronizando KMLs...
-                                        </span>
-                                        <button id="btn-map-fullscreen" type="button" class="btn-icon-soft"
-                                            title="Pantalla Completa"
-                                            style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:#fff;border:1.5px solid #E2E8F0;color:#64748B;cursor:pointer;transition:all 0.2s;">
-                                            <i class="fa-solid fa-expand"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div id="main-map" class="flex-1 w-full z-0 relative" style="background:#F1F5F9;">
-                                    <!-- Buscador Interactivo MapLibre GL -->
-                                    <div class="map-search-container" id="map-search-container">
-                                        <div class="map-search-bar">
-                                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                                            <input type="text" id="map-search-input"
-                                                placeholder="Buscar coord., municipio o vía..." autocomplete="off">
-                                            <button id="map-search-clear" class="search-clear-btn hidden"
-                                                title="Limpiar búsqueda">
-                                                <i class="fa-solid fa-xmark"></i>
-                                            </button>
-                                        </div>
-                                        <div class="map-search-results hidden" id="map-search-results"></div>
-                                    </div>
-
-                                    <!-- Panel de Capas -->
-                                    <div class="map-layer-panel" id="map-layer-panel">
-                                        <div class="layer-panel-header">
-                                            <h3 class="layer-panel-title"><i class="fa-solid fa-layer-group"></i> Capas
-                                                del Mapa</h3>
-                                            <button id="btn-toggle-panel" class="layer-panel-toggle"
-                                                title="Colapsar panel">
-                                                <i class="fa-solid fa-chevron-up"></i>
-                                            </button>
-                                        </div>
-                                        <div id="layer-panel-content">
-                                            <div class="layer-group-label">Convenios</div>
-                                            <label class="layer-item">
-                                                <input type="checkbox" id="layer-chk-tramosKml" checked>
-                                                <span class="layer-dot" style="background:#0066FF"></span>
-                                                <span class="layer-name"><i class="fa-solid fa-route"></i> Tramos KML
-                                                    Convenios</span>
-                                            </label>
-                                            <div class="layer-group-label">Red Vial Oficial</div>
-                                            <label class="layer-item">
-                                                <input type="checkbox" id="layer-chk-primaria" checked>
-                                                <span class="layer-dot" style="background:#e53e3e"></span>
-                                                <span class="layer-name"><i class="fa-solid fa-road"></i> Vías
-                                                    Primarias</span>
-                                            </label>
-                                            <label class="layer-item">
-                                                <input type="checkbox" id="layer-chk-secundaria" checked>
-                                                <span class="layer-dot" style="background:#38a169"></span>
-                                                <span class="layer-name"><i class="fa-solid fa-road"></i> Vías
-                                                    Secundarias</span>
-                                            </label>
-                                            <label class="layer-item">
-                                                <input type="checkbox" id="layer-chk-terciaria" checked>
-                                                <span class="layer-dot" style="background:#d69e2e"></span>
-                                                <span class="layer-name"><i class="fa-solid fa-road"></i> Vías
-                                                    Terciarias</span>
-                                            </label>
-                                            <div class="layer-group-label">División Territorial</div>
-                                            <label class="layer-item">
-                                                <input type="checkbox" id="layer-chk-subregiones">
-                                                <span class="layer-dot" style="background:#a78bfa"></span>
-                                                <span class="layer-name"><i class="fa-solid fa-draw-polygon"></i>
-                                                    Subregiones</span>
-                                            </label>
-                                            <label class="layer-item">
-                                                <input type="checkbox" id="layer-chk-municipios">
-                                                <span class="layer-dot" style="background:#94a3b8"></span>
-                                                <span class="layer-name"><i class="fa-solid fa-border-all"></i>
-                                                    Municipios</span>
-                                            </label>
-                                            <div class="layer-group-label">Vista 3D</div>
-                                            <label class="layer-item">
-                                                <input type="checkbox" id="layer-chk-terrain">
-                                                <span class="layer-dot" style="background:#78716c"></span>
-                                                <span class="layer-name"><i class="fa-solid fa-mountain"></i> Terreno
-                                                    3D</span>
-                                            </label>
-                                            <div class="layer-panel-actions">
-                                                <button id="btn-layers-show-all"><i class="fa-solid fa-eye"></i> Mostrar
-                                                    todas</button>
-                                                <button id="btn-layers-hide-all"><i class="fa-solid fa-eye-slash"></i>
-                                                    Ocultar todas</button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Indicador de carga de capas -->
-                                    <div id="map-layers-loading" class="map-layers-loading hidden">
-                                        <i class="fa-solid fa-spinner fa-spin"></i> Cargando red vial...
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- SELECTOR DE MÉTRICA BASE — MAPA -->
-                            <div class="bg-white p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-                                style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
-                                <div>
-                                    <h3
-                                        style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:8px;">
-                                        <i class="fa-solid fa-sliders" style="color:#0B5640;"></i> Base de Medición de
-                                        Gráficos
-                                    </h3>
-                                    <p style="font-size:10.5px;color:#94A3B8;font-weight:500;margin-top:3px;">Define si
-                                        los gráficos muestran el alcance contratado o el avance ejecutado</p>
-                                </div>
-                                <div class="metric-pill-toggle shrink-0">
-                                    <button id="btn-map-metric-contratado" class="metric-pill-btn active"
-                                        onclick="setMapMetric('contratado')">
-                                        Longitud Contratada
-                                    </button>
-                                    <button id="btn-map-metric-ejecutado" class="metric-pill-btn"
-                                        onclick="setMapMetric('ejecutado')">
-                                        Longitud Ejecutada
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- PANELES TERRITORIALES -->
-                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <div class="bg-white p-5 rounded-2xl"
-                                    style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
-                                    <h3 id="lbl-map-sub-long"
-                                        style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;">
-                                        Longitud Intervenida por Subregión</h3>
-                                    <div style="height:256px;"><canvas id="chart-sub-long"></canvas></div>
-                                </div>
-                                <div class="bg-white p-5 rounded-2xl"
-                                    style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
-                                    <h3
-                                        style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;">
-                                        Inversión por Subregión</h3>
-                                    <div style="height:256px;"><canvas id="chart-sub-inv"></canvas></div>
-                                </div>
-                                <div class="bg-white p-5 rounded-2xl"
-                                    style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
-                                    <h3 id="lbl-map-mun-long"
-                                        style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;">
-                                        Top Municipios (Longitud)</h3>
-                                    <div style="height:256px;"><canvas id="chart-top-mun-long"></canvas></div>
-                                </div>
-                                <div class="bg-white p-5 rounded-2xl"
-                                    style="border:1.5px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
-                                    <h3
-                                        style="font-size:12px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;">
-                                        Top Municipios (Inversión)</h3>
-                                    <div style="height:256px;"><canvas id="chart-top-mun-inv"></canvas></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- ================================================================
-             PESTAÑA 3: PLAN DE DESARROLLO
+             PESTAÑA 2: PLAN DE DESARROLLO (INDICADORES)
              ================================================================ -->
                         <div id="tab-plan" class="tab-content hidden space-y-6">
 
@@ -1666,11 +1403,11 @@
                                     </div>
                                     <div class="w-px h-6 bg-slate-200 hidden sm:block"></div>
                                     <div class="metric-pill-toggle shrink-0">
-                                        <button id="btn-plan-metric-contratado" class="metric-pill-btn active"
+                                        <button id="btn-plan-metric-contratado" class="metric-pill-btn"
                                             onclick="setPlanMetric('contratado')">
                                             Longitud/Área Contratada
                                         </button>
-                                        <button id="btn-plan-metric-ejecutado" class="metric-pill-btn"
+                                        <button id="btn-plan-metric-ejecutado" class="metric-pill-btn active"
                                             onclick="setPlanMetric('ejecutado')">
                                             Longitud/Área Ejecutada
                                         </button>
@@ -2135,10 +1872,6 @@
                         id="modal-subtitle">Municipio — Año</p>
                 </div>
                 <div class="flex items-center gap-2 sm:gap-3">
-                    <a id="btn-open-source-pdf" href="#" target="_blank"
-                        style="background:#FEF2F2;color:#DC2626;padding:7px 14px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;display:flex;align-items:center;gap:6px;border:1.5px solid rgba(239,68,68,0.2);text-decoration:none;transition:all 0.2s;">
-                        <i class="fa-solid fa-file-pdf"></i> <span class="hidden sm:inline">Ver Convenio</span>
-                    </a>
                     <button id="btn-export-pdf" class="btn-pdf">
                         <i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Generar Ficha</span>
                     </button>
