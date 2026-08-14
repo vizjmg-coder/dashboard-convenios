@@ -2217,6 +2217,265 @@ async function generatePlanPDF() {
     }
 }
 
+// =========================================================================
+// GENERADOR DE MAPA VECTORIAL OPTIMIZADO DE ANTIOQUIA PARA REPORTES PDF
+// =========================================================================
+async function generateVectorMapAntioquiaSVG(filteredRows, svgWidth = 542, svgHeight = 180) {
+    try {
+        // 1. Cargar datos de municipios si no están en memoria
+        let mpioData = synMpioData;
+        if (!mpioData || !mpioData.features || mpioData.features.length === 0) {
+            const resp = await fetch('./mpio.json').catch(() => null);
+            if (resp && resp.ok) {
+                const data = await resp.json();
+                data.features = (data.features || []).filter(f => {
+                    const dpto = String(f.properties.DPTO || '').trim();
+                    const nomDpt = String(f.properties.NOMBRE_DPT || f.properties.NOM_DEPART || '').trim().toUpperCase();
+                    return dpto === '05' || dpto === '5' || nomDpt.includes('ANTIOQUIA');
+                });
+                synMpioData = data;
+                mpioData = data;
+            }
+        }
+
+        if (!mpioData || !mpioData.features || mpioData.features.length === 0) {
+            return null;
+        }
+
+        // 2. Extraer municipios impactados y convenios activos
+        const norm = (s) => String(s || '')
+            .toUpperCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^A-Z ]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        const muniCounts = {};
+        const impactedConvs = new Set();
+        (filteredRows || []).forEach(r => {
+            const m = norm(r['MUNICIPIO']);
+            if (m) muniCounts[m] = (muniCounts[m] || 0) + 1;
+            const cNum = String(r['CONVENIO'] || '').trim();
+            if (cNum) impactedConvs.add(cNum);
+        });
+
+        // 3. Calcular Bounding Box geográfico de Antioquia
+        let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+        mpioData.features.forEach(f => {
+            const coords = f.geometry && f.geometry.coordinates;
+            if (!coords) return;
+            const processRing = (ring) => {
+                ring.forEach(pt => {
+                    const [lng, lat] = pt;
+                    if (lng < minLng) minLng = lng;
+                    if (lng > maxLng) maxLng = lng;
+                    if (lat < minLat) minLat = lat;
+                    if (lat > maxLat) maxLat = lat;
+                });
+            };
+            if (f.geometry.type === 'Polygon') {
+                coords.forEach(processRing);
+            } else if (f.geometry.type === 'MultiPolygon') {
+                coords.forEach(poly => poly.forEach(processRing));
+            }
+        });
+
+        if (minLng === Infinity || maxLng === -Infinity) {
+            minLng = -77.15; maxLng = -73.85; minLat = 5.40; maxLat = 8.90;
+        }
+
+        // Proyección equirrectangular ajustada con factor de latitud media
+        const paddingX = 16;
+        const paddingY = 12;
+        const mapW = svgWidth - paddingX * 2;
+        const mapH = svgHeight - paddingY * 2;
+
+        const midLat = (minLat + maxLat) / 2;
+        const cosLat = Math.cos(midLat * Math.PI / 180);
+
+        const geoW = (maxLng - minLng) * cosLat;
+        const geoH = (maxLat - minLat);
+        const scale = Math.min(mapW / geoW, mapH / geoH);
+
+        const actualW = geoW * scale;
+        const actualH = geoH * scale;
+        const offsetX = paddingX + (mapW - actualW) / 2;
+        const offsetY = paddingY + (mapH - actualH) / 2;
+
+        const project = (lng, lat) => {
+            const x = offsetX + (lng - minLng) * cosLat * scale;
+            const y = offsetY + (maxLat - lat) * scale;
+            return [x.toFixed(1), y.toFixed(1)];
+        };
+
+        // 4. Generar Paths SVG vectoriales para los 125 municipios
+        let impactedMuniCount = 0;
+        let pathsSvg = '';
+
+        mpioData.features.forEach(f => {
+            const rawName = f.properties.NOMBRE_MPI || f.properties.MPIO_CNMBR || f.properties.NOM_MPIO || '';
+            const mNorm = norm(rawName);
+            const count = muniCounts[mNorm] || 0;
+            const isImpacted = count > 0;
+            if (isImpacted) impactedMuniCount++;
+
+            let pathData = '';
+            const buildPathFromRing = (ring) => {
+                if (!ring || ring.length === 0) return '';
+                let d = '';
+                for (let i = 0; i < ring.length; i++) {
+                    const [px, py] = project(ring[i][0], ring[i][1]);
+                    d += (i === 0 ? `M ${px} ${py}` : ` L ${px} ${py}`);
+                }
+                return d + ' Z ';
+            };
+
+            if (f.geometry && f.geometry.type === 'Polygon') {
+                f.geometry.coordinates.forEach(ring => {
+                    pathData += buildPathFromRing(ring);
+                });
+            } else if (f.geometry && f.geometry.type === 'MultiPolygon') {
+                f.geometry.coordinates.forEach(poly => {
+                    poly.forEach(ring => {
+                        pathData += buildPathFromRing(ring);
+                    });
+                });
+            }
+
+            const fillColor = isImpacted ? '#0B5640' : '#F1F5F9';
+            const strokeColor = isImpacted ? '#043A2B' : '#CBD5E1';
+            const strokeWidth = isImpacted ? '0.75' : '0.4';
+            const opacity = isImpacted ? '1' : '0.9';
+
+            pathsSvg += `<path d="${pathData}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}" fill-opacity="${opacity}" />\n`;
+        });
+
+        // 5. Cargar y proyectar tramos KML si están disponibles
+        // Asegurar que todos los KML de los convenios impactados estén en caché
+        const toFetchKmls = Array.from(impactedConvs).filter(num => !synKmlCache[num]);
+        if (toFetchKmls.length > 0) {
+            const promises = toFetchKmls.map(async (num) => {
+                try {
+                    const kmlResp = await fetch(`./assets/mapas/${num}.kml`);
+                    if (kmlResp.ok) {
+                        const kmlText = await kmlResp.text();
+                        synKmlCache[num] = parseKMLStringToGeoJSON(kmlText, num);
+                    }
+                } catch (e) {}
+            });
+            await Promise.all(promises);
+        }
+
+        let tramosLinesSvg = '';
+        let tramosPointsSvg = '';
+
+        impactedConvs.forEach(cNum => {
+            const kmlGeo = synKmlCache[cNum];
+            if (kmlGeo && kmlGeo.features) {
+                kmlGeo.features.forEach(feat => {
+                    if (feat.geometry) {
+                        const renderLine = (pts) => {
+                            if (!pts || pts.length === 0) return;
+                            let d = '';
+                            for (let i = 0; i < pts.length; i++) {
+                                const [px, py] = project(pts[i][0], pts[i][1]);
+                                d += (i === 0 ? `M ${px} ${py}` : ` L ${px} ${py}`);
+                            }
+                            if (d) {
+                                // 1. Trazo con contorno oscuro de alto contraste y núcleo verde metálico neón sólido
+                                tramosLinesSvg += `<path d="${d}" fill="none" stroke="#032B18" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" />\n`;
+                                tramosLinesSvg += `<path d="${d}" fill="none" stroke="#00FF88" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />\n`;
+                                tramosLinesSvg += `<path d="${d}" fill="none" stroke="#FFFFFF" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" />\n`;
+
+                                // 2. Puntos Beacon compactos y discretos para vista general macro
+                                const midIdx = Math.floor(pts.length / 2);
+                                const [cx, cy] = project(pts[midIdx][0], pts[midIdx][1]);
+                                tramosPointsSvg += `<circle cx="${cx}" cy="${cy}" r="3.2" fill="#00FF88" fill-opacity="0.25" />\n`;
+                                tramosPointsSvg += `<circle cx="${cx}" cy="${cy}" r="2.0" fill="#00FF88" stroke="#032B18" stroke-width="0.7" />\n`;
+                                tramosPointsSvg += `<circle cx="${cx}" cy="${cy}" r="0.8" fill="#FFFFFF" />\n`;
+                            }
+                        };
+                        if (feat.geometry.type === 'LineString') {
+                            renderLine(feat.geometry.coordinates);
+                        } else if (feat.geometry.type === 'MultiLineString') {
+                            feat.geometry.coordinates.forEach(renderLine);
+                        } else if (feat.geometry.type === 'Point') {
+                            const [cx, cy] = project(feat.geometry.coordinates[0], feat.geometry.coordinates[1]);
+                            tramosPointsSvg += `<circle cx="${cx}" cy="${cy}" r="3.2" fill="#00FF88" fill-opacity="0.25" />\n`;
+                            tramosPointsSvg += `<circle cx="${cx}" cy="${cy}" r="2.0" fill="#00FF88" stroke="#032B18" stroke-width="0.7" />\n`;
+                            tramosPointsSvg += `<circle cx="${cx}" cy="${cy}" r="0.8" fill="#FFFFFF" />\n`;
+                        }
+                    }
+                });
+            }
+        });
+
+        const totalMpios = mpioData.features.length || 125;
+
+        // 6. Construir Markup SVG Completo y Optimizado
+        const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgWidth} ${svgHeight}" width="${svgWidth}" height="${svgHeight}">
+    <rect x="0" y="0" width="${svgWidth}" height="${svgHeight}" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+    
+    <!-- Grid sutil de coordenadas -->
+    <g stroke="#E2E8F0" stroke-width="0.5" stroke-dasharray="2,2">
+        <line x1="0" y1="45" x2="${svgWidth}" y2="45" />
+        <line x1="0" y1="90" x2="${svgWidth}" y2="90" />
+        <line x1="0" y1="135" x2="${svgWidth}" y2="135" />
+        <line x1="135" y1="0" x2="135" y2="${svgHeight}" />
+        <line x1="270" y1="0" x2="270" y2="${svgHeight}" />
+        <line x1="405" y1="0" x2="405" y2="${svgHeight}" />
+    </g>
+
+    <!-- Capa de Polígonos de Municipios -->
+    <g id="municipios-layer">
+        ${pathsSvg}
+    </g>
+
+    <!-- Capa de Trazados Viales KML en Verde Metálico Neón -->
+    <g id="tramos-lines-layer">
+        ${tramosLinesSvg}
+    </g>
+
+    <!-- Capa de Puntos Beacon KML Discretos -->
+    <g id="tramos-points-layer">
+        ${tramosPointsSvg}
+    </g>
+
+    <!-- Encabezado Flotante del Mapa -->
+    <rect x="10" y="8" width="215" height="23" rx="4" fill="#FFFFFF" fill-opacity="0.94" stroke="#E2E8F0" stroke-width="0.6" />
+    <text x="16" y="18" font-family="Poppins, Arial, sans-serif" font-size="7" font-weight="bold" fill="#0B5640">DISTRIBUCIÓN ESPACIAL TERRITORIAL</text>
+    <text x="16" y="27" font-family="Poppins, Arial, sans-serif" font-size="6" font-weight="bold" fill="#64748B">${impactedMuniCount} de ${totalMpios} Municipios Impactados</text>
+
+    <!-- Leyenda Flotante Inferior -->
+    <rect x="10" y="${svgHeight - 22}" width="295" height="15" rx="3.5" fill="#FFFFFF" fill-opacity="0.94" stroke="#E2E8F0" stroke-width="0.6" />
+    
+    <rect x="15" y="${svgHeight - 18}" width="7" height="7" rx="1.5" fill="#0B5640" stroke="#043A2B" stroke-width="0.5" />
+    <text x="26" y="${svgHeight - 12.5}" font-family="Poppins, Arial, sans-serif" font-size="5.5" font-weight="bold" fill="#334155">Impactado (${impactedMuniCount})</text>
+    
+    <rect x="96" y="${svgHeight - 18}" width="7" height="7" rx="1.5" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="0.5" />
+    <text x="107" y="${svgHeight - 12.5}" font-family="Poppins, Arial, sans-serif" font-size="5.5" font-weight="bold" fill="#64748B">Sin Convenio (${totalMpios - impactedMuniCount})</text>
+
+    <circle cx="186" cy="${svgHeight - 14.5}" r="2.2" fill="#00FF88" stroke="#032B18" stroke-width="0.6" />
+    <line x1="192" y1="${svgHeight - 14.5}" x2="204" y2="${svgHeight - 14.5}" stroke="#00FF88" stroke-width="2.2" stroke-linecap="round" />
+    <text x="209" y="${svgHeight - 12.5}" font-family="Poppins, Arial, sans-serif" font-size="5.5" font-weight="bold" fill="#0B5640">Trazado KML / Punto</text>
+
+    <!-- Flecha Norte -->
+    <g transform="translate(${svgWidth - 24}, 10)">
+        <circle cx="8" cy="8" r="7.5" fill="#FFFFFF" fill-opacity="0.92" stroke="#CBD5E1" stroke-width="0.5" />
+        <polygon points="8,2 10.5,8 5.5,8" fill="#0B5640" />
+        <polygon points="8,14 10.5,8 5.5,8" fill="#94A3B8" />
+        <text x="6.5" y="0.5" font-family="Poppins, Arial, sans-serif" font-size="5" font-weight="bold" fill="#0B5640">N</text>
+    </g>
+</svg>`;
+
+        return svgMarkup;
+    } catch (err) {
+        console.error("Error generando mapa vectorial para PDF:", err);
+        return null;
+    }
+}
+
 async function generateResumenPDF() {
     const btnPdf = document.getElementById('btn-export-resumen-pdf');
     if (!btnPdf) return;
@@ -2280,8 +2539,11 @@ async function generateResumenPDF() {
             totAreEje += getRowAreaEjecutada(r);
         });
 
-        // 3. Fetch institutional logo
-        const logoBase64 = await getBase64ImageFromURL('./assets/escudo_antioquia.png').catch(() => null);
+        // 3. Fetch institutional logo & Generate Vector Map
+        const [logoBase64, mapSvgMarkup] = await Promise.all([
+            getBase64ImageFromURL('./assets/escudo_antioquia.png').catch(() => null),
+            generateVectorMapAntioquiaSVG(filteredData, 542, 175).catch(() => null)
+        ]);
 
         // 4. Generate native pdfMake vector chart for a premium, clean presentation
         const maxVal = Math.max(totLonCon, totLonEje);
@@ -2385,7 +2647,7 @@ async function generateResumenPDF() {
                 paddingTop: () => 0,
                 paddingBottom: () => 0
             },
-            margin: [0, 0, 0, 12]
+            margin: [0, 0, 0, 10]
         };
 
         // 5. Build the detailed convenios table
@@ -2610,8 +2872,15 @@ async function generateResumenPDF() {
                             margin: [2, 0, 0, 0]
                         }
                     ],
-                    margin: [0, 0, 0, 12]
+                    margin: [0, 0, 0, 10]
                 },
+                // Mapa Territorial Vectorial de Antioquia
+                mapSvgMarkup ? {
+                    svg: mapSvgMarkup,
+                    width: 542,
+                    alignment: 'center',
+                    margin: [0, 0, 0, 10]
+                } : { text: '' },
                 // Premium Charts Section (Alcance Vial and Comparativo Financiero side-by-side)
                 chartSection,
                 // Detailed Table Header
@@ -2837,7 +3106,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // Hooks para renderizar mapas o gráficos cuando la pestaña es visible
-                if (targetTab === 'mapa' && typeof renderMapTab === 'function') {
+                if (targetTab === 'resumen') {
+                    if (typeof initSyntheticMap === 'function') {
+                        if (!synMap) {
+                            initSyntheticMap();
+                        } else {
+                            setTimeout(() => synMap.resize(), 100);
+                            updateSyntheticMap();
+                        }
+                    }
+                } else if (targetTab === 'mapa' && typeof renderMapTab === 'function') {
                     renderMapTab();
                 } else if (targetTab === 'plan' && typeof renderPlanTab === 'function') {
                     renderPlanTab();
@@ -3362,7 +3640,16 @@ function resetFilters() {
     applyFilters();
 }
 
-function updateDashboard() { updateKPIs(); renderTable(); updateCharts(); renderAlerts(); }
+function updateDashboard() { 
+    updateKPIs(); 
+    renderTable(); 
+    updateCharts(); 
+    updateTerritorialCharts();
+    renderAlerts(); 
+    if (typeof updateSyntheticMap === 'function') {
+        updateSyntheticMap();
+    }
+}
 
 function updateKPIs() {
     let activos = 0, porLiquidar = 0, sumInv = 0, sumDes = 0, sumAut = 0;
@@ -3386,12 +3673,47 @@ function updateKPIs() {
     document.getElementById('kpi-activos').textContent = activos;
     document.getElementById('kpi-por-liquidar').textContent = porLiquidar;
 
-    document.getElementById('kpi-inversion').textContent = formatCurrency(sumInv);
-    document.getElementById('kpi-inversion').title = formatCurrency(sumInv);
-    document.getElementById('kpi-desembolsado').textContent = formatCurrency(sumDes);
-    document.getElementById('kpi-desembolsado').title = formatCurrency(sumDes);
-    document.getElementById('kpi-autorizado').textContent = formatCurrency(sumAut);
-    document.getElementById('kpi-autorizado').title = formatCurrency(sumAut);
+    // Municipios y Subregiones Impactadas
+    const impactedMunis = new Set(filteredData.map(r => String(r['MUNICIPIO'] || '').trim().toUpperCase()).filter(Boolean));
+    const elMunis = document.getElementById('kpi-municipios');
+    if (elMunis) elMunis.textContent = impactedMunis.size;
+
+    const impactedSubs = new Set(filteredData.map(r => String(r['SUBREGION'] || r['SUBREGIÓN'] || '').trim().toUpperCase()).filter(Boolean));
+    const elSubs = document.getElementById('kpi-subregiones');
+    if (elSubs) elSubs.textContent = impactedSubs.size;
+
+    // Gráfico de Barras Financiero
+    const elInv = document.getElementById('kpi-inversion');
+    if (elInv) {
+        elInv.textContent = formatCurrency(sumInv);
+        elInv.title = formatCurrency(sumInv);
+    }
+    const elDes = document.getElementById('kpi-desembolsado');
+    if (elDes) {
+        elDes.textContent = formatCurrency(sumDes);
+        elDes.title = formatCurrency(sumDes);
+    }
+    const elAut = document.getElementById('kpi-autorizado');
+    if (elAut) {
+        elAut.textContent = formatCurrency(sumAut);
+        elAut.title = formatCurrency(sumAut);
+    }
+
+    const maxFin = Math.max(sumInv, sumDes, sumAut, 1);
+    const barInv = document.getElementById('fin-bar-inversion');
+    if (barInv) barInv.style.width = Math.min(100, Math.round((sumInv / maxFin) * 100)) + '%';
+
+    const barDes = document.getElementById('fin-bar-desembolsado');
+    if (barDes) barDes.style.width = Math.min(100, Math.round((sumDes / maxFin) * 100)) + '%';
+
+    const pctDes = document.getElementById('fin-pct-desembolsado');
+    if (pctDes) pctDes.textContent = (sumInv > 0 ? ((sumDes / sumInv) * 100).toFixed(1) : 0) + '%';
+
+    const barAut = document.getElementById('fin-bar-autorizado');
+    if (barAut) barAut.style.width = Math.min(100, Math.round((sumAut / maxFin) * 100)) + '%';
+
+    const pctAut = document.getElementById('fin-pct-autorizado');
+    if (pctAut) pctAut.textContent = (sumInv > 0 ? ((sumAut / sumInv) * 100).toFixed(1) : 0) + '%';
 
     // Physical Execution Totals (New Graphic Scheme)
 
@@ -3555,7 +3877,8 @@ function renderAlerts() {
                     type: 'proximos', icon: 'fa-hourglass-half',
                     title: 'Próximo a Terminar',
                     desc: `Faltan ${daysLeft} ${daysLeft === 1 ? 'día' : 'días'} para su fecha de terminación (${termStr}).`,
-                    conv, mun
+                    conv, mun,
+                    _sortVal: daysLeft  // menor = más urgente
                 });
             }
         }
@@ -3564,27 +3887,32 @@ function renderAlerts() {
         if (termDate && termDate < today) {
             const msPassed = today.getTime() - termDate.getTime();
             const monthsPassed = msPassed / (1000 * 60 * 60 * 24 * 30.436875);
+            const daysPassed = msPassed / (1000 * 60 * 60 * 24);
 
             if (monthsPassed >= 24) {
                 const limitDate = new Date(termDate);
                 limitDate.setMonth(limitDate.getMonth() + 30);
                 const limitStr = `${String(limitDate.getDate()).padStart(2, '0')}/${String(limitDate.getMonth() + 1).padStart(2, '0')}/${limitDate.getFullYear()}`;
-                const monthsLeft = (30 - monthsPassed).toFixed(1);
-                const faltanTxt = monthsLeft > 0
-                    ? `<strong style="color:#991B1B;">¡Faltan ${monthsLeft} meses!</strong>`
-                    : `<strong style="color:#7F1D1D;">¡Límite superado por ${Math.abs(monthsLeft).toFixed(1)} meses!</strong>`;
+                const monthsLeft = 30 - monthsPassed;
+                const monthsLeftFixed = monthsLeft.toFixed(1);
+                const superado = monthsLeft <= 0;
+                const faltanTxt = !superado
+                    ? `<strong style="color:#991B1B;">¡Faltan ${monthsLeftFixed} meses para perder competencia!</strong>`
+                    : `<strong style="color:#7F1D1D;">⚠ Límite superado por ${Math.abs(monthsLeftFixed)} meses</strong>`;
                 alerts.push({
                     type: 'competencia', icon: 'fa-gavel fa-beat-fade',
-                    title: 'Riesgo: Pérdida de Competencia',
+                    title: superado ? '🔴 Competencia Perdida' : 'Riesgo: Pérdida de Competencia',
                     desc: `Finalizó el ${termStr}. Límite legal: 30 meses (${limitStr}). ${faltanTxt}`,
-                    conv, mun
+                    conv, mun,
+                    _sortVal: monthsLeft  // negativo = ya superó límite (máxima urgencia), positivo = faltan X meses
                 });
             } else {
                 alerts.push({
                     type: 'vencido', icon: 'fa-calendar-xmark',
                     title: 'Vencido sin liquidar',
-                    desc: `Finalizó el ${termStr} y sigue en ${est}.`,
-                    conv, mun
+                    desc: `Finalizó el ${termStr} y sigue en ${est}. (${monthsPassed.toFixed(1)} meses vencido)`,
+                    conv, mun,
+                    _sortVal: daysPassed  // mayor = vencido hace más tiempo
                 });
             }
         }
@@ -3628,6 +3956,40 @@ function renderAlerts() {
                 conv, mun
             });
         }
+    });
+
+    // ── ORDENAMIENTO POR URGENCIA ─────────────────────────────────────────
+    // Prioridad de tipo:
+    //   1 = competencia (pérdida de competencia — MÁXIMA PRIORIDAD)
+    //   2 = proximos    (próximos a terminar)
+    //   3 = vencido     (vencidos sin liquidar)
+    //   4 = desfase / otros
+    const typePriority = { competencia: 1, proximos: 2, vencido: 3, desfase: 4 };
+
+    alerts.sort((a, b) => {
+        const pa = typePriority[a.type] ?? 9;
+        const pb = typePriority[b.type] ?? 9;
+
+        // Primero ordenar por tipo de prioridad
+        if (pa !== pb) return pa - pb;
+
+        // Dentro de "competencia": los que ya superaron el límite van primero (sortVal negativo = superado)
+        // luego los que están más cerca de superarlo (menor sortVal primero)
+        if (a.type === 'competencia' && b.type === 'competencia') {
+            return (a._sortVal ?? 0) - (b._sortVal ?? 0);
+        }
+
+        // Dentro de "proximos": los que tienen menos días restantes van primero
+        if (a.type === 'proximos' && b.type === 'proximos') {
+            return (a._sortVal ?? 999) - (b._sortVal ?? 999);
+        }
+
+        // Dentro de "vencido": los vencidos hace más tiempo van primero
+        if (a.type === 'vencido' && b.type === 'vencido') {
+            return (b._sortVal ?? 0) - (a._sortVal ?? 0);
+        }
+
+        return 0;
     });
 
     const finalAlerts = currentAlertFilter === 'all' ? alerts : alerts.filter(a => a.type === currentAlertFilter);
@@ -3699,24 +4061,52 @@ function renderAlerts() {
     }
 
     const alertTypeMap = {
-        proximos: { borderColor: '#F28E18', iconColor: '#F28E18', bg: '#FFFFFF' },
+        proximos:    { borderColor: '#F28E18', iconColor: '#F28E18', bg: '#FFFFFF' },
         competencia: { borderColor: '#A90F09', iconColor: '#A90F09', bg: '#FFFFFF' },
-        vencido: { borderColor: '#A90F09', iconColor: '#A90F09', bg: '#FFFFFF' },
-        desfase: { borderColor: '#3561AB', iconColor: '#3561AB', bg: '#FFFFFF' }
+        vencido:     { borderColor: '#A90F09', iconColor: '#A90F09', bg: '#FFFFFF' },
+        desfase:     { borderColor: '#3561AB', iconColor: '#3561AB', bg: '#FFFFFF' }
     };
 
-    feed.innerHTML = finalAlerts.map(a => {
+    feed.innerHTML = finalAlerts.map((a, idx) => {
         const colors = alertTypeMap[a.type] || { borderColor: '#94A3B8', iconColor: '#94A3B8', bg: '#F8FAFC' };
+
+        // Badge de urgencia para competencia
+        let urgencyBadge = '';
+        let urgencyBar = '';
+        if (a.type === 'competencia') {
+            const monthsLeft = a._sortVal ?? 0;
+            if (monthsLeft <= 0) {
+                // Ya superó el límite
+                urgencyBadge = `<span style="display:inline-flex;align-items:center;gap:3px;background:#7F1D1D;color:#fff;font-size:8px;font-weight:800;padding:2px 7px;border-radius:999px;letter-spacing:0.5px;text-transform:uppercase;margin-left:6px;">⚠ COMPETENCIA PERDIDA</span>`;
+            } else {
+                // Faltan X meses — barra de urgencia proporcional (0 meses restantes = 100% urgencia)
+                const pct = Math.round(((6 - Math.min(monthsLeft, 6)) / 6) * 100);
+                const barColor = pct >= 80 ? '#DC2626' : pct >= 50 ? '#D97706' : '#F59E0B';
+                urgencyBadge = `<span style="display:inline-flex;align-items:center;gap:3px;background:#FEE2E2;color:#991B1B;font-size:8px;font-weight:800;padding:2px 7px;border-radius:999px;letter-spacing:0.5px;text-transform:uppercase;margin-left:6px;">🔴 ${monthsLeft.toFixed(1)} meses</span>`;
+                urgencyBar = `
+                    <div style="margin:5px 0 2px 0;background:#F1F5F9;border-radius:4px;height:4px;overflow:hidden;" title="Urgencia: ${pct}%">
+                        <div style="width:${pct}%;height:100%;background:${barColor};border-radius:4px;transition:width .3s;"></div>
+                    </div>
+                    <p style="font-size:8.5px;color:#94A3B8;font-weight:500;margin-bottom:4px;">Urgencia: ${pct}% — faltan ${monthsLeft.toFixed(1)} meses para el límite legal</p>`;
+            }
+        }
+
+        // Número de orden por urgencia (solo si vista "Todas")
+        const rankBadge = currentAlertFilter === 'all'
+            ? `<span style="font-size:8px;font-weight:700;color:#CBD5E1;margin-right:4px;">#${idx + 1}</span>`
+            : '';
+
         return `
-        <div class="alert-feed-item alert-${a.type}" onclick="showSummaryCard('${a.conv}')" style="cursor:pointer;">
+        <div class="alert-feed-item alert-${a.type}" onclick="showSummaryCard('${a.conv}')" style="cursor:pointer;${a.type === 'competencia' && (a._sortVal ?? 0) <= 0 ? 'border-left-color:#7F1D1D;background:linear-gradient(to right,#FFF1F1,#FFFFFF);' : ''}">
             <div class="alert-item-header">
                 <div class="alert-item-icon ${a.type}">
                     <i class="fa-solid ${a.icon}"></i>
                 </div>
-                <div style="flex:1;">
-                    <h4 class="alert-item-title">${a.title}</h4>
+                <div style="flex:1;min-width:0;">
+                    <h4 class="alert-item-title" style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;">${rankBadge}${a.title}${urgencyBadge}</h4>
                 </div>
             </div>
+            ${urgencyBar}
             <p style="font-size:10px;font-weight:500;color:#64748B;line-height:1.5;margin-bottom:6px;">${a.desc}</p>
             <div class="alert-item-meta">
                 <span class="alert-item-tag"><i class="fa-solid fa-hashtag" style="font-size:8px;"></i>${a.conv}</span>
@@ -3732,9 +4122,234 @@ window.toggleFisicoMetric = function (metric) {
     updateCharts();
 };
 
+// Almacena referencias a los 4 charts territoriales para destruirlos al redibujar
+const _territorialCharts = {};
+
+function updateTerritorialCharts() {
+    if (typeof Chart === 'undefined') return;
+
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#94a3b8' : '#64748b';
+    const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.04)';
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    const formatKm = (v) => `${(v / 1000).toFixed(1)} km`;
+    const formatBillones = (v) => {
+        if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}B`;
+        if (v >= 1e9)  return `$${(v / 1e9).toFixed(1)}MM`;
+        if (v >= 1e6)  return `$${(v / 1e6).toFixed(1)}M`;
+        return `$${v.toFixed(0)}`;
+    };
+
+    const makeChart = (id, config) => {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        if (_territorialCharts[id]) { _territorialCharts[id].destroy(); }
+        _territorialCharts[id] = new Chart(canvas, config);
+    };
+
+    // ── Acumular datos ────────────────────────────────────────────────────────
+    const subregLong  = {};   // { subregion: metros }
+    const subregInv   = {};   // { subregion: COP }
+    const muniLong    = {};   // { municipio: metros }
+    const muniInv     = {};   // { municipio: COP }
+
+    filteredData.forEach(r => {
+        const muni = String(r['MUNICIPIO'] || 'S/D').trim();
+        const sub  = getSubregion(muni) || 'Otras';
+        const longM = getRowLongitudContratada(r) || 0;
+        const inv   = (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
+
+        subregLong[sub]  = (subregLong[sub]  || 0) + longM;
+        subregInv[sub]   = (subregInv[sub]   || 0) + inv;
+        muniLong[muni]   = (muniLong[muni]   || 0) + longM;
+        muniInv[muni]    = (muniInv[muni]    || 0) + inv;
+    });
+
+    // ── GRÁFICO 1: Longitud por Subregión (barras verticales) ─────────────────
+    {
+        const sorted = Object.entries(subregLong).sort((a, b) => b[1] - a[1]);
+        const labels = sorted.map(([k]) => k);
+        const data   = sorted.map(([, v]) => v / 1000); // km
+
+        makeChart('chart-longitud-subregion', {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Longitud (km)',
+                    data,
+                    backgroundColor: data.map((v) => {
+                        const max = data[0] || 1;
+                        const alpha = 0.35 + 0.65 * (v / max);
+                        return `rgba(11,86,64,${alpha.toFixed(2)})`;
+                    }),
+                    borderRadius: 4,
+                    borderSkipped: false,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(1)} km` } }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: textColor, font: { size: 7.5, weight: '600' }, maxRotation: 30, minRotation: 20 },
+                        grid: { display: false }
+                    },
+                    y: {
+                        ticks: { color: textColor, font: { size: 7.5 }, callback: v => `${v}km` },
+                        grid: { color: gridColor }
+                    }
+                }
+            }
+        });
+    }
+
+    // ── GRÁFICO 2: Inversión por Subregión (barras verticales) ────────────────
+    {
+        const sorted = Object.entries(subregInv).sort((a, b) => b[1] - a[1]);
+        const labels = sorted.map(([k]) => k);
+        const data   = sorted.map(([, v]) => v);
+
+        const greenShades = [
+            '#0B5640','#0D6B4E','#0F7A59','#118A64','#14A376',
+            '#17BB88','#1DD3A0','#22C55E','#4ADE80','#86EFAC'
+        ];
+
+        makeChart('chart-inversion-subregion', {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Inversión',
+                    data,
+                    backgroundColor: labels.map((_, i) => greenShades[i % greenShades.length]),
+                    borderRadius: 4,
+                    borderSkipped: false,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ` ${formatBillones(ctx.parsed.y)}` } }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: textColor, font: { size: 7.5, weight: '600' }, maxRotation: 30, minRotation: 20 },
+                        grid: { display: false }
+                    },
+                    y: {
+                        ticks: { color: textColor, font: { size: 7.5 }, callback: v => formatBillones(v) },
+                        grid: { color: gridColor }
+                    }
+                }
+            }
+        });
+    }
+
+    // ── GRÁFICO 3: Top 10 Municipios por Longitud (barras verticales) ──────────
+    {
+        const sorted = Object.entries(muniLong)
+            .sort((a, b) => b[1] - a[1]).slice(0, 10);
+        const labels = sorted.map(([k]) => k);
+        const data   = sorted.map(([, v]) => v / 1000);
+
+        makeChart('chart-top-municipios-longitud', {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Longitud (km)',
+                    data,
+                    backgroundColor: data.map((v) => {
+                        const max = data[0] || 1;
+                        const alpha = 0.45 + 0.55 * (v / max);
+                        return `rgba(11,86,64,${alpha.toFixed(2)})`;
+                    }),
+                    borderRadius: 4,
+                    borderSkipped: false,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(1)} km` } }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: textColor, font: { size: 7.5 }, maxRotation: 35, minRotation: 25 },
+                        grid: { display: false }
+                    },
+                    y: {
+                        ticks: { color: textColor, font: { size: 7.5 }, callback: v => `${v}km` },
+                        grid: { color: gridColor }
+                    }
+                }
+            }
+        });
+    }
+
+    // ── GRÁFICO 4: Top 10 Municipios por Inversión (barras verticales) ────────
+    {
+        const sorted = Object.entries(muniInv)
+            .sort((a, b) => b[1] - a[1]).slice(0, 10);
+        const labels = sorted.map(([k]) => k);
+        const data   = sorted.map(([, v]) => v);
+
+        makeChart('chart-top-municipios-inversion', {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Inversión',
+                    data,
+                    backgroundColor: data.map((v) => {
+                        const max = data[0] || 1;
+                        const alpha = 0.35 + 0.65 * (v / max);
+                        return `rgba(11,86,64,${alpha.toFixed(2)})`;
+                    }),
+                    borderRadius: 4,
+                    borderSkipped: false,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ` ${formatBillones(ctx.parsed.y)}` } }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: textColor, font: { size: 7.5 }, maxRotation: 35, minRotation: 25 },
+                        grid: { display: false }
+                    },
+                    y: {
+                        ticks: { color: textColor, font: { size: 7.5 }, callback: v => formatBillones(v) },
+                        grid: { color: gridColor }
+                    }
+                }
+            }
+        });
+    }
+}
+
 function updateCharts() {
     if (typeof Chart === 'undefined') return;
     const hoverCursor = (e, el) => { e.native.target.style.cursor = el[0] ? 'pointer' : 'default'; };
+
 
     const canvasEstado = document.getElementById('chart-estado');
     if (canvasEstado) {
@@ -8903,7 +9518,1111 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ejecución inicial
     updateActiveFiltersBadge();
     updateMapActiveFiltersBadge();
+    if (typeof initSyntheticMap === 'function') {
+        setTimeout(initSyntheticMap, 200);
+    }
 });
+
+// =============================================================================
+// GEOVISOR TERRITORIAL SINTÉTICO MINIMALISTA (PESTAÑA RESUMEN EJECUTIVO)
+// =============================================================================
+let synMap = null;
+let synMapReady = false;
+let synMpioData = null;
+let synKmlGeojson = null;
+let synVialData = { primaria: null, secundaria: null, terciaria: null };
+let synCurrentPopup = null;
+let synLayersState = {
+    tramos: true,
+    municipios: true,
+    primaria: true,
+    secundaria: true,
+    terciaria: true
+};
+let synActiveMode = 'general';
+
+async function initSyntheticMap() {
+    const container = document.getElementById('synthetic-map');
+    if (!container || synMap) return;
+
+    try {
+        synMap = new maplibregl.Map({
+            container: 'synthetic-map',
+            center: [-75.55, 6.85],
+            zoom: 7.2,
+            pitch: 0,
+            bearing: 0,
+            maxZoom: 18,
+            minZoom: 5,
+            attributionControl: false
+        });
+
+        // Estilo minimalista claro Positron
+        synMap.setStyle('https://tiles.openfreemap.org/styles/positron');
+
+        synMap.addControl(new maplibregl.NavigationControl({ showCompass: false, showZoom: true }), 'bottom-right');
+
+        synMap.on('load', async () => {
+            synMapReady = true;
+            const loadingBadge = document.getElementById('synthetic-map-loading-badge');
+            if (loadingBadge) loadingBadge.classList.remove('hidden');
+
+            // 1. CARGAR Y PREPARAR MUNICIPIOS DE ANTIOQUIA (Capa base de polígonos)
+            try {
+                const resp = await fetch('./mpio.json');
+                if (resp.ok) {
+                    let mpioData = await resp.json();
+                    mpioData.features = mpioData.features.filter(f => {
+                        const dpto = String(f.properties.DPTO || '').trim();
+                        const nomDpt = String(f.properties.NOMBRE_DPT || f.properties.NOM_DEPART || '').trim().toUpperCase();
+                        return dpto === '05' || dpto === '5' || nomDpt.includes('ANTIOQUIA');
+                    });
+
+                    mpioData.features.forEach((f, idx) => {
+                        f.id = idx + 1;
+                        ['NOMBRE_MPI', 'MPIO_CNMBR', 'NOM_MPIO'].forEach(key => {
+                            if (f.properties[key]) {
+                                f.properties[key] = String(f.properties[key])
+                                    .replace(/\uFFFD/g, 'Ñ')
+                                    .replace(/\?/g, 'Ñ')
+                                    .replace(/¥/g, 'Ñ')
+                                    .replace(/\u00A5/g, 'Ñ');
+                            }
+                        });
+                    });
+
+                    synMpioData = mpioData;
+                    applyIntervenedStatusToMpio(synMpioData);
+
+                    // --- DISOLVER MUNICIPIOS EN CONTORNO DEPARTAMENTAL (TURF.JS) ---
+                    let antioquiaFeature = null;
+                    if (typeof turf !== 'undefined') {
+                        try {
+                            let deptUnioned = JSON.parse(JSON.stringify(mpioData.features[0]));
+                            for (let i = 1; i < mpioData.features.length; i++) {
+                                try {
+                                    deptUnioned = turf.union(deptUnioned, mpioData.features[i]);
+                                } catch (e) { }
+                            }
+                            if (deptUnioned) {
+                                deptUnioned.properties = { nombre: 'ANTIOQUIA' };
+                                antioquiaFeature = deptUnioned;
+                            }
+                        } catch (turfError) {
+                            console.warn("Error al disolver departamento en mapa sintético:", turfError);
+                        }
+                    }
+
+                    // --- MÁSCARA EXTERIOR INVERTIDA: Opacar todo fuera de Antioquia ---
+                    if (antioquiaFeature) {
+                        try {
+                            const worldPoly = [[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]];
+                            let antioquiaRings = [];
+                            if (antioquiaFeature.geometry.type === 'Polygon') {
+                                antioquiaRings = [antioquiaFeature.geometry.coordinates[0]];
+                            } else if (antioquiaFeature.geometry.type === 'MultiPolygon') {
+                                antioquiaRings = antioquiaFeature.geometry.coordinates.map(poly => poly[0]);
+                            }
+                            if (antioquiaRings.length > 0) {
+                                const maskGeoJSON = {
+                                    type: 'FeatureCollection',
+                                    features: [{
+                                        type: 'Feature',
+                                        properties: {},
+                                        geometry: {
+                                            type: 'Polygon',
+                                            coordinates: [worldPoly, ...antioquiaRings]
+                                        }
+                                    }]
+                                };
+                                synMap.addSource('syn-outside-antioquia-src', { type: 'geojson', data: maskGeoJSON });
+
+                                synMap.addLayer({
+                                    id: 'syn-outside-antioquia-mask',
+                                    type: 'fill',
+                                    source: 'syn-outside-antioquia-src',
+                                    layout: { visibility: 'visible' },
+                                    paint: {
+                                        'fill-color': '#0F172A',
+                                        'fill-opacity': 0.58
+                                    }
+                                });
+
+                                // Contorno perimetral del departamento de Antioquia
+                                synMap.addSource('syn-antioquia-dpto-src', { type: 'geojson', data: antioquiaFeature });
+                                synMap.addLayer({
+                                    id: 'syn-antioquia-dpto-line',
+                                    type: 'line',
+                                    source: 'syn-antioquia-dpto-src',
+                                    layout: { visibility: 'visible' },
+                                    paint: {
+                                        'line-color': '#0B5640',
+                                        'line-width': 2.2,
+                                        'line-opacity': 0.95
+                                    }
+                                });
+                            }
+                        } catch (maskErr) {
+                            console.warn("Error creando máscara exterior sintética:", maskErr);
+                        }
+                    }
+
+                    synMap.addSource('syn-municipios-src', { type: 'geojson', data: synMpioData });
+
+                    // Capa de Relleno: Verde oscuro para municipios impactados, Gris muy suave para otros
+                    synMap.addLayer({
+                        id: 'syn-municipios-fill',
+                        type: 'fill',
+                        source: 'syn-municipios-src',
+                        layout: { visibility: synLayersState.municipios ? 'visible' : 'none' },
+                        paint: {
+                            'fill-color': [
+                                'case',
+                                ['boolean', ['get', '_intervenido'], false],
+                                '#0B5640', // Verde institucional municipios impactados
+                                '#F1F5F9'  // Gris claro suave sin convenios
+                            ],
+                            'fill-opacity': [
+                                'case',
+                                ['boolean', ['get', '_intervenido'], false],
+                                0.90,
+                                0.60
+                            ]
+                        }
+                    });
+
+                    // Capa de Hover interactivo
+                    synMap.addLayer({
+                        id: 'syn-municipios-hover',
+                        type: 'fill',
+                        source: 'syn-municipios-src',
+                        layout: { visibility: synLayersState.municipios ? 'visible' : 'none' },
+                        paint: {
+                            'fill-color': '#018D38',
+                            'fill-opacity': [
+                                'case',
+                                ['boolean', ['feature-state', 'hover'], false],
+                                0.45,
+                                0
+                            ]
+                        }
+                    });
+
+                    // Capa de Contorno
+                    synMap.addLayer({
+                        id: 'syn-municipios-line',
+                        type: 'line',
+                        source: 'syn-municipios-src',
+                        layout: { visibility: synLayersState.municipios ? 'visible' : 'none' },
+                        paint: {
+                            'line-color': [
+                                'case',
+                                ['boolean', ['get', '_intervenido'], false],
+                                '#FFFFFF',
+                                '#CBD5E1'
+                            ],
+                            'line-width': [
+                                'case',
+                                ['boolean', ['get', '_intervenido'], false],
+                                1.1,
+                                0.6
+                            ],
+                            'line-opacity': 0.9
+                        }
+                    });
+
+                    // Capa de Etiquetas de Texto
+                    synMap.addLayer({
+                        id: 'syn-municipios-labels',
+                        type: 'symbol',
+                        source: 'syn-municipios-src',
+                        minzoom: 6.8,
+                        layout: {
+                            visibility: synLayersState.municipios ? 'visible' : 'none',
+                            'text-field': ['get', 'NOMBRE_MPI'],
+                            'text-size': [
+                                'interpolate', ['linear'], ['zoom'],
+                                7, 8.5,
+                                9, 10.5,
+                                12, 12.5
+                            ],
+                            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                            'text-anchor': 'center',
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': [
+                                'case',
+                                ['boolean', ['get', '_intervenido'], false],
+                                '#FFFFFF',
+                                '#475569'
+                            ],
+                            'text-halo-color': [
+                                'case',
+                                ['boolean', ['get', '_intervenido'], false],
+                                '#064E3B',
+                                '#FFFFFF'
+                            ],
+                            'text-halo-width': 1.6
+                        }
+                    });
+                }
+            } catch (err) {
+                console.warn('Error cargando municipios en mapa sintético:', err);
+            }
+
+            // 2. CARGAR RED VIAL OFICIAL (PRIMARIA, SECUNDARIA, TERCIARIA)
+            async function loadSynVial(id, url, color, width) {
+                try {
+                    const resp = await fetch(url);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        synVialData[id] = data;
+                        synMap.addSource(`syn-vial-${id}-src`, { type: 'geojson', data });
+
+                        synMap.addLayer({
+                            id: `syn-vial-${id}`,
+                            type: 'line',
+                            source: `syn-vial-${id}-src`,
+                            layout: { visibility: synLayersState[id] ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' },
+                            paint: {
+                                'line-color': color,
+                                'line-width': [
+                                    'interpolate', ['linear'], ['zoom'],
+                                    7, width * 0.6,
+                                    10, width,
+                                    13, width * 1.5
+                                ],
+                                'line-opacity': 0.8
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.warn(`Error cargando red vial ${id} en mapa sintético:`, e);
+                }
+            }
+
+            await loadSynVial('terciaria', './data/Terciaria.geojson', '#d69e2e', 1.2);
+            await loadSynVial('secundaria', './data/Secundaria.geojson', '#38a169', 1.8);
+            await loadSynVial('primaria', './data/Primaria.geojson', '#e53e3e', 2.2);
+            // 3. FUENTE Y CAPAS DE TRAMOS INTERVENIDOS KML (ALTO CONTRASTE VERDE METÁLICO NEÓN + BEACON POINTS)
+            synMap.addSource('syn-tramos-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+
+            // 3.1 Contorno exterior oscuro sólido de alto contraste (para separar del fondo verde)
+            synMap.addLayer({
+                id: 'syn-tramos-casing',
+                type: 'line',
+                source: 'syn-tramos-src',
+                filter: ['!=', '$type', 'Point'],
+                layout: { visibility: synLayersState.tramos ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-color': '#032B18',
+                    'line-width': [
+                        'interpolate', ['linear'], ['zoom'],
+                        6, 5.5,
+                        9, 7.5,
+                        12, 10.5,
+                        15, 14.0
+                    ],
+                    'line-opacity': 1
+                }
+            });
+
+            // 3.2 Línea principal verde metálico neón vibrante
+            synMap.addLayer({
+                id: 'syn-tramos-line',
+                type: 'line',
+                source: 'syn-tramos-src',
+                filter: ['!=', '$type', 'Point'],
+                layout: { visibility: synLayersState.tramos ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-color': [
+                        'case',
+                        ['boolean', ['feature-state', 'hover'], false],
+                        '#FFFFFF',
+                        '#00FF88'
+                    ],
+                    'line-width': [
+                        'interpolate', ['linear'], ['zoom'],
+                        6, 3.0,
+                        9, 5.0,
+                        12, 7.0,
+                        15, 10.0
+                    ],
+                    'line-opacity': 1
+                }
+            });
+
+            // 3.3 Núcleo central blanco reflectivo
+            synMap.addLayer({
+                id: 'syn-tramos-core',
+                type: 'line',
+                source: 'syn-tramos-src',
+                filter: ['!=', '$type', 'Point'],
+                layout: { visibility: synLayersState.tramos ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-color': '#FFFFFF',
+                    'line-width': [
+                        'interpolate', ['linear'], ['zoom'],
+                        6, 1.5,
+                        9, 2.2,
+                        12, 3.2,
+                        15, 4.5
+                    ],
+                    'line-opacity': 0.95
+                }
+            });
+
+            // 3.4 Puntos Beacon KML: Borde exterior oscuro
+            synMap.addLayer({
+                id: 'syn-tramos-points-casing',
+                type: 'circle',
+                source: 'syn-tramos-src',
+                filter: ['==', '$type', 'Point'],
+                layout: { visibility: synLayersState.tramos ? 'visible' : 'none' },
+                paint: {
+                    'circle-color': '#032B18',
+                    'circle-radius': [
+                        'interpolate', ['linear'], ['zoom'],
+                        6, 3.5,
+                        9, 5.5,
+                        12, 7.5,
+                        15, 10.0
+                    ],
+                    'circle-opacity': 1
+                }
+            });
+
+            // 3.5 Puntos Beacon KML: Cuerpo verde metálico neón
+            synMap.addLayer({
+                id: 'syn-tramos-points',
+                type: 'circle',
+                source: 'syn-tramos-src',
+                filter: ['==', '$type', 'Point'],
+                layout: { visibility: synLayersState.tramos ? 'visible' : 'none' },
+                paint: {
+                    'circle-color': [
+                        'case',
+                        ['boolean', ['feature-state', 'hover'], false],
+                        '#FFFFFF',
+                        '#00FF88'
+                    ],
+                    'circle-radius': [
+                        'interpolate', ['linear'], ['zoom'],
+                        6, 2.5,
+                        9, 4.0,
+                        12, 5.5,
+                        15, 7.5
+                    ],
+                    'circle-opacity': 1
+                }
+            });
+
+            // 3.6 Puntos Beacon KML: Núcleo blanco
+            synMap.addLayer({
+                id: 'syn-tramos-points-core',
+                type: 'circle',
+                source: 'syn-tramos-src',
+                filter: ['==', '$type', 'Point'],
+                layout: { visibility: synLayersState.tramos ? 'visible' : 'none' },
+                paint: {
+                    'circle-color': '#FFFFFF',
+                    'circle-radius': [
+                        'interpolate', ['linear'], ['zoom'],
+                        6, 0.9,
+                        9, 1.5,
+                        12, 2.2,
+                        15, 3.0
+                    ],
+                    'circle-opacity': 1
+                }
+            });
+
+            // 3.7 Capa invisible de Hitbox amplia para facilitar la selección con el cursor (32px)
+            synMap.addLayer({
+                id: 'syn-tramos-hitbox',
+                type: 'line',
+                source: 'syn-tramos-src',
+                layout: { visibility: synLayersState.tramos ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-color': '#000000',
+                    'line-width': 32,
+                    'line-opacity': 0.0001
+                }
+            });
+
+            // 4. CARGAR TRAMOS KML DE CONVENIOS (PARALELO)
+            await renderSyntheticKmlFeatures();
+
+            if (loadingBadge) loadingBadge.classList.add('hidden');
+
+            // 5. EVENTOS DE HOVER Y CLICK UNIFICADOS CON MÁXIMA PRIORIDAD PARA TRAMOS KML
+            let synHoveredMuniId = null;
+            let synHoveredTramoId = null;
+
+            synMap.on('mousemove', (e) => {
+                // 1. Prioridad tramo KML
+                if (synLayersState.tramos) {
+                    const buffer = 14;
+                    const bbox = [
+                        [e.point.x - buffer, e.point.y - buffer],
+                        [e.point.x + buffer, e.point.y + buffer]
+                    ];
+                    const tramoHits = synMap.queryRenderedFeatures(bbox, {
+                        layers: ['syn-tramos-hitbox', 'syn-tramos-line', 'syn-tramos-points', 'syn-tramos-casing'].filter(id => synMap.getLayer(id))
+                    });
+
+                    if (tramoHits && tramoHits.length > 0) {
+                        if (synHoveredMuniId !== null) {
+                            synMap.setFeatureState({ source: 'syn-municipios-src', id: synHoveredMuniId }, { hover: false });
+                            synHoveredMuniId = null;
+                        }
+                        const newTramoId = tramoHits[0].id;
+                        if (synHoveredTramoId !== newTramoId) {
+                            if (synHoveredTramoId !== null) {
+                                synMap.setFeatureState({ source: 'syn-tramos-src', id: synHoveredTramoId }, { hover: false });
+                            }
+                            synHoveredTramoId = newTramoId;
+                            if (synHoveredTramoId !== undefined) {
+                                synMap.setFeatureState({ source: 'syn-tramos-src', id: synHoveredTramoId }, { hover: true });
+                            }
+                        }
+                        synMap.getCanvas().style.cursor = 'pointer';
+                        return;
+                    }
+                }
+
+                if (synHoveredTramoId !== null) {
+                    synMap.setFeatureState({ source: 'syn-tramos-src', id: synHoveredTramoId }, { hover: false });
+                    synHoveredTramoId = null;
+                }
+
+                // 2. Hover en municipio
+                if (synLayersState.municipios) {
+                    const muniHits = synMap.queryRenderedFeatures(e.point, {
+                        layers: ['syn-municipios-fill'].filter(id => synMap.getLayer(id))
+                    });
+
+                    if (muniHits && muniHits.length > 0) {
+                        const newMuniId = muniHits[0].id;
+                        if (synHoveredMuniId !== newMuniId) {
+                            if (synHoveredMuniId !== null) {
+                                synMap.setFeatureState({ source: 'syn-municipios-src', id: synHoveredMuniId }, { hover: false });
+                            }
+                            synHoveredMuniId = newMuniId;
+                            if (synHoveredMuniId !== undefined) {
+                                synMap.setFeatureState({ source: 'syn-municipios-src', id: synHoveredMuniId }, { hover: true });
+                            }
+                        }
+                        synMap.getCanvas().style.cursor = 'pointer';
+                        return;
+                    }
+                }
+
+                if (synHoveredMuniId !== null) {
+                    synMap.setFeatureState({ source: 'syn-municipios-src', id: synHoveredMuniId }, { hover: false });
+                    synHoveredMuniId = null;
+                }
+                synMap.getCanvas().style.cursor = '';
+            });
+
+            synMap.on('mouseleave', () => {
+                if (synHoveredTramoId !== null) {
+                    synMap.setFeatureState({ source: 'syn-tramos-src', id: synHoveredTramoId }, { hover: false });
+                    synHoveredTramoId = null;
+                }
+                if (synHoveredMuniId !== null) {
+                    synMap.setFeatureState({ source: 'syn-municipios-src', id: synHoveredMuniId }, { hover: false });
+                    synHoveredMuniId = null;
+                }
+                synMap.getCanvas().style.cursor = '';
+            });
+
+            // Dispatcher de clics con prioridad estricta: Tramo KML > Municipio
+            synMap.on('click', (e) => {
+                // 1. Verificar primero si se clickeó sobre o cerca de un tramo KML (radio de 18px)
+                if (synLayersState.tramos) {
+                    const buffer = 18;
+                    const bbox = [
+                        [e.point.x - buffer, e.point.y - buffer],
+                        [e.point.x + buffer, e.point.y + buffer]
+                    ];
+                    const tramoHits = synMap.queryRenderedFeatures(bbox, {
+                        layers: ['syn-tramos-hitbox', 'syn-tramos-line', 'syn-tramos-points', 'syn-tramos-casing'].filter(id => synMap.getLayer(id))
+                    });
+
+                    if (tramoHits && tramoHits.length > 0) {
+                        showSyntheticTramoPopup(tramoHits[0], e.lngLat);
+                        return; // Detener aquí para que no abra el popup de municipio
+                    }
+                }
+
+                // 2. Si no es un tramo, verificar si es un municipio
+                if (synLayersState.municipios) {
+                    const muniHits = synMap.queryRenderedFeatures(e.point, {
+                        layers: ['syn-municipios-fill'].filter(id => synMap.getLayer(id))
+                    });
+
+                    if (muniHits && muniHits.length > 0) {
+                        showSyntheticMuniPopup(muniHits[0], e.lngLat);
+                        return;
+                    }
+                }
+            });
+
+            // Asegurar que las capas de tramos queden estrictamente arriba
+            ensureSynTramosOnTop();
+
+            // Ajustar encuadre general a Antioquia
+            synMap.fitBounds([
+                [-77.15, 5.4],
+                [-73.85, 8.88]
+            ], { padding: { top: 20, bottom: 20, left: 20, right: 20 }, animate: false });
+        });
+
+        // Controles de eventos de la interfaz
+        setupSyntheticControls();
+
+    } catch (e) {
+        console.error('Error inicializando mapa sintético:', e);
+    }
+}
+
+function showSyntheticTramoPopup(feature, lngLat) {
+    if (!feature || !feature.properties) return;
+    const convNum = String(feature.properties.CONVENIO || '').trim();
+    const row = rawData.find(r => String(r['CONVENIO']).trim() === convNum);
+    
+    if (row) {
+        if (lngLat) {
+            synMap.easeTo({ center: lngLat, offset: [0, 90], duration: 350 });
+        }
+
+        const sysState = typeof getSystemState === 'function' ? getSystemState(row['ESTADO CONVENIO']) : { hex: '#0B5640', label: row['ESTADO CONVENIO'] || 'Activo', badgeClass: 'bg-emerald-50 text-emerald-800' };
+        const fisPct = (row['FISICO_NORM'] || 0).toFixed(1);
+        const lonM = getRowLongitudContratada(row);
+        const lonKm = (lonM / 1000).toFixed(2);
+        const valTotal = formatCurrency(row['VALOR TOTAL'] || row['APORTE DEPARTAMENTO'] || 0);
+
+        const html = `
+            <div style="font-family:'Plus Jakarta Sans',sans-serif;padding:2px;min-width:230px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.12);">
+                    <span style="font-size:9px;font-weight:800;color:#00B0FF;background:rgba(0,176,255,0.18);padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:0.06em;">
+                        <i class="fa-solid fa-route mr-1"></i>Tramo KML
+                    </span>
+                    <span style="font-size:9px;font-weight:700;color:#FFFFFF;background:${sysState.hex};padding:2px 8px;border-radius:99px;">
+                        ${sysState.label}
+                    </span>
+                </div>
+                <h4 style="font-size:14px;font-weight:900;color:#FFFFFF;margin:0 0 6px;letter-spacing:-0.01em;">Convenio ${convNum}</h4>
+                <div style="display:grid;grid-template-columns:1fr;gap:4px;font-size:10.5px;color:#CBD5E1;margin-bottom:8px;">
+                    <p style="margin:0;"><strong style="color:#94A3B8;">Municipio:</strong> <span style="color:#FFFFFF;font-weight:700;">${row['MUNICIPIO'] || 'N/A'}</span></p>
+                    <p style="margin:0;"><strong style="color:#94A3B8;">Subregión:</strong> <span>${row['SUBREGION'] || row['SUBREGIÓN'] || 'N/A'}</span></p>
+                    <p style="margin:0;"><strong style="color:#94A3B8;">Supervisor:</strong> <span>${row['SUPERVISOR'] || 'N/A'}</span></p>
+                    <div style="display:flex;justify-content:space-between;background:rgba(255,255,255,0.06);padding:5px 8px;border-radius:6px;margin-top:4px;">
+                        <span><strong style="color:#94A3B8;">Avance:</strong> <span style="color:#00B0FF;font-weight:800;">${fisPct}%</span></span>
+                        <span><strong style="color:#94A3B8;">Long:</strong> <span style="color:#FFFFFF;font-weight:700;">${lonKm} km</span></span>
+                    </div>
+                    <p style="margin:4px 0 0;"><strong style="color:#94A3B8;">Inversión:</strong> <span style="color:#FBBF24;font-weight:800;">${valTotal}</span></p>
+                </div>
+                <button type="button" class="btn-popup-ficha" onclick="openModalFromMap('${convNum}')">
+                    <i class="fa-solid fa-folder-open mr-1.5"></i> FICHA TÉCNICA
+                </button>
+            </div>
+        `;
+
+        if (synCurrentPopup) synCurrentPopup.remove();
+        synCurrentPopup = new maplibregl.Popup({
+            closeButton: true,
+            maxWidth: '300px',
+            className: 'synthetic-tooltip',
+            anchor: 'bottom',
+            offset: [0, -10]
+        })
+        .setLngLat(lngLat || synMap.getCenter())
+        .setHTML(html)
+        .addTo(synMap);
+    }
+}
+
+function showSyntheticMuniPopup(feature, lngLat) {
+    if (!feature || !feature.properties) return;
+    if (lngLat) {
+        synMap.easeTo({ center: lngLat, offset: [0, 50], duration: 350 });
+    }
+    const props = feature.properties;
+    const muniName = props.NOMBRE_MPI || props.MPIO_CNMBR || props.NOM_MPIO || '';
+    const count = props._convCount || 0;
+    const isInterv = props._intervenido;
+
+    const html = `
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;padding:4px 6px;">
+            <p style="font-size:12px;font-weight:800;color:#FFFFFF;margin:0 0 2px;">${muniName}</p>
+            <p style="font-size:10.5px;font-weight:600;color:${isInterv ? '#00B0FF' : '#94A3B8'};margin:0;">
+                <i class="fa-solid ${isInterv ? 'fa-circle-check' : 'fa-circle-info'} mr-1"></i>
+                ${isInterv ? `Municipio Impactado: ${count} convenio(s)` : 'Sin convenios en el filtro'}
+            </p>
+        </div>
+    `;
+
+    if (synCurrentPopup) synCurrentPopup.remove();
+    synCurrentPopup = new maplibregl.Popup({
+        closeButton: true,
+        maxWidth: '260px',
+        className: 'synthetic-tooltip',
+        anchor: 'bottom',
+        offset: [0, -10]
+    })
+    .setLngLat(lngLat || synMap.getCenter())
+    .setHTML(html)
+    .addTo(synMap);
+}
+
+function ensureSynTramosOnTop() {
+    if (!synMap || !synMapReady) return;
+    const topLayers = ['syn-tramos-glow', 'syn-tramos-line', 'syn-tramos-hitbox'];
+    topLayers.forEach(lid => {
+        if (synMap.getLayer(lid)) {
+            synMap.moveLayer(lid);
+        }
+    });
+}
+
+function applyIntervenedStatusToMpio(mpioData) {
+    if (!mpioData || !mpioData.features) return;
+    const norm = (s) => String(s || '')
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Z ]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const muniCounts = {};
+    (filteredData && filteredData.length > 0 ? filteredData : rawData).forEach(r => {
+        const m = norm(r['MUNICIPIO']);
+        if (m) {
+            muniCounts[m] = (muniCounts[m] || 0) + 1;
+        }
+    });
+
+    mpioData.features.forEach(f => {
+        const rawName = f.properties.NOMBRE_MPI || f.properties.MPIO_CNMBR || f.properties.NOM_MPIO || '';
+        const mNorm = norm(rawName);
+        const count = muniCounts[mNorm] || 0;
+        f.properties._intervenido = count > 0;
+        f.properties._convCount = count;
+    });
+}
+
+const synAllKnownKmls = [
+    '24AS111B2059','25AS111B2773','25AS111B2774','25AS111B2777','25AS111B2779',
+    '25AS111B2780','25AS111B2781','25AS111B2783','25AS111B2784','25AS111B2785',
+    '25AS111B2786','25AS111B2787','25AS111B2788','25AS111B2789','25AS111B2790',
+    '25AS111B2791','25AS111B2792','25AS111B2793','25AS111B2794','25AS111B2795',
+    '25AS111B2796','25AS111B2797','25AS111B2798','25AS111B2799','25AS111B2800',
+    '25AS111B2801','25AS111B2802','25AS111B2803','25AS111B2809','25AS111B2813',
+    '25AS111B2814','25AS111B2815','25AS111B2816','25AS111B2817','25AS111B2818',
+    '25AS111B2819','4600018194','4600018676'
+];
+const synKmlCache = {};
+
+function parseKMLStringToGeoJSON(kmlText, convNum) {
+    try {
+        const dom = new DOMParser().parseFromString(kmlText, 'text/xml');
+        const features = [];
+
+        function parseCoords(coordStr) {
+            if (!coordStr) return [];
+            return coordStr.trim().split(/\s+/).map(pair => {
+                const parts = pair.split(',').map(Number);
+                return [parts[0], parts[1]]; // [lng, lat]
+            }).filter(pt => !isNaN(pt[0]) && !isNaN(pt[1]) && isFinite(pt[0]) && isFinite(pt[1]));
+        }
+
+        const placemarks = dom.getElementsByTagName('Placemark');
+        for (let i = 0; i < placemarks.length; i++) {
+            const p = placemarks[i];
+            const nameEl = p.getElementsByTagName('name')[0];
+            const name = nameEl ? nameEl.textContent.trim() : `Tramo ${convNum}`;
+
+            // LineString directo
+            const lineStrings = p.getElementsByTagName('LineString');
+            for (let j = 0; j < lineStrings.length; j++) {
+                const cEl = lineStrings[j].getElementsByTagName('coordinates')[0];
+                if (cEl) {
+                    const coords = parseCoords(cEl.textContent);
+                    if (coords.length > 0) {
+                        features.push({
+                            type: 'Feature',
+                            properties: { CONVENIO: convNum, name: name },
+                            geometry: { type: 'LineString', coordinates: coords }
+                        });
+                    }
+                }
+            }
+
+            // MultiGeometry LineStrings
+            const multiGeoms = p.getElementsByTagName('MultiGeometry');
+            for (let j = 0; j < multiGeoms.length; j++) {
+                const mLines = multiGeoms[j].getElementsByTagName('LineString');
+                for (let k = 0; k < mLines.length; k++) {
+                    const cEl = mLines[k].getElementsByTagName('coordinates')[0];
+                    if (cEl) {
+                        const coords = parseCoords(cEl.textContent);
+                        if (coords.length > 0) {
+                            features.push({
+                                type: 'Feature',
+                                properties: { CONVENIO: convNum, name: name },
+                                geometry: { type: 'LineString', coordinates: coords }
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Points
+            const points = p.getElementsByTagName('Point');
+            for (let j = 0; j < points.length; j++) {
+                const cEl = points[j].getElementsByTagName('coordinates')[0];
+                if (cEl) {
+                    const coords = parseCoords(cEl.textContent);
+                    if (coords.length > 0) {
+                        features.push({
+                            type: 'Feature',
+                            properties: { CONVENIO: convNum, name: name },
+                            geometry: { type: 'Point', coordinates: coords[0] }
+                        });
+                    }
+                }
+            }
+
+            // Polygons
+            const polygons = p.getElementsByTagName('Polygon');
+            for (let j = 0; j < polygons.length; j++) {
+                const linearRings = polygons[j].getElementsByTagName('LinearRing');
+                const rings = [];
+                for (let k = 0; k < linearRings.length; k++) {
+                    const cEl = linearRings[k].getElementsByTagName('coordinates')[0];
+                    if (cEl) {
+                        const coords = parseCoords(cEl.textContent);
+                        if (coords.length > 0) rings.push(coords);
+                    }
+                }
+                if (rings.length > 0) {
+                    features.push({
+                        type: 'Feature',
+                        properties: { CONVENIO: convNum, name: name },
+                        geometry: { type: 'Polygon', coordinates: rings }
+                    });
+                }
+            }
+        }
+
+        // Si no se encontraron Placemarks, buscar LineStrings directamente
+        if (features.length === 0) {
+            const allLineStrings = dom.getElementsByTagName('LineString');
+            for (let j = 0; j < allLineStrings.length; j++) {
+                const cEl = allLineStrings[j].getElementsByTagName('coordinates')[0];
+                if (cEl) {
+                    const coords = parseCoords(cEl.textContent);
+                    if (coords.length > 0) {
+                        features.push({
+                            type: 'Feature',
+                            properties: { CONVENIO: convNum },
+                            geometry: { type: 'LineString', coordinates: coords }
+                        });
+                    }
+                }
+            }
+        }
+
+        return features;
+    } catch (e) {
+        console.warn(`Error parseando KML ${convNum}:`, e);
+        return [];
+    }
+}
+
+async function renderSyntheticKmlFeatures() {
+    if (!synMap || !synMapReady) return;
+    
+    // Determinar qué convenios deben mostrarse
+    let convNums = [];
+    if (filteredData && filteredData.length > 0) {
+        const set = new Set();
+        filteredData.forEach(r => {
+            const c = String(r['CONVENIO'] || '').trim();
+            if (c) set.add(c);
+        });
+        convNums = Array.from(set);
+    } else if (rawData && rawData.length > 0) {
+        const set = new Set();
+        rawData.forEach(r => {
+            const c = String(r['CONVENIO'] || '').trim();
+            if (c) set.add(c);
+        });
+        convNums = Array.from(set);
+    } else {
+        convNums = synAllKnownKmls;
+    }
+
+    // Cargar y almacenar en caché los KMLs que falten
+    const toFetch = convNums.filter(num => !synKmlCache[num]);
+    if (toFetch.length > 0) {
+        const promises = toFetch.map(async (num) => {
+            try {
+                const kmlResp = await fetch(`./assets/mapas/${num}.kml`);
+                if (kmlResp.ok) {
+                    const kmlText = await kmlResp.text();
+                    synKmlCache[num] = parseKMLStringToGeoJSON(kmlText, num);
+                } else {
+                    const geoResp = await fetch(`./assets/mapas/${num}.geojson`);
+                    if (geoResp.ok) {
+                        const d = await geoResp.json();
+                        const feats = d.features || (d.geometry ? [d] : []);
+                        feats.forEach(f => {
+                            if (f && f.geometry) {
+                                f.properties = f.properties || {};
+                                f.properties.CONVENIO = num;
+                            }
+                        });
+                        synKmlCache[num] = feats;
+                    } else {
+                        synKmlCache[num] = [];
+                    }
+                }
+            } catch (e) {
+                synKmlCache[num] = [];
+            }
+        });
+        await Promise.all(promises);
+    }
+
+    // Unir todas las features activas y generar puntos beacon para cada tramo
+    const features = [];
+    convNums.forEach(num => {
+        const feats = synKmlCache[num] || [];
+        feats.forEach(f => {
+            features.push(f);
+            if (f.geometry) {
+                if (f.geometry.type === 'LineString' && f.geometry.coordinates && f.geometry.coordinates.length > 0) {
+                    const coords = f.geometry.coordinates;
+                    const midCoord = coords[Math.floor(coords.length / 2)];
+                    features.push({
+                        type: 'Feature',
+                        geometry: { type: 'Point', coordinates: midCoord },
+                        properties: { ...f.properties, _isTramoPoint: true }
+                    });
+                } else if (f.geometry.type === 'MultiLineString' && f.geometry.coordinates) {
+                    f.geometry.coordinates.forEach(line => {
+                        if (line.length > 0) {
+                            const midCoord = line[Math.floor(line.length / 2)];
+                            features.push({
+                                type: 'Feature',
+                                geometry: { type: 'Point', coordinates: midCoord },
+                                properties: { ...f.properties, _isTramoPoint: true }
+                            });
+                        }
+                    });
+                }
+            }
+        });
+    });
+
+    features.forEach((f, idx) => {
+        f.id = idx + 1;
+    });
+
+    synKmlGeojson = { type: 'FeatureCollection', features: features };
+    if (synMap.getSource('syn-tramos-src')) {
+        synMap.getSource('syn-tramos-src').setData(synKmlGeojson);
+    }
+    ensureSynTramosOnTop();
+}
+
+function setupSyntheticControls() {
+    const btnCentrar = document.getElementById('btn-synthetic-centrar');
+    if (btnCentrar) {
+        btnCentrar.addEventListener('click', () => {
+            if (synMap) {
+                synMap.fitBounds([
+                    [-77.15, 5.4],
+                    [-73.85, 8.88]
+                ], { padding: { top: 20, bottom: 20, left: 20, right: 20 }, duration: 900 });
+            }
+        });
+    }
+
+    const modeBtns = document.querySelectorAll('.synthetic-mode-btn');
+    modeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            modeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            synActiveMode = btn.getAttribute('data-mode');
+            applySyntheticMode(synActiveMode);
+        });
+    });
+
+    const tramoLayerIds = [
+        'syn-tramos-casing',
+        'syn-tramos-line',
+        'syn-tramos-core',
+        'syn-tramos-points-casing',
+        'syn-tramos-points',
+        'syn-tramos-points-core',
+        'syn-tramos-hitbox'
+    ];
+
+    const layerCheckboxes = {
+        tramos: ['syn-chk-tramos', tramoLayerIds],
+        municipios: ['syn-chk-municipios', ['syn-municipios-fill', 'syn-municipios-line', 'syn-municipios-labels', 'syn-municipios-hover']],
+        primaria: ['syn-chk-primaria', ['syn-vial-primaria']],
+        secundaria: ['syn-chk-secundaria', ['syn-vial-secundaria']],
+        terciaria: ['syn-chk-terciaria', ['syn-vial-terciaria']]
+    };
+
+    Object.entries(layerCheckboxes).forEach(([key, [chkId, layerIds]]) => {
+        const chk = document.getElementById(chkId);
+        if (chk) {
+            chk.addEventListener('change', (e) => {
+                const isChecked = e.target.checked;
+                synLayersState[key] = isChecked;
+                if (synMap && synMapReady) {
+                    layerIds.forEach(lid => {
+                        if (synMap.getLayer(lid)) {
+                            synMap.setLayoutProperty(lid, 'visibility', isChecked ? 'visible' : 'none');
+                        }
+                    });
+                    if (key === 'tramos' && isChecked) {
+                        ensureSynTramosOnTop();
+                    }
+                }
+            });
+        }
+    });
+}
+
+function setSynTramosVis(visible) {
+    const tramoLayerIds = [
+        'syn-tramos-casing',
+        'syn-tramos-line',
+        'syn-tramos-core',
+        'syn-tramos-points-casing',
+        'syn-tramos-points',
+        'syn-tramos-points-core',
+        'syn-tramos-hitbox'
+    ];
+    tramoLayerIds.forEach(lid => setSynLayerVis(lid, visible));
+}
+
+function applySyntheticMode(mode) {
+    if (!synMap || !synMapReady) return;
+    if (mode === 'general') {
+        setSynLayerVis('syn-municipios-fill', true);
+        setSynLayerVis('syn-municipios-line', true);
+        setSynLayerVis('syn-municipios-labels', true);
+        setSynTramosVis(true);
+        setSynLayerVis('syn-vial-primaria', true);
+        setSynLayerVis('syn-vial-secundaria', true);
+        setSynLayerVis('syn-vial-terciaria', true);
+        ensureSynTramosOnTop();
+    } else if (mode === 'subregional') {
+        setSynLayerVis('syn-municipios-fill', true);
+        setSynLayerVis('syn-municipios-labels', true);
+        setSynTramosVis(false);
+        setSynLayerVis('syn-vial-primaria', false);
+        setSynLayerVis('syn-vial-secundaria', false);
+        setSynLayerVis('syn-vial-terciaria', false);
+    } else if (mode === 'vial') {
+        setSynLayerVis('syn-municipios-fill', true);
+        setSynLayerVis('syn-municipios-labels', false);
+        setSynTramosVis(false);
+        setSynLayerVis('syn-vial-primaria', true);
+        setSynLayerVis('syn-vial-secundaria', true);
+        setSynLayerVis('syn-vial-terciaria', true);
+    } else if (mode === 'intervenciones') {
+        setSynLayerVis('syn-municipios-fill', true);
+        setSynLayerVis('syn-municipios-labels', true);
+        setSynTramosVis(true);
+        setSynLayerVis('syn-vial-primaria', false);
+        setSynLayerVis('syn-vial-secundaria', false);
+        setSynLayerVis('syn-vial-terciaria', false);
+        ensureSynTramosOnTop();
+    }
+}
+
+function setSynLayerVis(layerId, visible) {
+    if (synMap && synMap.getLayer(layerId)) {
+        synMap.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+    }
+}
+
+function updateSyntheticMap() {
+    if (!synMap || !synMapReady) {
+        if (!synMap && document.getElementById('synthetic-map')) {
+            initSyntheticMap();
+        }
+        return;
+    }
+
+    // Animación sutil de filtro
+    const mapEl = document.getElementById('synthetic-map');
+    if (mapEl) {
+        mapEl.classList.remove('syn-filter-flash');
+        void mapEl.offsetWidth; // Forzar reflow para reiniciar la animación
+        mapEl.classList.add('syn-filter-flash');
+    }
+
+    if (synMpioData) {
+        applyIntervenedStatusToMpio(synMpioData);
+        if (synMap.getSource('syn-municipios-src')) {
+            synMap.getSource('syn-municipios-src').setData(synMpioData);
+        }
+    }
+    renderSyntheticKmlFeatures();
+
+    // Encuadre suave según datos filtrados si hay filtro activo
+    const norm = (s) => String(s || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z ]/g, '').trim();
+    if (filteredData && filteredData.length > 0 && filteredData.length < rawData.length && synMpioData) {
+        const activeMuniNames = new Set(filteredData.map(r => norm(r['MUNICIPIO'])));
+        const matchedFeatures = synMpioData.features.filter(f => {
+            const raw = f.properties.NOMBRE_MPI || f.properties.MPIO_CNMBR || f.properties.NOM_MPIO || '';
+            return activeMuniNames.has(norm(raw));
+        });
+
+        if (matchedFeatures.length > 0 && typeof turf !== 'undefined') {
+            try {
+                const fc = { type: 'FeatureCollection', features: matchedFeatures };
+                const bbox = turf.bbox(fc);
+                synMap.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], {
+                    padding: { top: 35, bottom: 35, left: 35, right: 35 },
+                    maxZoom: 11,
+                    duration: 550
+                });
+            } catch (err) { }
+        }
+    }
+}
+
+window.openModalFromMap = function (convNum) {
+    if (synCurrentPopup) {
+        synCurrentPopup.remove();
+        synCurrentPopup = null;
+    }
+    const cleanNum = String(convNum || '').trim();
+    const row = rawData.find(r => String(r['CONVENIO']).trim() === cleanNum);
+    if (row && typeof openModal === 'function') {
+        openModal(row);
+    } else {
+        alertToast("Convenio no encontrado", `No se encontraron datos detallados para el convenio ${cleanNum}.`, "warning");
+    }
+};
+
+
+
+
+
 
 
 

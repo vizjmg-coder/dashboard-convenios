@@ -486,16 +486,16 @@ header {
    ============================================================ */
 
 /* ============================================================
-   6. KPI CARDS — NUEVO DISEÑO CON ICONO CIRCULAR & ELEVACIÓN
+   6. KPI CARDS — DISEÑO COMPACTO Y EQUILIBRADO
    ============================================================ */
 
 .kpi-card {
     background: #FFFFFF !important;
     border: 1px solid var(--color-border) !important;
-    border-radius: var(--radius-xl) !important;
-    padding: 20px 22px 18px !important;
-    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.02) !important;
-    transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 250ms cubic-bezier(0.16, 1, 0.3, 1), border-color 250ms ease !important;
+    border-radius: 14px !important;
+    padding: 12px 14px 10px !important;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.02) !important;
+    transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1), border-color 200ms ease !important;
     position: relative;
     overflow: hidden;
 }
@@ -518,52 +518,52 @@ header {
 .kpi-autorizado::before  { background: linear-gradient(90deg, #0B5640, #059669); }
 
 .kpi-card:hover {
-    transform: translateY(-4px) scale(1.01) !important;
-    box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.07), 0 2px 8px -2px rgba(15, 23, 42, 0.04) !important;
     border-color: rgba(16, 185, 129, 0.35) !important;
 }
 
 .kpi-label {
     font-family: var(--font-body) !important;
-    font-size: 10.5px !important;
+    font-size: 9.5px !important;
     font-weight: 700 !important;
-    letter-spacing: 0.08em !important;
+    letter-spacing: 0.06em !important;
     text-transform: uppercase !important;
     color: var(--color-text-muted) !important;
-    margin-bottom: 6px !important;
+    margin-bottom: 2px !important;
     display: block !important;
 }
 
 .kpi-value {
     font-family: var(--font-headline) !important;
-    font-size: 27px !important;
+    font-size: 21px !important;
     font-weight: 800 !important;
     color: var(--color-text-primary) !important;
-    line-height: 1.1 !important;
-    letter-spacing: -0.03em !important;
+    line-height: 1.15 !important;
+    letter-spacing: -0.02em !important;
     font-variant-numeric: tabular-nums !important;
 }
 
 .kpi-value-large {
-    font-size: 19.5px !important;
-    letter-spacing: -0.02em !important;
+    font-size: 16.5px !important;
+    letter-spacing: -0.015em !important;
 }
 
-/* Icono de KPI — rediseño tonal redondeado */
+/* Icono de KPI — tamaño compacto armonioso */
 .kpi-icon {
-    width: 44px !important;
-    height: 44px !important;
-    border-radius: 14px !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 9px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 17px !important;
+    font-size: 13.5px !important;
     flex-shrink: 0 !important;
     transition: transform 200ms ease !important;
 }
 
 .kpi-card:hover .kpi-icon {
-    transform: scale(1.08);
+    transform: scale(1.05);
 }
 
 /* Colores de iconos por categoría */
@@ -576,12 +576,12 @@ header {
 
 /* Trend badges */
 .kpi-trend {
-    margin-top: 10px !important;
-    font-size: 10.5px !important;
-    font-weight: 600 !important;
+    margin-top: 0 !important;
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
     display: flex !important;
     align-items: center !important;
-    gap: 4px !important;
+    gap: 3px !important;
 }
 
 .kpi-trend.up    { color: var(--color-success) !important; }
@@ -1777,5 +1777,139 @@ td .convenio-id,
 button, select, input, .tab-btn, .kpi-card, .alert-filter-btn {
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
+
+/* ============================================================
+   29. GEOVISOR TERRITORIAL SINTÉTICO MINIMALISTA
+   ============================================================ */
+.synthetic-mode-btn {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 8px;
+    color: #64748B;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+}
+
+.synthetic-mode-btn:hover {
+    color: #0F172A;
+    background: rgba(241, 245, 249, 0.8);
+}
+
+.synthetic-mode-btn.active {
+    background: #0B5640;
+    color: #FFFFFF !important;
+    box-shadow: 0 2px 8px rgba(11, 86, 64, 0.3);
+}
+
+/* Tooltip sintético minimalista perfectamente centrado */
+.synthetic-tooltip {
+    max-width: 320px !important;
+    z-index: 100 !important;
+}
+
+.synthetic-tooltip .maplibregl-popup-content,
+.synthetic-tooltip .mapboxgl-popup-content {
+    background: rgba(15, 23, 42, 0.96) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    color: #FFFFFF !important;
+    border-radius: 14px !important;
+    padding: 14px 16px !important;
+    font-size: 11px !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.4) !important;
+}
+
+.synthetic-tooltip .maplibregl-popup-tip,
+.synthetic-tooltip .mapboxgl-popup-tip {
+    border-top-color: rgba(15, 23, 42, 0.96) !important;
+    border-bottom-color: rgba(15, 23, 42, 0.96) !important;
+}
+
+.synthetic-tooltip .maplibregl-popup-close-button {
+    color: #94A3B8;
+    font-size: 16px;
+    padding: 4px 8px;
+    right: 4px;
+    top: 4px;
+}
+
+.synthetic-tooltip .maplibregl-popup-close-button:hover {
+    color: #FFFFFF;
+    background: transparent;
+}
+
+.btn-popup-ficha {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-top: 10px;
+    padding: 7px 12px;
+    background: linear-gradient(135deg, #0B5640, #018D38);
+    color: #FFFFFF !important;
+    font-size: 11px;
+    font-weight: 800;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: 0 4px 12px rgba(11, 86, 64, 0.3);
+    transition: all 0.2s ease;
+}
+
+.btn-popup-ficha:hover {
+    background: linear-gradient(135deg, #018D38, #10B981);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(1, 141, 56, 0.4);
+}
+
+/* Animación sutil de filtro en el mapa */
+@keyframes synFilterFlash {
+    0% {
+        box-shadow: inset 0 0 0 2px rgba(0, 230, 118, 0.8), 0 0 24px rgba(0, 230, 118, 0.3);
+    }
+    40% {
+        box-shadow: inset 0 0 0 3px rgba(0, 230, 118, 0.9), 0 0 36px rgba(0, 230, 118, 0.45);
+    }
+    100% {
+        box-shadow: none;
+    }
+}
+
+.syn-filter-flash {
+    animation: synFilterFlash 0.8s ease-out forwards;
+}
+
+
+
+.synthetic-circuit-marker {
+    background: #0B5640;
+    color: #FFFFFF;
+    font-weight: 800;
+    font-size: 9px;
+    border-radius: 99px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid #FFFFFF;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.synthetic-circuit-marker:hover {
+    transform: scale(1.25);
+    background: #00B0FF;
+    color: #0F172A;
+}
+
 
 
