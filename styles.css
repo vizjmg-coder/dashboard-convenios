@@ -1284,6 +1284,7 @@ header {
 
 .alert-feed-item.alert-proximos::before    { background: #F28E18; }
 .alert-feed-item.alert-competencia::before { background: #A90F09; }
+.alert-feed-item.alert-suspension::before  { background: #D97706; }
 .alert-feed-item.alert-vencido::before     { background: #A90F09; }
 .alert-feed-item.alert-desfase::before     { background: #3561AB; }
 
@@ -1308,6 +1309,7 @@ header {
 
 .alert-item-icon.proximos    { background: rgba(242, 142, 24, 0.08); color: #F28E18; }
 .alert-item-icon.competencia { background: rgba(169, 15, 9, 0.08); color: #A90F09; }
+.alert-item-icon.suspension  { background: rgba(217, 119, 6, 0.08); color: #D97706; }
 .alert-item-icon.vencido     { background: rgba(169, 15, 9, 0.08); color: #A90F09; }
 .alert-item-icon.desfase     { background: rgba(53, 97, 171, 0.08); color: #3561AB; }
 
@@ -2450,6 +2452,7 @@ select.filter-control option { font-family: var(--font-base); }
 }
 
 .alert-feed-item.alert-competencia { border-left: 4px solid #A90F09 !important; background: #FFFFFF !important; }
+.alert-feed-item.alert-suspension  { border-left: 4px solid #D97706 !important; background: #FFFFFF !important; }
 .alert-feed-item.alert-proximos    { border-left: 4px solid #F28E18 !important; background: #FFFFFF !important; }
 .alert-feed-item.alert-vencido     { border-left: 4px solid #A90F09 !important; background: #FFFFFF !important; }
 .alert-feed-item.alert-desfase     { border-left: 4px solid #3561AB !important; background: #FFFFFF !important; }
@@ -2473,6 +2476,7 @@ select.filter-control option { font-family: var(--font-base); }
 }
 
 .alert-item-icon.competencia { background: rgba(169, 15, 9, 0.08) !important; color: #A90F09 !important; }
+.alert-item-icon.suspension  { background: rgba(217, 119, 6, 0.08) !important; color: #D97706 !important; }
 .alert-item-icon.proximos    { background: rgba(242, 142, 24, 0.08) !important; color: #F28E18 !important; }
 .alert-item-icon.vencido     { background: rgba(169, 15, 9, 0.08) !important; color: #A90F09 !important; }
 .alert-item-icon.desfase     { background: rgba(53, 97, 171, 0.08) !important; color: #3561AB !important; }

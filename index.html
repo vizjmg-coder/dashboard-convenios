@@ -791,7 +791,7 @@
                                                     </label>
                                                     <label
                                                         class="flex items-center gap-2 cursor-pointer select-none hover:text-slate-900">
-                                                        <input type="checkbox" id="syn-chk-subregiones" checked
+                                                        <input type="checkbox" id="syn-chk-subregiones"
                                                             class="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
                                                         <span
                                                             class="w-3.5 h-2.5 rounded-xs border border-dashed border-slate-700 inline-block shrink-0 bg-transparent"></span>
@@ -807,7 +807,7 @@
                                                     </label>
                                                     <label
                                                         class="flex items-center gap-2 cursor-pointer select-none hover:text-slate-900">
-                                                        <input type="checkbox" id="syn-chk-primaria" checked
+                                                        <input type="checkbox" id="syn-chk-primaria"
                                                             class="rounded text-red-600 focus:ring-red-500 w-3.5 h-3.5">
                                                         <span
                                                             class="w-3.5 h-1 bg-[#e53e3e] inline-block shrink-0 rounded-full"></span>
@@ -815,7 +815,7 @@
                                                     </label>
                                                     <label
                                                         class="flex items-center gap-2 cursor-pointer select-none hover:text-slate-900">
-                                                        <input type="checkbox" id="syn-chk-secundaria" checked
+                                                        <input type="checkbox" id="syn-chk-secundaria"
                                                             class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5">
                                                         <span
                                                             class="w-3.5 h-1 bg-[#38a169] inline-block shrink-0 rounded-full"></span>
@@ -823,7 +823,7 @@
                                                     </label>
                                                     <label
                                                         class="flex items-center gap-2 cursor-pointer select-none hover:text-slate-900">
-                                                        <input type="checkbox" id="syn-chk-terciaria" checked
+                                                        <input type="checkbox" id="syn-chk-terciaria"
                                                             class="rounded text-amber-500 focus:ring-amber-500 w-3.5 h-3.5">
                                                         <span
                                                             class="w-3.5 h-1 bg-[#d69e2e] inline-block shrink-0 rounded-full"></span>
@@ -832,18 +832,52 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Leyenda mínima de estado al pie del mapa -->
-                                            <div
-                                                class="absolute bottom-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 bg-white/90 backdrop-blur-md rounded-xl border border-slate-200/80 shadow-xs text-[10px] text-slate-600 font-semibold">
-                                                <span class="flex items-center gap-1.5">
-                                                    <span class="w-2.5 h-2.5 rounded-sm bg-[#0B5640]"></span> Municipio
-                                                    Impactado
-                                                </span>
-                                                <span class="flex items-center gap-1.5">
-                                                    <span
-                                                        class="w-2.5 h-2.5 rounded-sm bg-slate-200 border border-slate-300"></span>
-                                                    Sin convenio
-                                                </span>
+                                            <!-- Leyenda de Longitud Ejecutada por Municipio al pie del mapa -->
+                                            <div id="syn-map-legend"
+                                                class="absolute bottom-3 left-3 z-10 bg-white/95 backdrop-blur-md rounded-xl border border-slate-200/90 shadow-md p-2.5 text-xs select-none min-w-[210px] max-w-[245px]">
+                                                <div class="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-slate-100">
+                                                    <span class="font-extrabold text-[10px] uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                                                        <i class="fa-solid fa-ruler-combined text-[#254434]"></i> Longitud por Municipio
+                                                    </span>
+                                                    <span class="text-[9px] font-bold text-slate-400">km Ejecutados</span>
+                                                </div>
+                                                <div class="space-y-1 text-[10px] font-medium text-slate-700">
+                                                    <div class="flex items-center justify-between gap-2">
+                                                        <span class="flex items-center gap-1.5">
+                                                            <span class="w-3.5 h-2.5 rounded-xs bg-[#254434] border border-black/20 shrink-0 inline-block shadow-2xs"></span>
+                                                            <span class="font-bold text-slate-800">&gt; 10.0 km</span>
+                                                        </span>
+                                                        <span class="text-[9px] text-[#254434] font-bold bg-[#E3F5DE] px-1.5 py-0.5 rounded">Muy Fuerte</span>
+                                                    </div>
+                                                    <div class="flex items-center justify-between gap-2">
+                                                        <span class="flex items-center gap-1.5">
+                                                            <span class="w-3.5 h-2.5 rounded-xs bg-[#398056] border border-black/15 shrink-0 inline-block"></span>
+                                                            <span class="font-semibold text-slate-700">5.0 – 10.0 km</span>
+                                                        </span>
+                                                        <span class="text-[9px] text-slate-500 font-medium">Fuerte</span>
+                                                    </div>
+                                                    <div class="flex items-center justify-between gap-2">
+                                                        <span class="flex items-center gap-1.5">
+                                                            <span class="w-3.5 h-2.5 rounded-xs bg-[#5FC466] border border-black/10 shrink-0 inline-block"></span>
+                                                            <span>2.0 – 5.0 km</span>
+                                                        </span>
+                                                        <span class="text-[9px] text-slate-500 font-medium">Medio</span>
+                                                    </div>
+                                                    <div class="flex items-center justify-between gap-2">
+                                                        <span class="flex items-center gap-1.5">
+                                                            <span class="w-3.5 h-2.5 rounded-xs bg-[#9FD490] border border-[#5FC466]/40 shrink-0 inline-block"></span>
+                                                            <span>0.1 – 2.0 km</span>
+                                                        </span>
+                                                        <span class="text-[9px] text-slate-500 font-medium">Opaco / Claro</span>
+                                                    </div>
+                                                    <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-100/90 text-slate-500">
+                                                        <span class="flex items-center gap-1.5">
+                                                            <span class="w-3.5 h-2.5 rounded-xs bg-[#F8FAFC] border border-slate-300 shrink-0 inline-block"></span>
+                                                            <span>Sin convenio</span>
+                                                        </span>
+                                                        <span class="text-[9px] text-slate-400 font-semibold">0 km</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -908,11 +942,13 @@
                                             <button class="alert-filter-btn active text-[10.5px] px-2.5 py-1"
                                                 data-filter="all">Todas (0)</button>
                                             <button class="alert-filter-btn text-[10.5px] px-2.5 py-1"
-                                                data-filter="proximos">Próximos (0)</button>
+                                                data-filter="competencia">Pérdida de Competencia (0)</button>
                                             <button class="alert-filter-btn text-[10.5px] px-2.5 py-1"
-                                                data-filter="competencia">Competencia (0)</button>
+                                                data-filter="suspension">Suspensión Prolongada (0)</button>
                                             <button class="alert-filter-btn text-[10.5px] px-2.5 py-1"
-                                                data-filter="vencido">Vencidos (0)</button>
+                                                data-filter="proximos">Próximos a Terminar (0)</button>
+                                            <button class="alert-filter-btn text-[10.5px] px-2.5 py-1"
+                                                data-filter="vencido">Vencidos sin Liquidar (0)</button>
                                         </div>
 
                                         <div id="alert-feed"

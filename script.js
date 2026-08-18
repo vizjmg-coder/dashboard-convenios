@@ -3585,6 +3585,188 @@ function updateFilterOptions(currentSearch, currentVigencia, currentMunicipio, c
     updateSelect('filter-estado', getValidOptions('ESTADO CONVENIO', 'ESTADO CONVENIO'), currentEstado);
 }
 
+let summaryMap = null;
+
+async function renderSummaryMiniMap(row) {
+    const container = document.getElementById('summary-map');
+    const overlay = document.getElementById('summary-map-overlay');
+    const msg = document.getElementById('summary-map-msg');
+    if (!container || !row) return;
+
+    const convNum = String(row['CONVENIO'] || '').trim();
+    if (overlay) overlay.style.display = 'flex';
+    if (msg) msg.innerHTML = `<i class="fa-solid fa-satellite-dish fa-fade" style="color:#018D38;"></i> Ubicando trazado...`;
+
+    try {
+        if (!summaryMap) {
+            summaryMap = new maplibregl.Map({
+                container: 'summary-map',
+                center: [-75.55, 6.85],
+                zoom: 8,
+                pitch: 0,
+                attributionControl: false
+            });
+            summaryMap.setStyle('https://tiles.openfreemap.org/styles/positron');
+        } else {
+            summaryMap.resize();
+        }
+
+        const mapData = await loadMapData(convNum);
+        let geojson = null;
+        if (mapData) {
+            if (mapData.type === 'kml') {
+                const feats = parseKMLStringToGeoJSON(mapData.data, convNum);
+                if (feats && feats.length > 0) {
+                    geojson = { type: 'FeatureCollection', features: feats };
+                }
+            } else if (mapData.type === 'geojson') {
+                geojson = mapData.data;
+            }
+        }
+
+        const applyData = () => {
+            if (!summaryMap) return;
+            if (summaryMap.getSource('summary-kml-src')) {
+                summaryMap.getSource('summary-kml-src').setData(geojson || { type: 'FeatureCollection', features: [] });
+            } else {
+                summaryMap.addSource('summary-kml-src', {
+                    type: 'geojson',
+                    data: geojson || { type: 'FeatureCollection', features: [] }
+                });
+                summaryMap.addLayer({
+                    id: 'summary-kml-line',
+                    type: 'line',
+                    source: 'summary-kml-src',
+                    paint: {
+                        'line-color': '#0B5640',
+                        'line-width': 4.5
+                    }
+                });
+                summaryMap.addLayer({
+                    id: 'summary-kml-points',
+                    type: 'circle',
+                    source: 'summary-kml-src',
+                    filter: ['==', '$type', 'Point'],
+                    paint: {
+                        'circle-color': '#00FF88',
+                        'circle-radius': 6,
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#032B18'
+                    }
+                });
+            }
+
+            if (geojson && typeof turf !== 'undefined') {
+                try {
+                    const bbox = turf.bbox(geojson);
+                    if (isFinite(bbox[0]) && isFinite(bbox[1]) && isFinite(bbox[2]) && isFinite(bbox[3])) {
+                        summaryMap.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], {
+                            padding: { top: 25, bottom: 25, left: 25, right: 25 },
+                            maxZoom: 14,
+                            duration: 500
+                        });
+                        if (overlay) overlay.style.display = 'none';
+                        return;
+                    }
+                } catch (err) { }
+            }
+
+            const lat = parseFloat(row['LATITUD']), lng = parseFloat(row['LONGITUD']);
+            if (!isNaN(lat) && !isNaN(lng) && isFinite(lat) && isFinite(lng)) {
+                summaryMap.flyTo({ center: [lng, lat], zoom: 12, duration: 500 });
+                if (overlay) overlay.style.display = 'none';
+            } else {
+                if (msg) msg.innerHTML = `<i class="fa-solid fa-map-pin" style="color:#94A3B8;"></i> Sin trazado espacial`;
+                setTimeout(() => { if (overlay) overlay.style.display = 'none'; }, 800);
+            }
+        };
+
+        if (summaryMap.isStyleLoaded()) {
+            applyData();
+        } else {
+            summaryMap.once('load', applyData);
+        }
+    } catch (e) {
+        if (overlay) overlay.style.display = 'none';
+    }
+}
+
+window.showSummaryCard = function (conv) {
+    if (!conv) return;
+    const cleanConv = String(conv).trim();
+
+    // 1. Si no está en la pestaña resumen, cambiar a ella
+    const resumenTabBtn = document.querySelector('.tab-btn[data-tab="resumen"]');
+    if (resumenTabBtn && !resumenTabBtn.classList.contains('active')) {
+        resumenTabBtn.click();
+    }
+
+    // 2. Limpiar buscador general
+    const searchInput = document.getElementById('filter-search');
+    if (searchInput) searchInput.value = '';
+
+    window.isResettingFilters = true;
+
+    // 3. Resetear otros filtros para evitar colisiones
+    ['filter-vigencia', 'filter-supervisor', 'filter-indicador', 'filter-clasificacion', 'filter-municipio', 'filter-subregion', 'filter-estado'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            if (el.tagName === 'SELECT' && el.multiple) {
+                Array.from(el.options).forEach(o => o.selected = false);
+            } else {
+                el.value = '';
+            }
+            el.dispatchEvent(new Event('change'));
+        }
+    });
+
+    // 4. Asegurar y seleccionar en filter-convenio-num
+    const convSelect = document.getElementById('filter-convenio-num');
+    if (convSelect) {
+        const allConvs = Array.from(new Set(rawData.map(r => String(r['CONVENIO'] || '').trim()).filter(Boolean))).sort();
+        convSelect.innerHTML = '<option value="">Todos</option>' + allConvs.map(c => `<option value="${c}" ${c === cleanConv ? 'selected' : ''}>${c}</option>`).join('');
+        Array.from(convSelect.options).forEach(o => {
+            o.selected = (o.value.trim() === cleanConv);
+        });
+        convSelect.dispatchEvent(new Event('change'));
+    }
+
+    window.isResettingFilters = false;
+
+    // 5. Aplicar filtros en todo el sitio
+    applyFilters();
+
+    // 6. Scroll fluido hacia el Summary Card
+    setTimeout(() => {
+        const summaryCard = document.getElementById('summary-card-container');
+        if (summaryCard && !summaryCard.classList.contains('hidden')) {
+            summaryCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 150);
+
+    // 7. Cerrar dropdown de alertas de navbar si estuviese abierto
+    const drop = document.getElementById('nav-alerts-dropdown');
+    if (drop) drop.classList.add('hidden');
+};
+
+window.hideSummaryCard = function () {
+    window.isResettingFilters = true;
+    const convSelect = document.getElementById('filter-convenio-num');
+    if (convSelect) {
+        Array.from(convSelect.options).forEach(o => o.selected = false);
+        if (convSelect.options[0]) convSelect.options[0].selected = true;
+        convSelect.dispatchEvent(new Event('change'));
+    }
+    window.isResettingFilters = false;
+
+    const card = document.getElementById('summary-card-container');
+    if (card) card.classList.add('hidden');
+    const tlCont = document.getElementById('timeline-container');
+    if (tlCont) tlCont.classList.add('hidden');
+
+    applyFilters();
+};
+
 function applyFilters() {
     const search = document.getElementById('filter-search')?.value.toLowerCase().trim() || '';
     const vigencia = getSelectValues('filter-vigencia');
@@ -3640,69 +3822,101 @@ function applyFilters() {
 
     if (activeConv && filteredData.length > 0) {
         const selected = filteredData[0];
-        document.getElementById('summary-num').textContent = selected['CONVENIO'] || 'S/N';
-        const btnFicha = document.getElementById('btn-abrir-ficha');
+        const sysState = getSystemState(selected['ESTADO CONVENIO']);
+
+        // Badges y Títulos
+        const estBadge = document.getElementById('summary-estado-badge');
+        if (estBadge) {
+            estBadge.textContent = sysState.label;
+            estBadge.className = `px-2.5 py-0.5 rounded-full font-bold text-[10px] tracking-wide uppercase ${sysState.badgeClass}`;
+        }
+        const subBadge = document.getElementById('summary-subregion-badge');
+        if (subBadge) {
+            subBadge.textContent = selected['SUBREGION'] || 'ANTIOQUIA';
+        }
+        const titleEl = document.getElementById('summary-convenio-title');
+        if (titleEl) {
+            titleEl.textContent = `Convenio ${selected['CONVENIO'] || 'S/N'}`;
+        }
+
+        const muniTxt = document.getElementById('summary-municipio-txt');
+        if (muniTxt) {
+            const mSpan = muniTxt.querySelector('span');
+            const muniStr = selected['MUNICIPIO'] || 'N/A';
+            const ejecStr = String(selected['CONVENIANTE EJECUTOR'] || '').trim().toUpperCase();
+            if (ejecStr && ejecStr !== muniStr.trim().toUpperCase() && ejecStr !== 'N/A') {
+                if (mSpan) mSpan.textContent = `${muniStr} (Ejecutor: ${selected['CONVENIANTE EJECUTOR']})`;
+                else muniTxt.textContent = `${muniStr} (Ejecutor: ${selected['CONVENIANTE EJECUTOR']})`;
+            } else {
+                if (mSpan) mSpan.textContent = muniStr;
+                else muniTxt.textContent = muniStr;
+            }
+        }
+
+        const objetoEl = document.getElementById('summary-objeto');
+        if (objetoEl) {
+            objetoEl.textContent = selected['OBJETO'] || 'Sin descripción u objeto registrado.';
+            objetoEl.title = selected['OBJETO'] || '';
+        }
+
+        const invEl = document.getElementById('summary-inversion');
+        if (invEl) {
+            invEl.textContent = formatCurrency(selected['VALOR TOTAL'] || selected['APORTE DEPARTAMENTO'] || 0);
+        }
+
+        const btnFicha = document.getElementById('summary-btn-detalle');
         if (btnFicha) {
             btnFicha.setAttribute('onclick', `openModal(${JSON.stringify(selected).replace(/'/g, "&#39;")})`);
         }
-        document.getElementById('summary-municipio').textContent = selected['MUNICIPIO'] || 'N/A';
-        const ejecutorEl = document.getElementById('summary-ejecutor');
-        const ejecutorContainer = document.getElementById('summary-ejecutor-container');
-        const municipioStr = String(selected['MUNICIPIO'] || 'N/A').trim().toUpperCase();
-        const ejecutorStr = String(selected['CONVENIANTE EJECUTOR'] || '').trim().toUpperCase();
-        if (ejecutorEl && ejecutorContainer) {
-            if (ejecutorStr && ejecutorStr !== municipioStr && ejecutorStr !== 'N/A') {
-                ejecutorEl.textContent = selected['CONVENIANTE EJECUTOR'];
-                ejecutorContainer.classList.remove('hidden');
-            } else {
-                ejecutorContainer.classList.add('hidden');
-            }
+
+        // Tipo / Indicador
+        const tipoTxt = document.getElementById('summary-tipo-txt');
+        if (tipoTxt) {
+            tipoTxt.textContent = selected['INDICADOR'] || selected['CLASIFICACIÓN'] || 'Obra Vial';
         }
+
         const alcM = getRowLongitudContratada(selected);
         const alcM2 = getRowAreaContratada(selected);
         const ejM = getRowLongitudEjecutada(selected);
         const ejM2 = getRowAreaEjecutada(selected);
+
+        const lblAlc = document.getElementById('lbl-alcance');
+        const valAlc = document.getElementById('summary-alcance');
+        const unitAlc = document.getElementById('unit-alcance');
+        const lblEje = document.getElementById('lbl-ejecutado');
+        const valEje = document.getElementById('summary-ejecutado');
+        const unitEje = document.getElementById('unit-ejecutado');
+
         if (alcM2 > 0 && alcM === 0) {
-            document.getElementById('lbl-alcance').textContent = "Área Contratada";
-            document.getElementById('summary-alcance').textContent = formatNumber(alcM2);
-            document.getElementById('unit-alcance').textContent = "m²";
-            document.getElementById('lbl-ejecutado').textContent = "Área Ejecutada";
-            document.getElementById('summary-ejecutado').textContent = formatNumber(ejM2);
-            document.getElementById('unit-ejecutado').textContent = "m²";
+            if (lblAlc) lblAlc.textContent = "Área Contratada";
+            if (valAlc) valAlc.textContent = formatNumber(alcM2);
+            if (unitAlc) unitAlc.textContent = "m²";
+            if (lblEje) lblEje.textContent = "Área Ejecutada";
+            if (valEje) valEje.textContent = formatNumber(ejM2);
+            if (unitEje) unitEje.textContent = "m²";
         } else {
-            document.getElementById('lbl-alcance').textContent = "Longitud Contratada";
-            document.getElementById('summary-alcance').textContent = (alcM / 1000).toFixed(2);
-            document.getElementById('unit-alcance').textContent = "km";
-            document.getElementById('lbl-ejecutado').textContent = "Longitud Ejecutada";
-            document.getElementById('summary-ejecutado').textContent = (ejM / 1000).toFixed(2);
-            document.getElementById('unit-ejecutado').textContent = "km";
-        }
-        const pfis = selected['FISICO_NORM'] || 0, pfin = selected['FINANCIERO_NORM'] || 0;
-        document.getElementById('summary-fisico-txt').textContent = pfis.toFixed(1) + '%';
-        document.getElementById('summary-financiero-txt').textContent = pfin.toFixed(1) + '%';
-
-        const supervisorName = selected['SUPERVISOR'] || 'Sin Asignar';
-        const supNameEl = document.getElementById('summary-supervisor-name');
-        const supImgEl = document.getElementById('summary-supervisor-img');
-        if (supNameEl) supNameEl.textContent = supervisorName;
-        if (supImgEl) {
-            supImgEl.src = `./assets/supervisor/${supervisorName}.jpg`;
+            if (lblAlc) lblAlc.textContent = "Longitud Contratada";
+            if (valAlc) valAlc.textContent = (alcM / 1000).toFixed(2);
+            if (unitAlc) unitAlc.textContent = "km";
+            if (lblEje) lblEje.textContent = "Longitud Ejecutada";
+            if (valEje) valEje.textContent = (ejM / 1000).toFixed(2);
+            if (unitEje) unitEje.textContent = "km";
         }
 
-        summaryCard.classList.remove('hidden');
-        setTimeout(() => {
-            document.getElementById('gauge-fisico').style.strokeDashoffset = 251.2 - (251.2 * pfis / 100);
-            document.getElementById('gauge-financiero').style.strokeDashoffset = 251.2 - (251.2 * pfin / 100);
-        }, 50);
-        setTimeout(() => { renderMap(selected, 'summary-map', 'summary-map-overlay', 'summary-map-msg', summaryMapInstance, (ni, ng) => { summaryMapInstance = ni; summaryLayerGroup = ng; }); }, 100);
+        if (summaryCard) summaryCard.classList.remove('hidden');
 
+        // Render mini mapa del convenio
+        renderSummaryMiniMap(selected);
+
+        // Render Timeline legal si aplica
         renderTimeline(selected);
     } else {
-        summaryCard.classList.add('hidden');
+        if (summaryCard) summaryCard.classList.add('hidden');
         const tlCont = document.getElementById('timeline-container');
         if (tlCont) tlCont.classList.add('hidden');
     }
-    currentPage = 1; updateDashboard();
+    currentPage = 1;
+    updateDashboard();
 }
 
 function resetFilters() {
@@ -4022,10 +4236,11 @@ function renderAlerts() {
         // 4. Suspensión crítica (>= 3 meses)
         if (est.toLowerCase().includes('suspendido') && suspMeses >= 3) {
             alerts.push({
-                type: 'competencia', icon: 'fa-pause',
+                type: 'suspension', icon: 'fa-pause',
                 title: 'Suspensión Prolongada',
                 desc: `Acumula ${suspMeses} meses de suspensión.`,
-                conv, mun
+                conv, mun,
+                _sortVal: suspMeses
             });
         }
 
@@ -4043,10 +4258,11 @@ function renderAlerts() {
     // ── ORDENAMIENTO POR URGENCIA ─────────────────────────────────────────
     // Prioridad de tipo:
     //   1 = competencia (pérdida de competencia — MÁXIMA PRIORIDAD)
-    //   2 = proximos    (próximos a terminar)
-    //   3 = vencido     (vencidos sin liquidar)
-    //   4 = desfase / otros
-    const typePriority = { competencia: 1, proximos: 2, vencido: 3, desfase: 4 };
+    //   2 = suspension  (suspensiones prolongadas)
+    //   3 = proximos    (próximos a terminar)
+    //   4 = vencido     (vencidos sin liquidar)
+    //   5 = desfase / otros
+    const typePriority = { competencia: 1, suspension: 2, proximos: 3, vencido: 4, desfase: 5 };
 
     alerts.sort((a, b) => {
         const pa = typePriority[a.type] ?? 9;
@@ -4059,6 +4275,11 @@ function renderAlerts() {
         // luego los que están más cerca de superarlo (menor sortVal primero)
         if (a.type === 'competencia' && b.type === 'competencia') {
             return (a._sortVal ?? 0) - (b._sortVal ?? 0);
+        }
+
+        // Dentro de "suspension": mayor tiempo suspendido primero
+        if (a.type === 'suspension' && b.type === 'suspension') {
+            return (b._sortVal ?? 0) - (a._sortVal ?? 0);
         }
 
         // Dentro de "proximos": los que tienen menos días restantes van primero
@@ -4079,19 +4300,22 @@ function renderAlerts() {
 
     // Actualizar dinámicamente el contador en los botones de filtro
     const countAll = alerts.length;
-    const countProximos = alerts.filter(a => a.type === 'proximos').length;
     const countCompetencia = alerts.filter(a => a.type === 'competencia').length;
+    const countSuspension = alerts.filter(a => a.type === 'suspension').length;
+    const countProximos = alerts.filter(a => a.type === 'proximos').length;
     const countVencido = alerts.filter(a => a.type === 'vencido').length;
 
     const btnAll = document.querySelector('.alert-filter-btn[data-filter="all"]');
-    const btnProximos = document.querySelector('.alert-filter-btn[data-filter="proximos"]');
     const btnCompetencia = document.querySelector('.alert-filter-btn[data-filter="competencia"]');
+    const btnSuspension = document.querySelector('.alert-filter-btn[data-filter="suspension"]');
+    const btnProximos = document.querySelector('.alert-filter-btn[data-filter="proximos"]');
     const btnVencido = document.querySelector('.alert-filter-btn[data-filter="vencido"]');
 
     if (btnAll) btnAll.textContent = `Todas (${countAll})`;
-    if (btnProximos) btnProximos.textContent = `Próximos a terminar (${countProximos})`;
-    if (btnCompetencia) btnCompetencia.textContent = `Pérdida de competencia (${countCompetencia})`;
-    if (btnVencido) btnVencido.textContent = `Vencidos sin liquidar (${countVencido})`;
+    if (btnCompetencia) btnCompetencia.textContent = `Pérdida de Competencia (${countCompetencia})`;
+    if (btnSuspension) btnSuspension.textContent = `Suspensión Prolongada (${countSuspension})`;
+    if (btnProximos) btnProximos.textContent = `Próximos a Terminar (${countProximos})`;
+    if (btnVencido) btnVencido.textContent = `Vencidos sin Liquidar (${countVencido})`;
 
     const navFeed = document.getElementById('nav-alerts-list');
     const navCountSpan = document.getElementById('nav-alerts-count');
@@ -4102,18 +4326,6 @@ function renderAlerts() {
         if (alerts.length > 0) navBadge.classList.remove('hidden');
         else navBadge.classList.add('hidden');
     }
-
-    window.showSummaryCard = function (conv) {
-        const convSelect = document.getElementById('filter-convenio-num');
-        if (convSelect) {
-            Array.from(convSelect.options).forEach(o => o.selected = (o.value === conv));
-            convSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        applyFilters();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        const drop = document.getElementById('nav-alerts-dropdown');
-        if (drop) drop.classList.add('hidden');
-    };
 
     if (navFeed) {
         if (alerts.length === 0) {
@@ -4143,8 +4355,9 @@ function renderAlerts() {
     }
 
     const alertTypeMap = {
-        proximos: { borderColor: '#F28E18', iconColor: '#F28E18', bg: '#FFFFFF' },
         competencia: { borderColor: '#A90F09', iconColor: '#A90F09', bg: '#FFFFFF' },
+        suspension: { borderColor: '#D97706', iconColor: '#D97706', bg: '#FFFFFF' },
+        proximos: { borderColor: '#F28E18', iconColor: '#F28E18', bg: '#FFFFFF' },
         vencido: { borderColor: '#A90F09', iconColor: '#A90F09', bg: '#FFFFFF' },
         desfase: { borderColor: '#3561AB', iconColor: '#3561AB', bg: '#FFFFFF' }
     };
@@ -4152,7 +4365,7 @@ function renderAlerts() {
     feed.innerHTML = finalAlerts.map((a, idx) => {
         const colors = alertTypeMap[a.type] || { borderColor: '#94A3B8', iconColor: '#94A3B8', bg: '#F8FAFC' };
 
-        // Badge de urgencia para competencia
+        // Badge de urgencia según tipo
         let urgencyBadge = '';
         let urgencyBar = '';
         if (a.type === 'competencia') {
@@ -4171,6 +4384,9 @@ function renderAlerts() {
                     </div>
                     <p style="font-size:8.5px;color:#94A3B8;font-weight:500;margin-bottom:4px;">Urgencia: ${pct}% — faltan ${monthsLeft.toFixed(1)} meses para el límite legal</p>`;
             }
+        } else if (a.type === 'suspension') {
+            const m = a._sortVal ?? 0;
+            urgencyBadge = `<span style="display:inline-flex;align-items:center;gap:3px;background:#FEF3C7;color:#92400E;font-size:8px;font-weight:800;padding:2px 7px;border-radius:999px;letter-spacing:0.5px;text-transform:uppercase;margin-left:6px;"><i class="fa-solid fa-pause text-[7px]"></i> ${m} MESES SUSPENDIDO</span>`;
         }
 
         // Número de orden por urgencia (solo si vista "Todas")
@@ -4179,7 +4395,7 @@ function renderAlerts() {
             : '';
 
         return `
-        <div class="alert-feed-item alert-${a.type}" onclick="showSummaryCard('${a.conv}')" style="cursor:pointer;${a.type === 'competencia' && (a._sortVal ?? 0) <= 0 ? 'border-left-color:#7F1D1D;background:linear-gradient(to right,#FFF1F1,#FFFFFF);' : ''}">
+        <div class="alert-feed-item alert-${a.type}" onclick="showSummaryCard('${a.conv}')" style="cursor:pointer;${a.type === 'competencia' && (a._sortVal ?? 0) <= 0 ? 'border-left-color:#7F1D1D;background:linear-gradient(to right,#FFF1F1,#FFFFFF);' : (a.type === 'suspension' ? 'border-left-color:#D97706;' : '')}">
             <div class="alert-item-header">
                 <div class="alert-item-icon ${a.type}">
                     <i class="fa-solid ${a.icon}"></i>
@@ -5142,11 +5358,11 @@ let currentMLPopup = null;   // Popup informativo activo en el mapa
 
 // Estado de visibilidad de capas
 let mlLayersState = {
-    municipios: false,
+    municipios: true,
     subregiones: false,
-    primaria: true,
-    secundaria: true,
-    terciaria: true,
+    primaria: false,
+    secundaria: false,
+    terciaria: false,
     tramosKml: true,
     terrain: false
 };
@@ -9132,6 +9348,16 @@ function renderSupervisorAlertas(supervisorRows) {
                 };
             }
 
+            const suspVal = parseNum(row['SUSPENSION(MESES)'] || row['SUSPENSIÓN(MESES)'] || row['SUSPENSION (MESES)'] || 0);
+            if (estStr.includes('suspendido') && suspVal >= 3) {
+                alertItem = {
+                    type: 'suspension',
+                    icon: 'fa-pause',
+                    title: 'Suspensión Prolongada',
+                    desc: `El convenio acumula ${suspVal} meses en estado suspendido.`
+                };
+            }
+
             if (alertItem) {
                 alertCount++;
                 const itemDiv = document.createElement('div');
@@ -9632,11 +9858,11 @@ let synVialData = { primaria: null, secundaria: null, terciaria: null };
 let synCurrentPopup = null;
 let synLayersState = {
     tramos: true,
-    subregiones: true,
+    subregiones: false,
     municipios: true,
-    primaria: true,
-    secundaria: true,
-    terciaria: true
+    primaria: false,
+    secundaria: false,
+    terciaria: false
 };
 let synActiveMode = 'general';
 
@@ -9957,7 +10183,7 @@ async function initSyntheticMap() {
                     // --- FUENTES Y CAPAS DE MUNICIPIOS ---
                     synMap.addSource('syn-municipios-src', { type: 'geojson', data: synMpioData });
 
-                    // 1.3 Relleno de municipios
+                    // 1.3 Relleno de municipios según escala cromática de longitud ejecutada
                     synMap.addLayer({
                         id: 'syn-municipios-fill',
                         type: 'fill',
@@ -9965,15 +10191,14 @@ async function initSyntheticMap() {
                         layout: { visibility: synLayersState.municipios ? 'visible' : 'none' },
                         paint: {
                             'fill-color': [
-                                'case',
-                                ['boolean', ['get', '_intervenido'], false],
-                                '#0B5640', // Verde institucional municipios impactados
-                                '#F8FAFC'  // Fondo claro
+                                'coalesce',
+                                ['get', '_colorFill'],
+                                '#F8FAFC'
                             ],
                             'fill-opacity': [
                                 'case',
                                 ['boolean', ['get', '_intervenido'], false],
-                                0.85,
+                                0.88,
                                 0.45
                             ]
                         }
@@ -9986,11 +10211,11 @@ async function initSyntheticMap() {
                         source: 'syn-municipios-src',
                         layout: { visibility: synLayersState.municipios ? 'visible' : 'none' },
                         paint: {
-                            'fill-color': '#018D38',
+                            'fill-color': '#00FF88',
                             'fill-opacity': [
                                 'case',
                                 ['boolean', ['feature-state', 'hover'], false],
-                                0.40,
+                                0.45,
                                 0
                             ]
                         }
@@ -10006,13 +10231,13 @@ async function initSyntheticMap() {
                             'line-color': [
                                 'case',
                                 ['boolean', ['get', '_intervenido'], false],
-                                '#FFFFFF',
+                                '#254434',
                                 '#CBD5E1'
                             ],
                             'line-width': [
                                 'case',
                                 ['boolean', ['get', '_intervenido'], false],
-                                1.0,
+                                1.1,
                                 0.5
                             ],
                             'line-opacity': 0.85
@@ -10048,7 +10273,7 @@ async function initSyntheticMap() {
                             'text-halo-color': [
                                 'case',
                                 ['boolean', ['get', '_intervenido'], false],
-                                '#064E3B',
+                                '#254434',
                                 '#FFFFFF'
                             ],
                             'text-halo-width': 1.6
@@ -10571,6 +10796,16 @@ function showSyntheticTramoPopup(feature, lngLat) {
     }
 }
 
+function getMpioColorByLongitud(longKm, hasConvenio) {
+    if (!hasConvenio) return '#F8FAFC'; // Sin convenios (0 km)
+    const km = Number(longKm) || 0;
+    if (km <= 0) return '#D4EFCD';       // Convenio activo pero 0 km ejecutados aún
+    if (km <= 2.0) return '#9FD490';     // 0.1 – 2.0 km (verde claro / opaco)
+    if (km <= 5.0) return '#5FC466';     // 2.0 – 5.0 km (verde medio)
+    if (km <= 10.0) return '#398056';    // 5.0 – 10.0 km (verde fuerte)
+    return '#254434';                   // > 10.0 km (verde muy fuerte / oscuro)
+}
+
 function showSyntheticMuniPopup(feature, lngLat) {
     if (!feature || !feature.properties) return;
     if (lngLat) {
@@ -10582,26 +10817,48 @@ function showSyntheticMuniPopup(feature, lngLat) {
     const subColor = SUBREGION_COLORS[subName] || '#6366F1';
     const count = props._convCount || 0;
     const isInterv = props._intervenido;
+    const longEjeKm = (props._longEjeKm !== undefined ? Number(props._longEjeKm) : 0).toFixed(2);
+    const longConKm = (props._longConKm !== undefined ? Number(props._longConKm) : 0).toFixed(2);
+    const colorFill = props._colorFill || '#0B5640';
 
     const html = `
-        <div style="font-family:'Plus Jakarta Sans',sans-serif;padding:4px 6px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px;">
-                <p style="font-size:12px;font-weight:800;color:#FFFFFF;margin:0;">${muniName}</p>
-                <span style="font-size:9px;font-weight:800;color:${subColor};background:rgba(255,255,255,0.12);padding:1px 6px;border-radius:4px;text-transform:uppercase;">
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;padding:4px 6px;min-width:215px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.12);">
+                <p style="font-size:13px;font-weight:900;color:#FFFFFF;margin:0;">${muniName}</p>
+                <span style="font-size:9px;font-weight:800;color:${subColor};background:rgba(255,255,255,0.12);padding:2px 6px;border-radius:4px;text-transform:uppercase;">
                     ${subName}
                 </span>
             </div>
-            <p style="font-size:10.5px;font-weight:600;color:${isInterv ? '#00FF88' : '#94A3B8'};margin:0;">
-                <i class="fa-solid ${isInterv ? 'fa-circle-check' : 'fa-circle-info'} mr-1"></i>
-                ${isInterv ? `Municipio Impactado: ${count} convenio(s)` : 'Sin convenios en el filtro'}
-            </p>
+            ${isInterv ? `
+                <div style="display:flex;flex-direction:column;gap:5px;font-size:11px;color:#CBD5E1;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.06);padding:5px 8px;border-radius:6px;">
+                        <span style="color:#94A3B8;font-size:10px;"><i class="fa-solid fa-ruler-combined text-emerald-400 mr-1"></i>Long. Ejecutada:</span>
+                        <span style="color:#FFFFFF;font-weight:800;display:flex;align-items:center;gap:4px;">
+                            <span style="width:8px;height:8px;border-radius:2px;background:${colorFill};display:inline-block;border:1px solid rgba(255,255,255,0.4);"></span>
+                            ${longEjeKm} km
+                        </span>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;font-size:10px;padding:0 2px;">
+                        <span style="color:#94A3B8;">Long. Contratada:</span>
+                        <span style="color:#E2E8F0;font-weight:600;">${longConKm} km</span>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;font-size:10px;padding:0 2px;">
+                        <span style="color:#94A3B8;">Convenios Activos:</span>
+                        <span style="color:#00FF88;font-weight:700;">${count} convenio(s)</span>
+                    </div>
+                </div>
+            ` : `
+                <p style="font-size:10.5px;font-weight:600;color:#94A3B8;margin:0;">
+                    <i class="fa-solid fa-circle-info mr-1"></i> Sin convenios en la selección
+                </p>
+            `}
         </div>
     `;
 
     if (synCurrentPopup) synCurrentPopup.remove();
     synCurrentPopup = new maplibregl.Popup({
         closeButton: true,
-        maxWidth: '260px',
+        maxWidth: '280px',
         className: 'synthetic-tooltip',
         anchor: 'bottom',
         offset: [0, -10]
@@ -10642,11 +10899,19 @@ function applyIntervenedStatusToMpio(mpioData) {
         .replace(/\s+/g, ' ')
         .trim();
 
+    const dataToUse = (filteredData && filteredData.length > 0 ? filteredData : rawData) || [];
     const muniCounts = {};
-    (filteredData && filteredData.length > 0 ? filteredData : rawData).forEach(r => {
+    const muniLongEje = {};
+    const muniLongCon = {};
+
+    dataToUse.forEach(r => {
         const m = norm(r['MUNICIPIO']);
         if (m) {
             muniCounts[m] = (muniCounts[m] || 0) + 1;
+            const eje = getRowLongitudEjecutada(r) || 0;
+            const con = getRowLongitudContratada(r) || 0;
+            muniLongEje[m] = (muniLongEje[m] || 0) + eje;
+            muniLongCon[m] = (muniLongCon[m] || 0) + con;
         }
     });
 
@@ -10654,8 +10919,19 @@ function applyIntervenedStatusToMpio(mpioData) {
         const rawName = f.properties.NOMBRE_MPI || f.properties.MPIO_CNMBR || f.properties.NOM_MPIO || '';
         const mNorm = norm(rawName);
         const count = muniCounts[mNorm] || 0;
-        f.properties._intervenido = count > 0;
+        const longEjeM = muniLongEje[mNorm] || 0;
+        const longEjeKm = (longEjeM / 1000);
+        const longConM = muniLongCon[mNorm] || 0;
+        const longConKm = (longConM / 1000);
+
+        const hasConvenio = count > 0;
+        f.properties._intervenido = hasConvenio;
         f.properties._convCount = count;
+        f.properties._longEjeM = longEjeM;
+        f.properties._longEjeKm = parseFloat(longEjeKm.toFixed(2));
+        f.properties._longConM = longConM;
+        f.properties._longConKm = parseFloat(longConKm.toFixed(2));
+        f.properties._colorFill = getMpioColorByLongitud(longEjeKm, hasConvenio);
     });
 }
 
@@ -10930,6 +11206,7 @@ function setupSyntheticControls() {
     Object.entries(layerCheckboxes).forEach(([key, [chkId, layerIds]]) => {
         const chk = document.getElementById(chkId);
         if (chk) {
+            chk.checked = !!synLayersState[key];
             chk.addEventListener('change', (e) => {
                 const isChecked = e.target.checked;
                 synLayersState[key] = isChecked;
