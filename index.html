@@ -3001,6 +3001,62 @@
             }
         })();
     </script>
+
+    <!-- =======================================================================
+         ASISTENTE VIRTUAL E INTELIGENCIA ARTIFICIAL DIAT (CHAT FLOTANTE)
+         ======================================================================= -->
+    <!-- Botón Flotante (FAB) -->
+    <div id="diat-ai-fab-container" class="diat-ai-fab-container no-print">
+        <div id="diat-ai-fab-hint" class="diat-ai-fab-badge-hint">
+            <i class="fa-solid fa-sparkles text-emerald-400"></i>
+            <span>Pregúntale a DIAT AI</span>
+        </div>
+        <button id="diat-ai-fab-btn" class="diat-ai-fab-btn" title="Asistente Virtual DIAT AI" aria-label="Abrir Chat Asistente DIAT">
+            <i class="fa-solid fa-robot"></i>
+            <span class="online-ping"></span>
+        </button>
+    </div>
+
+    <!-- Ventana Flotante del Chatbot DIAT AI -->
+    <div id="diat-ai-chat-window" class="diat-ai-chat-window hidden no-print">
+        <!-- Header -->
+        <div class="diat-ai-header">
+            <div class="flex items-center gap-2.5">
+                <div class="diat-ai-avatar">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-extrabold text-[12.5px] tracking-wide">DIAT AI</span>
+                        <span class="bg-[#00FF88]/20 text-[#00FF88] text-[8.5px] font-extrabold px-1.5 py-0.5 rounded">ACTIVO</span>
+                    </div>
+                    <span class="text-[9.5px] text-emerald-200 block">Inteligencia Contractual & Territorial</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <button id="diat-ai-clear-btn" class="diat-ai-header-btn" title="Limpiar conversación">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </button>
+                <button id="diat-ai-minimize-btn" class="diat-ai-header-btn" title="Minimizar">
+                    <i class="fa-solid fa-minus"></i>
+                </button>
+                <button id="diat-ai-close-btn" class="diat-ai-header-btn" title="Cerrar chat">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mensajes -->
+        <div id="diat-ai-messages" class="diat-ai-messages"></div>
+
+        <!-- Input Footer -->
+        <div class="diat-ai-footer">
+            <input type="text" id="diat-ai-input" class="diat-ai-input" placeholder="Ej: ¿Cuántos convenios hay en Andes? o avance del 2773..." autocomplete="off" />
+            <button id="diat-ai-send-btn" class="diat-ai-send-btn" title="Enviar consulta">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
 </body>
 
 </html>

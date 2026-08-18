@@ -12024,6 +12024,889 @@ window.openModalFromMap = function (convNum) {
     }
 };
 
+// =============================================================================
+// 31. ASISTENTE VIRTUAL E INTELIGENCIA ARTIFICIAL DIAT (DIAT AI CHATBOT)
+// =============================================================================
+const DiatAI = {
+    isOpen: false,
+    isMinimized: false,
+    history: [],
+
+    init() {
+        const fabBtn = document.getElementById('diat-ai-fab-btn');
+        const chatWin = document.getElementById('diat-ai-chat-window');
+        const closeBtn = document.getElementById('diat-ai-close-btn');
+        const minBtn = document.getElementById('diat-ai-minimize-btn');
+        const clearBtn = document.getElementById('diat-ai-clear-btn');
+        const sendBtn = document.getElementById('diat-ai-send-btn');
+        const inputEl = document.getElementById('diat-ai-input');
+        const hintEl = document.getElementById('diat-ai-fab-hint');
+
+        if (!fabBtn || !chatWin) return;
+
+        // Toggle Open/Close
+        fabBtn.addEventListener('click', () => {
+            this.toggleChat();
+            if (hintEl) hintEl.style.display = 'none';
+        });
+
+        if (closeBtn) closeBtn.addEventListener('click', () => this.closeChat());
+        if (minBtn) minBtn.addEventListener('click', () => this.toggleMinimize());
+        if (clearBtn) clearBtn.addEventListener('click', () => this.clearChat());
+
+        // Send triggers
+        if (sendBtn) sendBtn.addEventListener('click', () => this.handleUserSend());
+        if (inputEl) {
+            inputEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.handleUserSend();
+                }
+            });
+        }
+
+        // Render Welcome Message on start
+        this.renderWelcomeMessage();
+    },
+
+    toggleChat() {
+        const chatWin = document.getElementById('diat-ai-chat-window');
+        if (!chatWin) return;
+        this.isOpen = !this.isOpen;
+        if (this.isOpen) {
+            chatWin.classList.remove('hidden');
+            chatWin.classList.remove('minimized');
+            this.isMinimized = false;
+            const input = document.getElementById('diat-ai-input');
+            if (input) setTimeout(() => input.focus(), 150);
+        } else {
+            chatWin.classList.add('hidden');
+        }
+    },
+
+    openWithQuery(query) {
+        if (!this.isOpen) this.toggleChat();
+        const input = document.getElementById('diat-ai-input');
+        if (input) {
+            input.value = query;
+            this.handleUserSend();
+        }
+    },
+
+    closeChat() {
+        const chatWin = document.getElementById('diat-ai-chat-window');
+        if (chatWin) chatWin.classList.add('hidden');
+        this.isOpen = false;
+    },
+
+    toggleMinimize() {
+        const chatWin = document.getElementById('diat-ai-chat-window');
+        if (!chatWin) return;
+        this.isMinimized = !this.isMinimized;
+        if (this.isMinimized) {
+            chatWin.classList.add('minimized');
+        } else {
+            chatWin.classList.remove('minimized');
+        }
+    },
+
+    clearChat() {
+        const msgContainer = document.getElementById('diat-ai-messages');
+        if (msgContainer) msgContainer.innerHTML = '';
+        this.history = [];
+        this.renderWelcomeMessage();
+    },
+
+    renderWelcomeMessage() {
+        const totalConvs = rawData ? rawData.length : 0;
+        const totalInv = rawData ? rawData.reduce((acc, r) => acc + (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0), 0) : 0;
+
+        const welcomeHTML = `
+            <p style="margin:0 0 6px;">
+                👋 <strong>¡Hola! Soy DIAT AI</strong>, tu asistente de inteligencia territorial y contractual de la <strong>Gobernación de Antioquia</strong>.
+            </p>
+            <p style="margin:0 0 6px; font-size:11.5px; color:#475569;">
+                Tengo indexados <strong>${totalConvs} convenios</strong> por un total de <strong>${formatCurrency(totalInv)}</strong> en los 125 municipios.
+            </p>
+            <p style="margin:0 0 8px; font-weight:700; font-size:11px; color:#0B5640;">
+                ¿Qué deseas consultar hoy?
+            </p>
+            <div class="diat-ai-suggestions">
+                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('¿Cuántos convenios hay en Andes?')">📌 Convenios en Andes</button>
+                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('¿Cuál es el avance del convenio 2773?')">🔍 Avance Convenio 2773</button>
+                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('¿Qué convenios tienen prórrogas de plazo?')">⏱️ Prórrogas de plazo</button>
+                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('Resumen de inversión en San Vicente')">📍 San Vicente Ferrer</button>
+                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('Métricas generales de Antioquia')">📊 Balance Global</button>
+            </div>
+        `;
+        this.appendBotMessage(welcomeHTML);
+    },
+
+    sendPrompt(promptText) {
+        const input = document.getElementById('diat-ai-input');
+        if (input) {
+            input.value = promptText;
+            this.handleUserSend();
+        }
+    },
+
+    handleUserSend() {
+        const input = document.getElementById('diat-ai-input');
+        if (!input) return;
+        const text = input.value.trim();
+        if (!text) return;
+
+        // 1. Render User Message
+        this.appendUserMessage(text);
+        input.value = '';
+
+        // 2. Render Typing Indicator
+        const typingId = this.showTyping();
+
+        // 3. Process with AI Engine
+        setTimeout(() => {
+            this.removeTyping(typingId);
+            const responseHTML = this.processQuery(text);
+            this.appendBotMessage(responseHTML);
+        }, 320);
+    },
+
+    appendUserMessage(text) {
+        const container = document.getElementById('diat-ai-messages');
+        if (!container) return;
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'diat-msg user';
+        msgDiv.innerHTML = `
+            <div class="diat-msg-bubble">
+                ${this.escapeHTML(text)}
+            </div>
+        `;
+        container.appendChild(msgDiv);
+        this.scrollToBottom();
+    },
+
+    appendBotMessage(htmlContent) {
+        const container = document.getElementById('diat-ai-messages');
+        if (!container) return;
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'diat-msg bot';
+        msgDiv.innerHTML = `
+            <div class="diat-ai-avatar" style="width:26px; height:26px; font-size:13px; flex-shrink:0;">
+                <i class="fa-solid fa-robot"></i>
+            </div>
+            <div class="diat-msg-bubble">
+                ${htmlContent}
+            </div>
+        `;
+        container.appendChild(msgDiv);
+        this.scrollToBottom();
+    },
+
+    showTyping() {
+        const container = document.getElementById('diat-ai-messages');
+        if (!container) return null;
+        const id = 'diat-typing-' + Date.now();
+        const typingDiv = document.createElement('div');
+        typingDiv.id = id;
+        typingDiv.className = 'diat-msg bot';
+        typingDiv.innerHTML = `
+            <div class="diat-ai-avatar" style="width:26px; height:26px; font-size:13px; flex-shrink:0;">
+                <i class="fa-solid fa-robot"></i>
+            </div>
+            <div class="diat-msg-bubble" style="background:#F1F5F9; border-color:#E2E8F0;">
+                <div class="diat-typing-indicator">
+                    <span class="diat-typing-dot"></span>
+                    <span class="diat-typing-dot"></span>
+                    <span class="diat-typing-dot"></span>
+                </div>
+            </div>
+        `;
+        container.appendChild(typingDiv);
+        this.scrollToBottom();
+        return id;
+    },
+
+    removeTyping(id) {
+        if (!id) return;
+        const el = document.getElementById(id);
+        if (el) el.remove();
+    },
+
+    scrollToBottom() {
+        const container = document.getElementById('diat-ai-messages');
+        if (container) {
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 50);
+        }
+    },
+
+    escapeHTML(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    },
+
+    // =========================================================================
+    // NATURAL LANGUAGE QUERY ENGINE
+    // =========================================================================
+    processQuery(query) {
+        const raw = query.trim();
+        const qUpper = raw.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const data = rawData || [];
+
+        if (data.length === 0) {
+            return `⚠️ Actualmente no hay datos de convenios cargados en memoria. Por favor verifica la conexión.`;
+        }
+
+        // 1. BÚSQUEDA DE NÚMERO DE CONVENIO ESPECÍFICO
+        const convMatch = this.findConvenioInText(qUpper, data);
+        if (convMatch) {
+            return this.formatConvenioResponse(convMatch, qUpper);
+        }
+
+        // 2. CONSULTAS DE RANKING O COMPARATIVAS DE SUPERVISORES (ej: "¿Cuál supervisor tiene más convenios?", "Supervisores")
+        const isSupRankingQuery = (
+            qUpper.includes('SUPERVISOR') || qUpper.includes('SUPERVISORES') || qUpper.includes('SUPERVISION')
+        ) && (
+            qUpper.includes('MAS') || qUpper.includes('MAYOR') || qUpper.includes('RANKING') || 
+            qUpper.includes('CUAL') || qUpper.includes('QUIEN') || qUpper.includes('LISTA') || 
+            qUpper.includes('TODOS') || qUpper.includes('CARGA') || qUpper.includes('CUANTOS') ||
+            qUpper.includes('TIENE MAS') || qUpper.includes('CADA') || qUpper.includes('TOP')
+        );
+
+        if (isSupRankingQuery && !this.isSpecificSupervisorMention(qUpper, data)) {
+            return this.formatSupervisoresRankingResponse(data);
+        }
+
+        // 3. BÚSQUEDA POR SUPERVISOR ESPECÍFICO (ej: "Jonathan Marín", "Jaime Arturo")
+        const matchedSup = this.findSupervisorInText(qUpper, data);
+        if (matchedSup) {
+            const supConvs = data.filter(r => String(r['SUPERVISOR'] || '').toUpperCase().includes(matchedSup));
+            return this.formatSupervisorResponse(matchedSup, supConvs);
+        }
+
+        // 4. BÚSQUEDA POR MUNICIPIO
+        const matchedMuni = this.findMunicipioInText(qUpper);
+        if (matchedMuni) {
+            const muniConvs = data.filter(r => isSameMuni(r['MUNICIPIO'], matchedMuni));
+            return this.formatMunicipioResponse(matchedMuni, muniConvs, qUpper);
+        }
+
+        // 5. BÚSQUEDA POR SUBREGIÓN
+        const matchedSubreg = this.findSubregionInText(qUpper);
+        if (matchedSubreg) {
+            const subConvs = data.filter(r => {
+                const s = normalizeSubregionName(r['SUBREGION'] || r['SUBREGIÓN'] || getSubregionForMuni(r['MUNICIPIO']));
+                return s === matchedSubreg;
+            });
+            return this.formatSubregionResponse(matchedSubreg, subConvs);
+        }
+
+        // 6. CONSULTA DE PRÓRROGAS
+        if (qUpper.includes('PRORROGA') || qUpper.includes('PRORROGAS') || qUpper.includes('ADICION DE TIEMPO') || qUpper.includes('AMPLIACION DE PLAZO')) {
+            const conProrrogas = data.filter(r => (parseNum(r['PRORROGAS (MESES)']) || parseNum(r['PRÓRROGA DE PLAZO (MESES)']) || parseNum(r['PRORROGA (MESES)'])) > 0);
+            return this.formatProrrogasListResponse(conProrrogas);
+        }
+
+        // 7. CONSULTA DE SUSPENSIONES
+        if (qUpper.includes('SUSPENSION') || qUpper.includes('SUSPENSIONES') || qUpper.includes('SUSPENDIDO') || qUpper.includes('CONGELADO')) {
+            const conSusp = data.filter(r => {
+                const sState = String(r['ESTADO CONVENIO'] || '').toUpperCase();
+                const mSusp = parseNum(r['SUSPENSIONES (MESES)']) || parseNum(r['SUSPENSION (MESES)']);
+                return sState.includes('SUSPENDIDO') || mSusp > 0;
+            });
+            return this.formatSuspensionesListResponse(conSusp);
+        }
+
+        // 8. CONSULTA DE ESTADO (LIQUIDADOS, EJECUCIÓN, TERMINADOS)
+        if (qUpper.includes('LIQUIDAD') || qUpper.includes('EJECUCION') || qUpper.includes('TERMINAD') || qUpper.includes('SIN INICIAR') || qUpper.includes('POR INICIAR')) {
+            let targetState = '';
+            if (qUpper.includes('LIQUIDAD')) targetState = 'LIQUIDADO';
+            else if (qUpper.includes('EJECUCION')) targetState = 'EN EJECUCION';
+            else if (qUpper.includes('TERMINAD')) targetState = 'TERMINADO';
+            else if (qUpper.includes('INICIAR')) targetState = 'POR INICIAR';
+
+            const filteredByState = data.filter(r => {
+                const est = String(r['ESTADO CONVENIO'] || '').toUpperCase();
+                return est.includes(targetState);
+            });
+            return this.formatStateListResponse(targetState, filteredByState);
+        }
+
+        // 9. CONSULTA DE TOP / RANKINGS GENERALES
+        if (qUpper.includes('TOP') || qUpper.includes('MAYOR') || qUpper.includes('MAS CONVENIOS') || qUpper.includes('MAS INVERSION') || qUpper.includes('RANKING')) {
+            if (qUpper.includes('SUPERVISOR') || qUpper.includes('SUPERVISORES')) {
+                return this.formatSupervisoresRankingResponse(data);
+            }
+            if (qUpper.includes('CONVENIO') || qUpper.includes('VALOR') || qUpper.includes('COSTOSO') || qUpper.includes('CARO') || qUpper.includes('GRANDE')) {
+                return this.formatTopConveniosResponse(data);
+            }
+            return this.formatTopRankingsResponse(data);
+        }
+
+        // 10. MÉTRICAS GLOBALES / BALANCE
+        if (qUpper.includes('TOTAL') || qUpper.includes('BALANCE') || qUpper.includes('GLOBAL') || qUpper.includes('INVERSION') || qUpper.includes('CUANTOS CONVENIOS') || qUpper.includes('RESUMEN')) {
+            return this.formatGlobalMetricsResponse(data);
+        }
+
+        // 11. RESPUESTA POR DEFECTO
+        return `
+            <p style="margin:0 0 6px;">🤔 No logré identificar con precisión el parámetro de tu consulta: <em>"${this.escapeHTML(query)}"</em>.</p>
+            <p style="margin:0 0 6px; font-size:11px; color:#475569;">Puedes probar preguntándome de estas formas:</p>
+            <ul style="margin:0 0 8px; padding-left:18px; font-size:11px; color:#334155; line-height:1.5;">
+                <li><strong>Supervisores:</strong> <em>"¿Cuál supervisor tiene más convenios?"</em> o <em>"Convenios de Jonathan Marín"</em></li>
+                <li><strong>Municipios:</strong> <em>"¿Cuántos convenios hay en Andes?"</em> o <em>"Convenios en San Vicente"</em></li>
+                <li><strong>Convenio específico:</strong> <em>"Estado del convenio 2773"</em> o <em>"Avance financiero 2801"</em></li>
+                <li><strong>Plazos y prórrogas:</strong> <em>"¿Qué convenios tienen prórrogas de plazo?"</em></li>
+                <li><strong>Balance general:</strong> <em>"Inversión total en Antioquia"</em></li>
+            </ul>
+        `;
+    },
+
+    isSpecificSupervisorMention(qUpper, data) {
+        const sups = Array.from(new Set(data.map(r => String(r['SUPERVISOR'] || '').trim().toUpperCase()))).filter(s => s.length > 3 && !s.includes('S/D') && !s.includes('POR ASIGNAR'));
+        for (const s of sups) {
+            const sClean = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const parts = sClean.split(' ').filter(p => p.length >= 4);
+            if (qUpper.includes(sClean)) return true;
+            if (parts.length >= 2 && parts.every(p => qUpper.includes(p))) return true;
+        }
+        return false;
+    },
+
+    findConvenioInText(qUpper, data) {
+        for (const r of data) {
+            const num = String(r['CONVENIO'] || '').trim().toUpperCase();
+            if (num && qUpper.includes(num)) return r;
+            const cleanNum = num.replace(/^[^0-9]+/, '');
+            if (cleanNum && cleanNum.length >= 4 && qUpper.includes(cleanNum)) {
+                return r;
+            }
+        }
+        return null;
+    },
+
+    findMunicipioInText(qUpper) {
+        const munis = [
+            'MEDELLIN', 'BELLO', 'ITAGUI', 'ENVIGADO', 'CALDAS', 'COPACABANA', 'LA ESTRELLA', 'GIRARDOTA', 'BARBOSA', 'SABANETA',
+            'CAUCASIA', 'EL BAGRE', 'NECHI', 'TARAZA', 'CACERES', 'ZARAGOZA',
+            'PUERTO BERRIO', 'PUERTO NARE', 'PUERTO TRIUNFO', 'YONDO', 'CARACOLI', 'MACEO',
+            'SEGOVIA', 'REMEDIOS', 'AMALFI', 'ANORI', 'YALI', 'VEGACHI', 'YOLOMBO', 'CISNEROS', 'SAN ROQUE', 'SANTO DOMINGO',
+            'SANTA ROSA DE OSOS', 'SAN PEDRO DE LOS MILAGROS', 'ENTRERRIOS', 'BELMIRA', 'DONMATIAS', 'SAN JOSE DE LA MONTANA',
+            'YARUMAL', 'ANGOSTURA', 'BRICENO', 'ITUANGO', 'TOLEDO', 'SAN ANDRES DE CUERQUIA', 'VALDIVIA', 'CAMPAMENTO', 'GUADALUPE', 'CAROLINA DEL PRINCIPE', 'GOMEZ PLATA',
+            'SANTA FE DE ANTIOQUIA', 'SOPETRAN', 'SAN JERONIMO', 'OLAYA', 'LIBORINA', 'SABANALARGA', 'BURITICA', 'GIRALDO', 'CANASGORDAS', 'URAMITA', 'DABEIBA', 'PEQUE', 'FRONTINO', 'ABRIAQUI', 'ANZA', 'EBEJICO', 'ARMENIA', 'HELICONIA', 'CAICEDO',
+            'RIONEGRO', 'MARINILLA', 'EL CARMEN DE VIBORAL', 'GUARNE', 'LA CEJA', 'EL RETIRO', 'EL SANTUARIO', 'SAN VICENTE', 'SAN VICENTE FERRER', 'GUATAPE', 'EL PENOL', 'SAN RAFAEL', 'SAN CARLOS', 'GRANADA', 'COCORNA', 'SAN LUIS', 'SAN FRANCISCO', 'SONSON', 'ABEJORRAL', 'LA UNION', 'ARGELIA', 'NARINO', 'CONCEPCION', 'ALEJANDRIA',
+            'AMAGA', 'ANGELOPOLIS', 'TITIRIBI', 'VENECIA', 'FREDONIA', 'SANTA BARBARA', 'MONTEBELLO', 'TARSO', 'JERICO', 'PUEBLORRICO', 'TAMESIS', 'VALPARAISO', 'LA PINTADA', 'JARDIN', 'ANDES', 'HISPANIA', 'BETANIA', 'CIUDAD BOLIVAR', 'SALGAR', 'CONCORDIA', 'BETULIA', 'URRAO', 'CARAMANTA',
+            'APARTADO', 'TURBO', 'CAREPA', 'CHIGORODO', 'NECOCLI', 'SAN PEDRO DE URABA', 'SAN JUAN DE URABA', 'ARBOLETES', 'MUTATA', 'MURINDO', 'VIGIA DEL FUERTE'
+        ];
+
+        for (const m of munis) {
+            const mClean = m.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const regex = new RegExp(`\\b${mClean}\\b`, 'i');
+            if (regex.test(qUpper) || (mClean.length > 5 && qUpper.includes(mClean))) {
+                return m;
+            }
+        }
+        return null;
+    },
+
+    findSubregionInText(qUpper) {
+        const subregs = [
+            'VALLE DE ABURRA', 'BAJO CAUCA', 'MAGDALENA MEDIO', 'NORDESTE', 'NORTE', 'OCCIDENTE', 'ORIENTE', 'SUROESTE', 'URABA'
+        ];
+        for (const s of subregs) {
+            if (qUpper.includes(s) || (s === 'VALLE DE ABURRA' && qUpper.includes('ABURRA')) || (s === 'MAGDALENA MEDIO' && qUpper.includes('MAGDALENA'))) {
+                return s;
+            }
+        }
+        return null;
+    },
+
+    findSupervisorInText(qUpper, data) {
+        const sups = Array.from(new Set(data.map(r => String(r['SUPERVISOR'] || '').trim().toUpperCase()))).filter(s => s.length > 3 && !s.includes('S/D') && !s.includes('POR ASIGNAR'));
+        for (const s of sups) {
+            const sClean = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            if (qUpper.includes(sClean)) return s;
+            
+            const parts = sClean.split(' ').filter(p => p.length >= 4);
+            if (parts.length >= 2) {
+                const matchCount = parts.filter(p => qUpper.includes(p)).length;
+                if (matchCount >= 2) return s;
+            } else if (parts.length === 1 && parts[0].length >= 5 && qUpper.includes(parts[0])) {
+                return s;
+            }
+        }
+        return null;
+    },
+
+    // ── Formateador de Convenio Específico ───────────────────────────────────
+    formatConvenioResponse(row, qUpper) {
+        const convNum = String(row['CONVENIO'] || '').trim();
+        const muni = row['MUNICIPIO'] || 'N/A';
+        const sub = row['SUBREGION'] || row['SUBREGIÓN'] || getSubregionForMuni(muni);
+        const sup = row['SUPERVISOR'] || 'Por designar';
+        const obj = row['OBJETO'] || 'Sin descripción de objeto registrado';
+        const sysState = typeof getSystemState === 'function' ? getSystemState(row['ESTADO CONVENIO']) : { hex: '#0B5640', label: row['ESTADO CONVENIO'] || 'Activo', badgeClass: 'bg-emerald-50 text-emerald-800' };
+
+        const fisPct = (row['FISICO_NORM'] || 0).toFixed(1);
+        const finPct = (row['FINANCIERO_NORM'] || 0).toFixed(1);
+        const valTotal = parseNum(row['VALOR TOTAL']) || ((parseNum(row['APORTE DEPARTAMENTO']) || 0) + (parseNum(row['ADICION DEPARTAMENTO']) || 0));
+        const valDesembolsado = parseNum(row['VALOR DESEMBOLSADO EN EL IDEA']) || parseNum(row['VALOR DESEMBOLSADO EN IDEA']) || 0;
+        const valAutorizado = parseNum(row['VALOR AUTORIZADO']) || parseNum(row['VALOR EJECUTADO']) || 0;
+        const saldoIdea = valDesembolsado - valAutorizado;
+
+        const plazoIni = parseNum(row['PLAZO DE EJECUCIÓN (MESES)']) || parseNum(row['PLAZO DE EJECUCION (MESES)']) || 0;
+        const prorrogas = parseNum(row['PRORROGAS (MESES)']) || parseNum(row['PRÓRROGA DE PLAZO (MESES)']) || parseNum(row['PRORROGA (MESES)']) || 0;
+        const susp = parseNum(row['SUSPENSIONES (MESES)']) || parseNum(row['SUSPENSION (MESES)']) || 0;
+
+        const fTermIni = row['FECHA TERMINACIÓN INICIAL'] || row['FECHA DE TERMINACIÓN INICIAL'] || row['FECHA TERMINACION INICIAL'] || 'Pendiente';
+        const fTermNueva = row['FECHA TERMINACIÓN MODIFICADA'] || row['FECHA DE TERMINACIÓN MODIFICADA'] || row['FECHA VENCIMIENTO'] || row['FECHA DE VENCIMIENTO'] || fTermIni;
+
+        const lonConM = getRowLongitudContratada(row) || 0;
+        const lonEjeM = getRowLongitudEjecutada(row) || 0;
+
+        return `
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #E2E8F0;">
+                <strong style="font-size:13.5px;color:#0B5640;">Convenio ${convNum}</strong>
+                <span class="px-2 py-0.5 rounded-full font-bold text-[9px] uppercase ${sysState.badgeClass}">${sysState.label}</span>
+            </div>
+            <p style="margin:0 0 4px;font-size:11px;">📍 <strong>${muni}</strong> (${sub}) · 👤 <em>${sup}</em></p>
+            <p style="margin:0 0 6px;font-size:10.5px;color:#475569;line-height:1.35;max-height:48px;overflow-y:auto;">
+                📝 ${obj}
+            </p>
+
+            <div class="diat-ai-card">
+                <!-- Avance Físico & Financiero -->
+                <div style="margin-bottom:6px;">
+                    <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;">
+                        <span>Avance Físico</span>
+                        <span style="color:#0B5640;">${fisPct}% (${(lonEjeM/1000).toFixed(2)} / ${(lonConM/1000).toFixed(2)} km)</span>
+                    </div>
+                    <div class="diat-ai-progress-track">
+                        <div class="diat-ai-progress-bar" style="width:${Math.min(100, Math.max(0, fisPct))}%; background:#0B5640;"></div>
+                    </div>
+                </div>
+                <div style="margin-bottom:6px;">
+                    <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;">
+                        <span>Avance Financiero</span>
+                        <span style="color:#2563EB;">${finPct}% (${formatCurrency(valAutorizado)})</span>
+                    </div>
+                    <div class="diat-ai-progress-track">
+                        <div class="diat-ai-progress-bar" style="width:${Math.min(100, Math.max(0, finPct))}%; background:#2563EB;"></div>
+                    </div>
+                </div>
+
+                <!-- KPIs Financieros y Plazos -->
+                <div class="diat-ai-kpi-grid">
+                    <div class="diat-ai-kpi-item">
+                        <span style="font-size:8.5px;color:#64748B;display:block;">Inversión Total</span>
+                        <strong style="font-size:10.5px;color:#0F172A;">${formatCurrency(valTotal)}</strong>
+                    </div>
+                    <div class="diat-ai-kpi-item">
+                        <span style="font-size:8.5px;color:#64748B;display:block;">Saldo en IDEA</span>
+                        <strong style="font-size:10.5px;color:${saldoIdea > 0 ? '#0B5640' : '#64748B'};">${formatCurrency(saldoIdea)}</strong>
+                    </div>
+                    <div class="diat-ai-kpi-item">
+                        <span style="font-size:8.5px;color:#64748B;display:block;">Prórrogas / Susp.</span>
+                        <strong style="font-size:10.5px;color:#D97706;">+${prorrogas}M Pró. · ${susp}M Susp.</strong>
+                    </div>
+                    <div class="diat-ai-kpi-item">
+                        <span style="font-size:8.5px;color:#64748B;display:block;">Fecha Terminación</span>
+                        <strong style="font-size:10.5px;color:#0B5640;">${fTermNueva}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones Rápidas -->
+            <div class="diat-action-btn-group">
+                <button type="button" class="diat-action-btn" onclick="openModalFromMap('${convNum}')">
+                    <i class="fa-solid fa-folder-open"></i> Ficha Completa
+                </button>
+                <button type="button" class="diat-action-btn" onclick="toggleTerritorialFilter('filter-municipio', '${muni}', event)">
+                    <i class="fa-solid fa-filter"></i> Filtrar ${muni}
+                </button>
+                <button type="button" class="diat-action-btn" onclick="generateProfessionalPDF(rawData.find(r => String(r['CONVENIO']).trim() === '${convNum}'))">
+                    <i class="fa-solid fa-file-pdf"></i> Exportar PDF
+                </button>
+            </div>
+        `;
+    },
+
+    // ── Formateador de Municipio ─────────────────────────────────────────────
+    formatMunicipioResponse(muniName, convs, qUpper) {
+        if (convs.length === 0) {
+            return `
+                <p style="margin:0 0 6px;">📍 En el municipio de <strong>${muniName}</strong> actualmente <strong>no se registran convenios viales activos</strong> en la base de datos DIAT.</p>
+                <button type="button" class="diat-action-btn" onclick="toggleTerritorialFilter('filter-municipio', '${muniName}', event)">
+                    <i class="fa-solid fa-map-location-dot"></i> Ver en Mapa Territorial
+                </button>
+            `;
+        }
+
+        const totalInv = convs.reduce((acc, r) => acc + (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0), 0);
+        const totalKmCon = (convs.reduce((acc, r) => acc + (getRowLongitudContratada(r) || 0), 0) / 1000).toFixed(2);
+        const totalKmEje = (convs.reduce((acc, r) => acc + (getRowLongitudEjecutada(r) || 0), 0) / 1000).toFixed(2);
+        const subreg = convs[0]['SUBREGION'] || convs[0]['SUBREGIÓN'] || getSubregionForMuni(muniName);
+
+        let convListHTML = convs.map(c => {
+            const num = c['CONVENIO'];
+            const fis = (c['FISICO_NORM'] || 0).toFixed(1);
+            const val = formatCurrency(c['VALOR TOTAL'] || c['APORTE DEPARTAMENTO'] || 0);
+            return `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;margin-bottom:4px;font-size:10.5px;">
+                    <div>
+                        <strong style="color:#0B5640;cursor:pointer;" onclick="DiatAI.sendPrompt('Detalles del convenio ${num}')">Conv. ${num}</strong>
+                        <span style="font-size:9.5px;color:#64748B;display:block;">${c['ESTADO CONVENIO'] || 'Activo'} · ${fis}% avance</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-weight:700;color:#0F172A;">${val}</span>
+                        <button type="button" onclick="openModalFromMap('${num}')" style="display:block;background:none;border:none;color:#0B5640;font-size:9px;font-weight:700;cursor:pointer;padding:0;margin-left:auto;">Ver ficha →</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div style="margin-bottom:6px;">
+                <strong style="font-size:13px;color:#0B5640;">📍 ${muniName} (${subreg})</strong>
+                <p style="margin:2px 0 0;font-size:11.5px;color:#334155;">
+                    Se registran <strong>${convs.length} convenio${convs.length > 1 ? 's' : ''}</strong> con una inversión acumulada de <strong>${formatCurrency(totalInv)}</strong>.
+                </p>
+            </div>
+
+            <div class="diat-ai-kpi-grid" style="margin-bottom:8px;">
+                <div class="diat-ai-kpi-item">
+                    <span style="font-size:8.5px;color:#64748B;display:block;">Longitud Contratada</span>
+                    <strong style="font-size:11px;color:#0F172A;">${totalKmCon} km</strong>
+                </div>
+                <div class="diat-ai-kpi-item">
+                    <span style="font-size:8.5px;color:#64748B;display:block;">Longitud Ejecutada</span>
+                    <strong style="font-size:11px;color:#0B5640;">${totalKmEje} km</strong>
+                </div>
+            </div>
+
+            <div style="max-height:160px;overflow-y:auto;margin-bottom:8px;">
+                ${convListHTML}
+            </div>
+
+            <div class="diat-action-btn-group">
+                <button type="button" class="diat-action-btn" onclick="toggleTerritorialFilter('filter-municipio', '${muniName}', event)">
+                    <i class="fa-solid fa-filter"></i> Filtrar en Todo el Dashboard
+                </button>
+            </div>
+        `;
+    },
+
+    // ── Formateador de Subregión ─────────────────────────────────────────────
+    formatSubregionResponse(subName, convs) {
+        const totalInv = convs.reduce((acc, r) => acc + (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0), 0);
+        const munisSet = new Set(convs.map(r => r['MUNICIPIO']));
+        const totalKmEje = (convs.reduce((acc, r) => acc + (getRowLongitudEjecutada(r) || 0), 0) / 1000).toFixed(2);
+
+        return `
+            <div style="margin-bottom:6px;">
+                <strong style="font-size:13px;color:#0B5640;">🗺️ Subregión ${subName}</strong>
+                <p style="margin:2px 0 0;font-size:11.5px;color:#334155;">
+                    Cuenta con <strong>${convs.length} convenios</strong> impactando <strong>${munisSet.size} municipios</strong>.
+                </p>
+            </div>
+
+            <div class="diat-ai-kpi-grid">
+                <div class="diat-ai-kpi-item">
+                    <span style="font-size:8.5px;color:#64748B;display:block;">Inversión Departamental</span>
+                    <strong style="font-size:11px;color:#0B5640;">${formatCurrency(totalInv)}</strong>
+                </div>
+                <div class="diat-ai-kpi-item">
+                    <span style="font-size:8.5px;color:#64748B;display:block;">Vías Ejecutadas</span>
+                    <strong style="font-size:11px;color:#0F172A;">${totalKmEje} km</strong>
+                </div>
+            </div>
+
+            <div class="diat-action-btn-group">
+                <button type="button" class="diat-action-btn" onclick="toggleTerritorialFilter('filter-subregion', '${subName}', event)">
+                    <i class="fa-solid fa-filter"></i> Filtrar Subregión ${subName}
+                </button>
+            </div>
+        `;
+    },
+
+    // ── Formateador de Prórrogas ─────────────────────────────────────────────
+    formatProrrogasListResponse(convs) {
+        if (convs.length === 0) {
+            return `⏱️ Actualmente no se registran convenios con prórrogas de plazo en la selección.`;
+        }
+
+        const items = convs.slice(0, 6).map(c => {
+            const p = parseNum(c['PRORROGAS (MESES)']) || parseNum(c['PRÓRROGA DE PLAZO (MESES)']) || 0;
+            return `
+                <div style="display:flex;justify-content:space-between;padding:4px 6px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:6px;margin-bottom:3px;font-size:10px;">
+                    <span><strong>Conv. ${c['CONVENIO']}</strong> (${c['MUNICIPIO']})</span>
+                    <strong style="color:#B45309;">+${p} Meses de prórroga</strong>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <p style="margin:0 0 6px;">⏱️ Se identificaron <strong>${convs.length} convenios con prórrogas de plazo aprobadas</strong>:</p>
+            ${items}
+            ${convs.length > 6 ? `<p style="margin:4px 0 0;font-size:9.5px;color:#64748B;">...y ${convs.length - 6} convenios adicionales con prórroga.</p>` : ''}
+        `;
+    },
+
+    // ── Formateador de Suspensiones ──────────────────────────────────────────
+    formatSuspensionesListResponse(convs) {
+        if (convs.length === 0) {
+            return `🟢 Excelente noticia: Actualmente no hay convenios reportados con suspensiones activas.`;
+        }
+
+        const items = convs.map(c => `
+            <div style="display:flex;justify-content:space-between;padding:4px 6px;background:#FEE2E2;border:1px solid #FECACA;border-radius:6px;margin-bottom:3px;font-size:10px;">
+                <span><strong>Conv. ${c['CONVENIO']}</strong> (${c['MUNICIPIO']})</span>
+                <strong style="color:#DC2626;">${c['ESTADO CONVENIO'] || 'SUSPENDIDO'}</strong>
+            </div>
+        `).join('');
+
+        return `
+            <p style="margin:0 0 6px;">⚠️ Se identificaron <strong>${convs.length} convenios en estado suspendido o con tiempos de suspensión</strong>:</p>
+            ${items}
+        `;
+    },
+
+    // ── Formateador de Estados Contractuales ─────────────────────────────────
+    formatStateListResponse(stateName, convs) {
+        return `
+            <p style="margin:0 0 6px;">📋 Hay un total de <strong>${convs.length} convenios en estado ${stateName}</strong> en el departamento de Antioquia.</p>
+            <div style="font-size:10.5px;color:#475569;">
+                Puedes filtrar el dashboard completo por este estado para analizar su detalle financiero y geográfico.
+            </div>
+            <div class="diat-action-btn-group">
+                <button type="button" class="diat-action-btn" onclick="const sel = document.getElementById('filter-estado'); if(sel){ Array.from(sel.options).forEach(o=>o.selected=(o.value.toUpperCase().includes('${stateName}'))); sel.dispatchEvent(new Event('change')); }">
+                    <i class="fa-solid fa-filter"></i> Filtrar estado ${stateName}
+                </button>
+            </div>
+        `;
+    },
+
+    // ── Formateador de Supervisor Específico ─────────────────────────────────
+    formatSupervisorResponse(supName, convs) {
+        const totalInv = convs.reduce((acc, r) => acc + (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0), 0);
+        const munis = Array.from(new Set(convs.map(r => r['MUNICIPIO'])));
+        const totalKmEje = (convs.reduce((acc, r) => acc + (getRowLongitudEjecutada(r) || 0), 0) / 1000).toFixed(2);
+        
+        let convList = convs.map(c => {
+            const num = c['CONVENIO'];
+            const fis = (c['FISICO_NORM'] || 0).toFixed(1);
+            const val = formatCurrency(c['VALOR TOTAL'] || c['APORTE DEPARTAMENTO'] || 0);
+            return `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 6px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:5px;margin-bottom:3px;font-size:10px;">
+                    <div>
+                        <strong style="color:#0B5640;cursor:pointer;" onclick="DiatAI.sendPrompt('Detalles del convenio ${num}')">Conv. ${num}</strong>
+                        <span style="color:#64748B;"> (${c['MUNICIPIO']})</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="color:#0B5640;font-weight:700;">${fis}% avance</span> · <span>${val}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div style="margin-bottom:6px;">
+                <p style="margin:0 0 2px;font-size:12.5px;">👤 Supervisor: <strong>${supName}</strong></p>
+                <p style="margin:0 0 4px;font-size:11.5px;color:#334155;">
+                    Tiene a su cargo <strong>${convs.length} convenio${convs.length > 1 ? 's' : ''}</strong> en <strong>${munis.length} municipio${munis.length > 1 ? 's' : ''}</strong> con una inversión total de <strong>${formatCurrency(totalInv)}</strong> (${totalKmEje} km ejecutados).
+                </p>
+            </div>
+            <div style="max-height:150px;overflow-y:auto;margin-bottom:6px;">
+                ${convList}
+            </div>
+            <div class="diat-action-btn-group">
+                <button type="button" class="diat-action-btn" onclick="const sel = document.getElementById('filter-supervisor'); if(sel){ Array.from(sel.options).forEach(o=>o.selected=(o.value.toUpperCase().includes('${supName.toUpperCase()}'))); sel.dispatchEvent(new Event('change')); }">
+                    <i class="fa-solid fa-user-check"></i> Filtrar convenios de ${supName}
+                </button>
+                <button type="button" class="diat-action-btn" onclick="DiatAI.sendPrompt('¿Cuál supervisor tiene más convenios?')">
+                    <i class="fa-solid fa-ranking-star"></i> Ver ranking de todos los supervisores
+                </button>
+            </div>
+        `;
+    },
+
+    // ── Formateador de Ranking Completo de Supervisores ──────────────────────
+    formatSupervisoresRankingResponse(data) {
+        const supStats = {};
+        data.forEach(r => {
+            let sup = String(r['SUPERVISOR'] || '').trim();
+            if (!sup || sup === '0' || sup.toUpperCase().includes('POR ASIGNAR') || sup.toUpperCase().includes('S/D')) {
+                sup = 'POR DESIGNAR / SIN ASIGNAR';
+            }
+            if (!supStats[sup]) {
+                supStats[sup] = { name: sup, count: 0, totalInv: 0, munis: new Set(), convs: [] };
+            }
+            supStats[sup].count++;
+            const inv = (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
+            supStats[sup].totalInv += inv;
+            if (r['MUNICIPIO']) supStats[sup].munis.add(r['MUNICIPIO']);
+            supStats[sup].convs.push(r);
+        });
+
+        const sorted = Object.values(supStats).sort((a, b) => b.count - a.count);
+        if (sorted.length === 0) return `<p>No hay supervisores registrados en el sistema.</p>`;
+
+        const top1 = sorted[0];
+
+        const listHTML = sorted.map((s, idx) => {
+            const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `<strong>${idx + 1}.</strong>`;
+            const isTop = idx === 0;
+            return `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 9px;background:${isTop ? '#ECFDF5' : '#FFFFFF'};border:1px solid ${isTop ? '#6EE7B7' : '#E2E8F0'};border-radius:8px;margin-bottom:5px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                    <div style="flex:1;min-width:0;padding-right:8px;">
+                        <div style="display:flex;align-items:center;gap:4px;">
+                            <span>${medal}</span>
+                            <strong style="color:${isTop ? '#065F46' : '#1E293B'};font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;" onclick="DiatAI.sendPrompt('Convenios de ${s.name}')" title="Ver convenios de ${s.name}">
+                                ${s.name}
+                            </strong>
+                        </div>
+                        <span style="font-size:9.5px;color:#64748B;display:block;margin-top:1px;">
+                            ${s.munis.size} municipio${s.munis.size > 1 ? 's' : ''} · Inversión: ${formatCurrency(s.totalInv)}
+                        </span>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <span style="font-weight:900;font-size:13px;color:${isTop ? '#047857' : '#0F172A'};">${s.count}</span>
+                        <span style="font-size:9px;color:#64748B;display:block;margin-top:-2px;">convenios</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div style="margin-bottom:6px;">
+                <p style="margin:0 0 4px;font-size:12.5px;line-height:1.4;">
+                    👤 El supervisor con <strong>más convenios a cargo</strong> es <strong>${top1.name}</strong> con <strong>${top1.count} convenios</strong> asignados por un valor total de <strong>${formatCurrency(top1.totalInv)}</strong>.
+                </p>
+                <p style="margin:4px 0 6px;font-size:11px;color:#475569;">
+                    📊 <strong>Distribución y ranking completo de convenios por supervisor:</strong>
+                </p>
+            </div>
+            <div style="max-height:230px;overflow-y:auto;margin-bottom:8px;padding-right:2px;">
+                ${listHTML}
+            </div>
+            <div class="diat-action-btn-group">
+                <button type="button" class="diat-action-btn" onclick="const sel = document.getElementById('filter-supervisor'); if(sel){ Array.from(sel.options).forEach(o=>o.selected=(o.value.toUpperCase().includes('${top1.name.toUpperCase()}'))); sel.dispatchEvent(new Event('change')); }">
+                    <i class="fa-solid fa-filter"></i> Filtrar convenios de ${top1.name}
+                </button>
+            </div>
+        `;
+    },
+
+    // ── Formateador de Top Convenios con Mayor Inversión ─────────────────────
+    formatTopConveniosResponse(data) {
+        const sorted = [...data].sort((a, b) => {
+            const invA = (a['APORTE DEPARTAMENTO'] || 0) + (a['ADICION DEPARTAMENTO'] || 0);
+            const invB = (b['APORTE DEPARTAMENTO'] || 0) + (b['ADICION DEPARTAMENTO'] || 0);
+            return invB - invA;
+        }).slice(0, 5);
+
+        const list = sorted.map((c, idx) => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 6px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:5px;margin-bottom:3px;font-size:10.5px;">
+                <div>
+                    <strong style="color:#0B5640;cursor:pointer;" onclick="DiatAI.sendPrompt('Detalles del convenio ${c['CONVENIO']}')">${idx + 1}. Conv. ${c['CONVENIO']}</strong>
+                    <span style="color:#64748B;"> (${c['MUNICIPIO']})</span>
+                </div>
+                <strong style="color:#0B5640;">${formatCurrency((c['APORTE DEPARTAMENTO'] || 0) + (c['ADICION DEPARTAMENTO'] || 0))}</strong>
+            </div>
+        `).join('');
+
+        return `
+            <p style="margin:0 0 6px;">💰 <strong>Top 5 Convenios con Mayor Inversión Departamental:</strong></p>
+            ${list}
+        `;
+    },
+
+    // ── Formateador de Rankings de Municipios ────────────────────────────────
+    formatTopRankingsResponse(data) {
+        const muniInv = {};
+        data.forEach(r => {
+            const m = r['MUNICIPIO'];
+            if (m && !m.includes('S/D')) {
+                const inv = (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
+                muniInv[m] = (muniInv[m] || 0) + inv;
+            }
+        });
+        const top5 = Object.entries(muniInv).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+        const list = top5.map((item, idx) => `
+            <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#F8FAFC;border-radius:4px;margin-bottom:3px;font-size:10.5px;">
+                <span><strong>${idx + 1}. ${item[0]}</strong></span>
+                <strong style="color:#0B5640;">${formatCurrency(item[1])}</strong>
+            </div>
+        `).join('');
+
+        return `
+            <p style="margin:0 0 6px;">🏆 <strong>Top 5 Municipios con Mayor Inversión Departamental:</strong></p>
+            ${list}
+            <div class="diat-action-btn-group">
+                <button type="button" class="diat-action-btn" onclick="DiatAI.sendPrompt('¿Cuál supervisor tiene más convenios?')">
+                    <i class="fa-solid fa-user-tie"></i> Ver ranking de supervisores
+                </button>
+            </div>
+        `;
+    },
+
+    // ── Formateador de Métricas Globales ─────────────────────────────────────
+    formatGlobalMetricsResponse(data) {
+        const totalInv = data.reduce((acc, r) => acc + (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0), 0);
+        const totalDes = data.reduce((acc, r) => acc + (parseNum(r['VALOR DESEMBOLSADO EN EL IDEA']) || parseNum(r['VALOR DESEMBOLSADO EN IDEA']) || 0), 0);
+        const totalAut = data.reduce((acc, r) => acc + (parseNum(r['VALOR AUTORIZADO']) || parseNum(r['VALOR EJECUTADO']) || 0), 0);
+        const totalKmCon = (data.reduce((acc, r) => acc + (getRowLongitudContratada(r) || 0), 0) / 1000).toFixed(1);
+        const totalKmEje = (data.reduce((acc, r) => acc + (getRowLongitudEjecutada(r) || 0), 0) / 1000).toFixed(1);
+        const munis = new Set(data.map(r => r['MUNICIPIO'])).size;
+
+        return `
+            <p style="margin:0 0 6px;">📊 <strong>Balance General de Infraestructura Física · DIAT:</strong></p>
+            <div class="diat-ai-kpi-grid">
+                <div class="diat-ai-kpi-item">
+                    <span style="font-size:8.5px;color:#64748B;display:block;">Total Convenios</span>
+                    <strong style="font-size:11.5px;color:#0B5640;">${data.length} proyectos</strong>
+                </div>
+                <div class="diat-ai-kpi-item">
+                    <span style="font-size:8.5px;color:#64748B;display:block;">Municipios Atendidos</span>
+                    <strong style="font-size:11.5px;color:#0F172A;">${munis} de 125</strong>
+                </div>
+                <div class="diat-ai-kpi-item">
+                    <span style="font-size:8.5px;color:#64748B;display:block;">Inversión Departamental</span>
+                    <strong style="font-size:11.5px;color:#0B5640;">${formatCurrency(totalInv)}</strong>
+                </div>
+                <div class="diat-ai-kpi-item">
+                    <span style="font-size:8.5px;color:#64748B;display:block;">Recursos en IDEA</span>
+                    <strong style="font-size:11.5px;color:#2563EB;">${formatCurrency(totalDes)}</strong>
+                </div>
+                <div class="diat-ai-kpi-item">
+                    <span style="font-size:8.5px;color:#64748B;display:block;">Longitud Contratada</span>
+                    <strong style="font-size:11.5px;color:#0F172A;">${totalKmCon} km</strong>
+                </div>
+                <div class="diat-ai-kpi-item">
+                    <span style="font-size:8.5px;color:#64748B;display:block;">Longitud Ejecutada</span>
+                    <strong style="font-size:11.5px;color:#0B5640;">${totalKmEje} km</strong>
+                </div>
+            </div>
+        `;
+    }
+};
+
+window.DiatAI = DiatAI;
+
+// Auto-inicialización
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => DiatAI.init());
+} else {
+    DiatAI.init();
+}
+
+
 
 
 
