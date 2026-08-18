@@ -27,7 +27,7 @@ const antioquiaSubregiones = {
     "URABÁ": ["APARTADÓ", "APARTADO", "CAREPA", "CHIGORODÓ", "CHIGORODO", "MUTATÁ", "MUTATA", "TURBO", "NECOCLÍ", "NECOCLI", "SAN JUAN DE URABÁ", "SAN JUAN DE URABA", "SAN PEDRO DE URABÁ", "SAN PEDRO DE URABA", "ARBOLETES", "VIGÍA DEL FUERTE", "VIGIA DEL FUERTE", "MURINDÓ", "MURINDO"],
     "BAJO CAUCA": ["CAUCASIA", "EL BAGRE", "NECHÍ", "NECHI", "TARAZÁ", "TARAZA", "CÁCERES", "CACERES", "ZARAGOZA"],
     "MAGDALENA MEDIO": ["PUERTO BERRÍO", "PUERTO BERRIO", "PUERTO NARE", "PUERTO TRIUNFO", "MACEO", "CARACOLÍ", "CARACOLI", "YONDÓ", "YONDO"],
-    "ORIENTE": ["RIONEGRO", "MARINILLA", "GUARNE", "LA CEJA", "EL CARMEN DE VIBORAL", "EL RETIRO", "RETIRO", "SANTUARIO", "EL SANTUARIO", "GUATAPÉ", "GUATAPE", "EL PEÑOL", "PEÑOL", "PENOL", "SAN RAFAEL", "SAN CARLOS", "GRANADA", "COCORNÁ", "COCORNA", "SAN LUIS", "SAN FRANCISCO", "ABEJORRAL", "SONSÓN", "SONSON", "NARIÑO", "NARINO", "ARGELIA", "ALEJANDRÍA", "ALEJANDRIA", "CONCEPCIÓN", "CONCEPCION", "SAN VICENTE", "LA UNION", "LA UNIÓN"],
+    "ORIENTE": ["RIONEGRO", "MARINILLA", "GUARNE", "LA CEJA", "EL CARMEN DE VIBORAL", "EL RETIRO", "RETIRO", "SANTUARIO", "EL SANTUARIO", "GUATAPÉ", "GUATAPE", "EL PEÑOL", "PEÑOL", "PENOL", "SAN RAFAEL", "SAN CARLOS", "GRANADA", "COCORNÁ", "COCORNA", "SAN LUIS", "SAN FRANCISCO", "ABEJORRAL", "SONSÓN", "SONSON", "NARIÑO", "NARINO", "ARGELIA", "ALEJANDRÍA", "ALEJANDRIA", "CONCEPCIÓN", "CONCEPCION", "SAN VICENTE", "SAN VICENTE FERRER", "SAN VICENTE DE FERRER", "LA UNION", "LA UNIÓN"],
     "OCCIDENTE": ["SANTA FE DE ANTIOQUIA", "SANTAFE DE ANTIOQUIA", "SOPETRÁN", "SOPETRAN", "SAN JERÓNIMO", "SAN JERONIMO", "OLAYA", "SABANALARGA", "LIBORINA", "EBÉJICO", "EBEJICO", "ANZA", "ANZÁ", "CAICEDO", "URAMITA", "DABEIBA", "FRONTINO", "ABRIAQUÍ", "ABRIAQUI", "PEQUE", "BURITICÁ", "BURITICA", "GIRALDO", "CAÑASGORDAS", "CANASGORDAS", "HELICONIA"],
     "SUROESTE": ["ANDES", "CIUDAD BOLÍVAR", "CIUDAD BOLIVAR", "HISPANIA", "JERICÓ", "JERICO", "TARSO", "PUEBLORRICO", "SALGAR", "CONCORDIA", "TITIRIBÍ", "TITIRIBI", "VENECIA", "FREDONIA", "SANTA BÁRBARA", "SANTA BARBARA", "MONTEBELLO", "LA PINTADA", "VALPARAÍSO", "VALPARAISO", "CARAMANTA", "TÁMESIS", "TAMESIS", "AMAGÁ", "AMAGA", "ANGELÓPOLIS", "ANGELOPOLIS", "BETULIA", "URRAO", "ARMENIA", "BETANIA", "JARDIN", "JARDÍN"],
     "NORTE": ["DONMATÍAS", "DONMATIAS", "DON MATIAS", "SAN PEDRO DE LOS MILAGROS", "SAN PEDRO", "ENTRERRÍOS", "ENTRERRIOS", "BELMIRA", "SANTO DOMINGO", "SANTA ROSA DE OSOS", "YARUMAL", "ANGOSTURA", "CAMPAMENTO", "SAN ANDRÉS DE CUERQUIA", "SAN ANDRES", "SAN ANDRÉS", "TOLEDO", "SAN JOSÉ DE LA MONTAÑA", "SAN JOSE DE LA MONTANA", "ITUANGO", "VALDIVIA", "BRICEÑO", "BRICENO", "GÓMEZ PLATA", "GOMEZ PLATA", "GUADALUPE", "CAROLINA DEL PRÍNCIPE", "CAROLINA"],
@@ -53,7 +53,47 @@ const subregionColors = {
 let currentGalleryImages = [];
 let currentImageIndex = 0;
 
-// Utilidades
+// Utilidades y Normalización Canónica de Municipios
+function normCanonicalMuni(name) {
+    let s = String(name || '')
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Z0-9 ]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    if (!s) return '';
+    // San Vicente Ferrer aliases
+    if (s === 'SAN VICENTE' || s === 'SAN VICENTE FERRER' || s === 'SAN VICENTE DE FERRER' || s === 'SAN VICENTE F' || s.startsWith('SAN VICENTE')) return 'SAN VICENTE';
+    // Other common Antioquia municipality aliases
+    if (s === 'EL RETIRO' || s === 'RETIRO') return 'EL RETIRO';
+    if (s === 'EL PENOL' || s === 'PENOL') return 'EL PENOL';
+    if (s === 'EL SANTUARIO' || s === 'SANTUARIO') return 'EL SANTUARIO';
+    if (s === 'EL CARMEN DE VIBORAL' || s === 'CARMEN DE VIBORAL' || s === 'EL CARMEN') return 'EL CARMEN DE VIBORAL';
+    if (s === 'SAN PEDRO DE LOS MILAGROS' || s === 'SAN PEDRO DE LOS MILAGRO' || s === 'SAN PEDRO') return 'SAN PEDRO DE LOS MILAGROS';
+    if (s === 'SAN ANDRES DE CUERQUIA' || s === 'SAN ANDRES') return 'SAN ANDRES DE CUERQUIA';
+    if (s === 'SANTA FE DE ANTIOQUIA' || s === 'SANTAFE DE ANTIOQUIA' || s === 'SANTA FE') return 'SANTA FE DE ANTIOQUIA';
+    if (s === 'DONMATIAS' || s === 'DON MATIAS') return 'DONMATIAS';
+    if (s === 'ENTRERRIOS' || s === 'ENTRE RIOS') return 'ENTRERRIOS';
+    if (s === 'SAN JOSE DE LA MONTANA' || s === 'SAN JOSE MONTANA') return 'SAN JOSE DE LA MONTANA';
+    if (s === 'ARMENIA MANTEQUILLA' || s === 'ARMENIA') return 'ARMENIA';
+    if (s === 'VIGIA DEL FUERTE' || s === 'VIGIA') return 'VIGIA DEL FUERTE';
+    if (s === 'CIUDAD BOLIVAR' || s === 'BOLIVAR') return 'CIUDAD BOLIVAR';
+    if (s === 'CAROLINA DEL PRINCIPE' || s === 'CAROLINA') return 'CAROLINA DEL PRINCIPE';
+    if (s === 'LA UNION' || s === 'LA UNIO') return 'LA UNION';
+
+    return s;
+}
+
+function isSameMuni(name1, name2) {
+    if (!name1 || !name2) return false;
+    const c1 = normCanonicalMuni(name1);
+    const c2 = normCanonicalMuni(name2);
+    if (!c1 || !c2) return false;
+    return c1 === c2;
+}
+
 const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
 const formatNumber = (val) => new Intl.NumberFormat('es-CO').format(val || 0);
 
@@ -517,33 +557,8 @@ async function loadMapData(num) {
     return null;
 }
 
-// Generates an off-screen map of the department of Antioquia highlighting the project's municipality
-// Generates an off-screen map of the department of Antioquia highlighting the project's municipality
-async function generateAntioquiaMapBase64(municipalityName, row) {
-    const mapDiv = document.createElement('div');
-    mapDiv.id = 'temp-antioquia-map';
-    mapDiv.style.width = '500px';
-    mapDiv.style.height = '400px';
-    mapDiv.style.position = 'absolute';
-    mapDiv.style.left = '-9999px';
-    mapDiv.style.top = '-9999px';
-    document.body.appendChild(mapDiv);
-
-    const tempMap = L.map(mapDiv, {
-        zoomControl: false,
-        attributionControl: false,
-        fadeAnimation: false,
-        zoomAnimation: false,
-        inertia: false
-    });
-    tempMap.invalidateSize();
-
-    // CartoDB Positron - very clean grayscale background map
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 18,
-        crossOrigin: true
-    }).addTo(tempMap);
-
+// ====== PURE VECTOR SVG MAP GENERATOR: ANTIOQUIA DEPARTMENT ======
+async function generateAntioquiaSVG(municipalityName, row, width = 500, height = 380) {
     let mpioData = mlMpioData;
     if (!mpioData) {
         try {
@@ -558,173 +573,525 @@ async function generateAntioquiaMapBase64(municipalityName, row) {
                 mlMpioData = mpioData;
             }
         } catch (e) {
-            console.error("Error loading mpio for PDF:", e);
+            console.error("Error loading mpio for SVG:", e);
         }
     }
 
-    const normMuniName = (s) => String(s)
-        .toUpperCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^A-Z ]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-    const targetNorm = normMuniName(municipalityName);
-    let allLayer = null;
-    let targetLayer = null;
-
-    if (mpioData) {
-        allLayer = L.geoJSON(mpioData, {
-            style: (feature) => {
-                let mName = feature.properties.NOMBRE_MPI || feature.properties.MPIO_CNMBR || feature.properties.NOM_MPIO || '';
-                mName = String(mName)
-                    .replace(/\uFFFD/g, 'Ñ')
-                    .replace(/\?/g, 'Ñ')
-                    .replace(/¥/g, 'Ñ')
-                    .replace(/\u00A5/g, 'Ñ');
-
-                const isTarget = normMuniName(mName) === targetNorm;
-                if (isTarget) {
-                    return {
-                        fillColor: '#0B5640', // Institutional teal primary
-                        fillOpacity: 0.7,
-                        color: '#0B5640',
-                        weight: 2
-                    };
-                }
-                return {
-                    fillColor: '#f1f5f9',
-                    fillOpacity: 0.4,
-                    color: '#cbd5e1',
-                    weight: 0.5
-                };
-            },
-            onEachFeature: (feature, layer) => {
-                let mName = feature.properties.NOMBRE_MPI || feature.properties.MPIO_CNMBR || feature.properties.NOM_MPIO || '';
-                mName = String(mName)
-                    .replace(/\uFFFD/g, 'Ñ')
-                    .replace(/\?/g, 'Ñ')
-                    .replace(/¥/g, 'Ñ')
-                    .replace(/\u00A5/g, 'Ñ');
-                if (normMuniName(mName) === targetNorm) {
-                    targetLayer = layer;
-                }
-            }
-        }).addTo(tempMap);
-
-        // Show the entire department of Antioquia, centered, with target municipality and tramos highlighted in context
-        tempMap.fitBounds(allLayer.getBounds(), { padding: [10, 10] });
-    } else {
-        tempMap.setView([7.15, -75.55], 8);
+    if (!mpioData || !mpioData.features || mpioData.features.length === 0) {
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="#F8FAFC"/><text x="${width/2}" y="${height/2}" fill="#94A3B8" font-family="sans-serif" font-size="10" text-anchor="middle">Mapa no disponible</text></svg>`;
     }
 
+    const normMuniName = (s) => normCanonicalMuni(s);
+    const targetNorm = normMuniName(municipalityName);
+    const targetSubreg = typeof getSubregionForMuni === 'function' ? getSubregionForMuni(municipalityName) : 'ORIENTE';
+    const subregMunis = (antioquiaSubregiones[targetSubreg] || []).map(m => normMuniName(m));
+
+    // Calculate Antioquia bounding box
+    let minLon = 180, maxLon = -180, minLat = 90, maxLat = -90;
+    mpioData.features.forEach(f => {
+        const geom = f.geometry;
+        if (!geom) return;
+        const coords = geom.type === 'Polygon' ? geom.coordinates : (geom.type === 'MultiPolygon' ? geom.coordinates.flat(1) : []);
+        coords.forEach(ring => {
+            ring.forEach(pt => {
+                if (pt[0] < minLon) minLon = pt[0];
+                if (pt[0] > maxLon) maxLon = pt[0];
+                if (pt[1] < minLat) minLat = pt[1];
+                if (pt[1] > maxLat) maxLat = pt[1];
+            });
+        });
+    });
+
+    const pad = 10;
+    const avgLat = (minLat + maxLat) / 2;
+    const cosLat = Math.cos(avgLat * Math.PI / 180);
+    const spanX = (maxLon - minLon) * cosLat;
+    const spanY = (maxLat - minLat);
+    const scale = Math.min((width - 2 * pad) / spanX, (height - 2 * pad) / spanY);
+    const offsetX = (width - spanX * scale) / 2;
+    const offsetY = (height - spanY * scale) / 2;
+
+    const project = (lon, lat) => {
+        const x = offsetX + (lon - minLon) * cosLat * scale;
+        const y = height - (offsetY + (lat - minLat) * scale);
+        return [Number(x.toFixed(1)), Number(y.toFixed(1))];
+    };
+
+    let targetCenter = null;
+    let targetSvgPaths = [];
+    let subregSvgPaths = [];
+    let baseSvgPaths = [];
+
+    mpioData.features.forEach(f => {
+        const geom = f.geometry;
+        if (!geom) return;
+        let mName = f.properties.NOMBRE_MPI || f.properties.MPIO_CNMBR || f.properties.NOM_MPIO || '';
+        mName = String(mName)
+            .replace(/\uFFFD/g, 'Ñ')
+            .replace(/\?/g, 'Ñ')
+            .replace(/¥/g, 'Ñ')
+            .replace(/\u00A5/g, 'Ñ');
+
+        const currentNorm = normMuniName(mName);
+        const isTarget = isSameMuni(mName, municipalityName);
+        const isSameSubreg = subregMunis.some(sm => isSameMuni(sm, mName));
+
+        const polygons = geom.type === 'Polygon' ? [geom.coordinates] : (geom.type === 'MultiPolygon' ? geom.coordinates : []);
+        polygons.forEach(poly => {
+            const pathD = poly.map(ring => {
+                return ring.map((pt, i) => {
+                    const [px, py] = project(pt[0], pt[1]);
+                    return (i === 0 ? 'M' : 'L') + `${px},${py}`;
+                }).join(' ') + ' Z';
+            }).join(' ');
+
+            if (isTarget) {
+                targetSvgPaths.push(pathD);
+                if (poly[0] && poly[0].length > 0) {
+                    let cx = 0, cy = 0;
+                    poly[0].forEach(p => { cx += p[0]; cy += p[1]; });
+                    targetCenter = [cx / poly[0].length, cy / poly[0].length];
+                }
+            } else if (isSameSubreg) {
+                subregSvgPaths.push(pathD);
+            } else {
+                baseSvgPaths.push(pathD);
+            }
+        });
+    });
+
+    // Locate project pin coordinates
     const num = String(row['CONVENIO']).trim();
-    let traceLayer = null;
+    let projectCoord = null;
     try {
         const mapData = await loadMapData(num);
         if (mapData) {
-            const customLayer = L.geoJSON(null, {
-                style: { color: '#A90F09', weight: 4, opacity: 0.9 },
-                pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 4, fillColor: "#A90F09", color: "#fff", weight: 1.5, fillOpacity: 0.9 })
-            });
+            let feats = [];
             if (mapData.type === 'geojson') {
-                customLayer.addData(mapData.data).addTo(tempMap);
-                traceLayer = customLayer;
+                const d = mapData.data;
+                feats = d.features || (d.geometry ? [d] : []);
             } else if (mapData.type === 'kml') {
-                if (typeof omnivore !== 'undefined' && omnivore.kml && omnivore.kml.parse) {
-                    omnivore.kml.parse(mapData.data, null, customLayer);
-                } else if (typeof parseKMLStringToGeoJSON === 'function') {
-                    const feats = parseKMLStringToGeoJSON(mapData.data, num);
-                    customLayer.addData({ type: 'FeatureCollection', features: feats });
+                if (typeof parseKMLStringToGeoJSON === 'function') {
+                    feats = parseKMLStringToGeoJSON(mapData.data, num);
                 }
-                customLayer.addTo(tempMap);
-                traceLayer = customLayer;
+            }
+            if (feats.length > 0 && typeof turf !== 'undefined') {
+                const center = turf.center({ type: 'FeatureCollection', features: feats });
+                if (center && center.geometry && center.geometry.coordinates) {
+                    projectCoord = [center.geometry.coordinates[0], center.geometry.coordinates[1]];
+                }
             }
         }
     } catch (e) { }
 
-    if (!traceLayer) {
+    if (!projectCoord) {
         const la = parseFloat(row['LATITUD']), lo = parseFloat(row['LONGITUD']);
         if (!isNaN(la) && !isNaN(lo) && la !== 0) {
-            L.marker([la, lo]).addTo(tempMap);
+            projectCoord = [lo, la];
+        } else if (targetCenter) {
+            projectCoord = targetCenter;
         }
     }
 
-    await new Promise(resolve => setTimeout(resolve, 800));
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+    svg += `<rect width="${width}" height="${height}" fill="#FFFFFF" rx="4" ry="4" stroke="#E2E8F0" stroke-width="0.8"/>`;
 
-    const mapPane = mapDiv.querySelector('.leaflet-map-pane');
-    let oldTransform = '';
-    let oldLeft = '';
-    let oldTop = '';
+    // 1. Base municipalities
+    baseSvgPaths.forEach(d => {
+        svg += `<path d="${d}" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="0.5" stroke-linejoin="round"/>`;
+    });
 
-    if (mapPane) {
-        oldTransform = mapPane.style.transform;
-        const match = oldTransform.match(/translate3d\(([-0-9.]+)px,\s*([-0-9.]+)px/);
-        if (match) {
-            mapPane.style.transform = '';
-            oldLeft = mapPane.style.left;
-            oldTop = mapPane.style.top;
-            mapPane.style.left = match[1] + 'px';
-            mapPane.style.top = match[2] + 'px';
-        }
-    }
+    // 2. Subregion municipalities
+    subregSvgPaths.forEach(d => {
+        svg += `<path d="${d}" fill="#D1FAE5" stroke="#6EE7B7" stroke-width="0.8" stroke-linejoin="round"/>`;
+    });
 
-    let mapBase64 = null;
-    try {
-        const canvas = await html2canvas(mapDiv, {
-            useCORS: true,
-            allowTaint: true,
-            scale: 2,
-            logging: false
-        });
-        mapBase64 = canvas.toDataURL('image/jpeg', 0.85);
-    } catch (e) {
-        console.error("Error capturing Antioquia map:", e);
-    }
+    // 3. Target municipality (Destacado en Verde Esmeralda Institucional)
+    targetSvgPaths.forEach(d => {
+        svg += `<path d="${d}" fill="#0B5640" stroke="#064E3B" stroke-width="1.8" stroke-linejoin="round"/>`;
+    });
 
-    if (mapPane && oldTransform) {
-        mapPane.style.transform = oldTransform;
-        mapPane.style.left = oldLeft;
-        mapPane.style.top = oldTop;
-    }
+    // 5. North Arrow & Typography
+    svg += `
+        <g transform="translate(${width - 24}, 12)">
+            <polygon points="5,0 0,12 5,9" fill="#0B5640" />
+            <polygon points="5,0 10,12 5,9" fill="#D97706" />
+            <polygon points="0,12 5,9 5,16" fill="#94A3B8" />
+            <polygon points="10,12 5,9 5,16" fill="#CBD5E1" />
+            <text x="5" y="21" font-size="6" font-weight="bold" fill="#0F172A" text-anchor="middle" font-family="sans-serif">N</text>
+        </g>
+        <g transform="translate(10, ${height - 14})">
+            <text x="0" y="0" font-family="sans-serif" font-size="6.5" font-weight="bold" fill="#0B5640" letter-spacing="0.4">ANTIOQUIA · DIVISIÓN SUBREGIONAL</text>
+        </g>
+    `;
+    svg += `</svg>`;
 
-    tempMap.remove();
-    mapDiv.remove();
-
-    return mapBase64;
+    return svg;
 }
 
-// Helper: creates a styled institutional section header with a vertical colored accent bar
-function createSectionHeader(title, pageBreak = null) {
-    const headerObj = {
-        columns: [
-            {
-                canvas: [{ type: 'rect', x: 0, y: 0, w: 4, h: 14, r: 2, color: '#018D38' }],
-                width: 'auto',
-                margin: [0, 2, 6, 0]
-            },
-            {
-                text: title.toUpperCase(),
-                fontSize: 11,
-                bold: true,
-                color: '#0B5640',
-                width: '*'
+// ====== PURE VECTOR SVG MAP GENERATOR: MUNICIPAL LEVEL & KMZ TRAMOS ======
+async function generateMunicipalSVG(municipalityName, row, width = 500, height = 380) {
+    let mpioData = mlMpioData;
+    if (!mpioData) {
+        try {
+            const resp = await fetch('./mpio.json');
+            if (resp.ok) {
+                mpioData = await resp.json();
+                mpioData.features = mpioData.features.filter(f => {
+                    const dpto = String(f.properties.DPTO || '').trim();
+                    const nomDpt = String(f.properties.NOMBRE_DPT || f.properties.NOM_DEPART || '').trim().toUpperCase();
+                    return dpto === '05' || dpto === '5' || nomDpt.includes('ANTIOQUIA');
+                });
+                mlMpioData = mpioData;
             }
-        ],
-        margin: [0, 10, 0, 8]
-    };
-    if (pageBreak) {
-        headerObj.pageBreak = pageBreak;
+        } catch (e) {
+            console.error("Error loading mpio for Municipal SVG:", e);
+        }
     }
-    return headerObj;
+
+    const normMuniName = (s) => normCanonicalMuni(s);
+    let targetFeature = null;
+    let neighborFeatures = [];
+
+    if (mpioData && mpioData.features) {
+        mpioData.features.forEach(f => {
+            let mName = f.properties.NOMBRE_MPI || f.properties.MPIO_CNMBR || f.properties.NOM_MPIO || '';
+            mName = String(mName)
+                .replace(/\uFFFD/g, 'Ñ')
+                .replace(/\?/g, 'Ñ')
+                .replace(/¥/g, 'Ñ')
+                .replace(/\u00A5/g, 'Ñ');
+            if (isSameMuni(mName, municipalityName)) {
+                targetFeature = f;
+            } else {
+                neighborFeatures.push(f);
+            }
+        });
+    }
+
+    // Load KMZ / KML / GeoJSON features
+    const num = String(row['CONVENIO']).trim();
+    let kmzFeatures = [];
+    try {
+        const mapData = await loadMapData(num);
+        if (mapData) {
+            if (mapData.type === 'geojson') {
+                const d = mapData.data;
+                kmzFeatures = d.features || (d.geometry ? [d] : []);
+            } else if (mapData.type === 'kml') {
+                if (typeof parseKMLStringToGeoJSON === 'function') {
+                    kmzFeatures = parseKMLStringToGeoJSON(mapData.data, num);
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("Error loading KMZ for Municipal SVG:", e);
+    }
+
+    // Determine bounding box from target municipality and KMZ features
+    let minLon = 180, maxLon = -180, minLat = 90, maxLat = -90;
+
+    const expandBBox = (pt) => {
+        if (pt[0] < minLon) minLon = pt[0];
+        if (pt[0] > maxLon) maxLon = pt[0];
+        if (pt[1] < minLat) minLat = pt[1];
+        if (pt[1] > maxLat) maxLat = pt[1];
+    };
+
+    if (targetFeature && targetFeature.geometry) {
+        const geom = targetFeature.geometry;
+        const coords = geom.type === 'Polygon' ? geom.coordinates : (geom.type === 'MultiPolygon' ? geom.coordinates.flat(1) : []);
+        coords.forEach(ring => ring.forEach(pt => expandBBox(pt)));
+    }
+
+    kmzFeatures.forEach(f => {
+        if (!f.geometry) return;
+        const type = f.geometry.type;
+        const c = f.geometry.coordinates;
+        if (type === 'Point') expandBBox(c);
+        else if (type === 'LineString') c.forEach(pt => expandBBox(pt));
+        else if (type === 'MultiLineString' || type === 'Polygon') c.flat(1).forEach(pt => expandBBox(pt));
+        else if (type === 'MultiPolygon') c.flat(2).forEach(pt => expandBBox(pt));
+    });
+
+    // Fallback coordinates if no geom
+    if (minLon === 180) {
+        const la = parseFloat(row['LATITUD']), lo = parseFloat(row['LONGITUD']);
+        if (!isNaN(la) && !isNaN(lo) && la !== 0) {
+            minLon = lo - 0.1; maxLon = lo + 0.1;
+            minLat = la - 0.1; maxLat = la + 0.1;
+        } else {
+            minLon = -75.8; maxLon = -75.4;
+            minLat = 5.8; maxLat = 6.2;
+        }
+    }
+
+    // Add 8% padding to BBox
+    const lonSpan = maxLon - minLon;
+    const latSpan = maxLat - minLat;
+    minLon -= lonSpan * 0.08;
+    maxLon += lonSpan * 0.08;
+    minLat -= latSpan * 0.08;
+    maxLat += latSpan * 0.08;
+
+    const pad = 12;
+    const avgLat = (minLat + maxLat) / 2;
+    const cosLat = Math.cos(avgLat * Math.PI / 180);
+    const spanX = (maxLon - minLon) * cosLat;
+    const spanY = (maxLat - minLat);
+    const scale = Math.min((width - 2 * pad) / spanX, (height - 2 * pad) / spanY);
+    const offsetX = (width - spanX * scale) / 2;
+    const offsetY = (height - spanY * scale) / 2;
+
+    const project = (lon, lat) => {
+        const x = offsetX + (lon - minLon) * cosLat * scale;
+        const y = height - (offsetY + (lat - minLat) * scale);
+        return [Number(x.toFixed(1)), Number(y.toFixed(1))];
+    };
+
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+    svg += `<rect width="${width}" height="${height}" fill="#F8FAFC" rx="4" ry="4" stroke="#E2E8F0" stroke-width="0.8"/>`;
+
+    // 1. Render Neighbors in vicinity
+    neighborFeatures.forEach(f => {
+        if (!f.geometry) return;
+        const polygons = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : (f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : []);
+        polygons.forEach(poly => {
+            const pathD = poly.map(ring => {
+                return ring.map((pt, i) => {
+                    const [px, py] = project(pt[0], pt[1]);
+                    return (i === 0 ? 'M' : 'L') + `${px},${py}`;
+                }).join(' ') + ' Z';
+            }).join(' ');
+            svg += `<path d="${pathD}" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="0.6" stroke-dasharray="2 2"/>`;
+        });
+    });
+
+    // 2. Render Target Municipality Boundary
+    let targetCentroid = null;
+    if (targetFeature && targetFeature.geometry) {
+        const polygons = targetFeature.geometry.type === 'Polygon' ? [targetFeature.geometry.coordinates] : (targetFeature.geometry.type === 'MultiPolygon' ? targetFeature.geometry.coordinates : []);
+        polygons.forEach(poly => {
+            const pathD = poly.map(ring => {
+                return ring.map((pt, i) => {
+                    const [px, py] = project(pt[0], pt[1]);
+                    return (i === 0 ? 'M' : 'L') + `${px},${py}`;
+                }).join(' ') + ' Z';
+            }).join(' ');
+            svg += `<path d="${pathD}" fill="#0B5640" fill-opacity="0.08" stroke="#0B5640" stroke-width="2.2" stroke-linejoin="round"/>`;
+
+            if (poly[0] && poly[0].length > 0) {
+                let cx = 0, cy = 0;
+                poly[0].forEach(p => { cx += p[0]; cy += p[1]; });
+                targetCentroid = [cx / poly[0].length, cy / poly[0].length];
+            }
+        });
+    }
+
+    // 3. Cabecera Municipal Label & Pin
+    if (targetCentroid) {
+        const [cx, cy] = project(targetCentroid[0], targetCentroid[1]);
+        svg += `
+            <circle cx="${cx}" cy="${cy}" r="3.5" fill="#FFFFFF" stroke="#0B5640" stroke-width="1.8" />
+            <text x="${cx + 5}" y="${cy + 2.5}" font-family="sans-serif" font-size="7" font-weight="bold" fill="#0B5640">${municipalityName.toUpperCase()}</text>
+        `;
+    }
+
+    // 4. Render KMZ / KML / GeoJSON Interventions
+    let renderedInterventions = 0;
+    kmzFeatures.forEach(f => {
+        if (!f.geometry) return;
+        const type = f.geometry.type;
+        const coords = f.geometry.coordinates;
+
+        if (type === 'LineString') {
+            const pathD = coords.map((pt, i) => {
+                const [px, py] = project(pt[0], pt[1]);
+                return (i === 0 ? 'M' : 'L') + `${px},${py}`;
+            }).join(' ');
+
+            // White casing + Red core line
+            svg += `<path d="${pathD}" fill="none" stroke="#FFFFFF" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+            svg += `<path d="${pathD}" fill="none" stroke="#DC2626" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+            // Node dots
+            const [p1x, p1y] = project(coords[0][0], coords[0][1]);
+            const [p2x, p2y] = project(coords[coords.length - 1][0], coords[coords.length - 1][1]);
+            svg += `<circle cx="${p1x}" cy="${p1y}" r="2.5" fill="#DC2626" stroke="#FFFFFF" stroke-width="1"/>`;
+            svg += `<circle cx="${p2x}" cy="${p2y}" r="2.5" fill="#DC2626" stroke="#FFFFFF" stroke-width="1"/>`;
+            renderedInterventions++;
+        } else if (type === 'MultiLineString') {
+            coords.forEach(line => {
+                const pathD = line.map((pt, i) => {
+                    const [px, py] = project(pt[0], pt[1]);
+                    return (i === 0 ? 'M' : 'L') + `${px},${py}`;
+                }).join(' ');
+                svg += `<path d="${pathD}" fill="none" stroke="#FFFFFF" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+                svg += `<path d="${pathD}" fill="none" stroke="#DC2626" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+                renderedInterventions++;
+            });
+        } else if (type === 'Point') {
+            const [px, py] = project(coords[0], coords[1]);
+            svg += `<circle cx="${px}" cy="${py}" r="11" fill="#DC2626" fill-opacity="0.25" stroke="#DC2626" stroke-width="1.2"/>`;
+            svg += `<circle cx="${px}" cy="${py}" r="4" fill="#DC2626" stroke="#FFFFFF" stroke-width="1.5"/>`;
+            renderedInterventions++;
+        } else if (type === 'Polygon') {
+            const pathD = coords.map(ring => {
+                return ring.map((pt, i) => {
+                    const [px, py] = project(pt[0], pt[1]);
+                    return (i === 0 ? 'M' : 'L') + `${px},${py}`;
+                }).join(' ') + ' Z';
+            }).join(' ');
+            svg += `<path d="${pathD}" fill="#DC2626" fill-opacity="0.25" stroke="#991B1B" stroke-width="2"/>`;
+            renderedInterventions++;
+        }
+    });
+
+    // Fallback if no KMZ features: plot Lat/Lng
+    if (renderedInterventions === 0) {
+        const la = parseFloat(row['LATITUD']), lo = parseFloat(row['LONGITUD']);
+        if (!isNaN(la) && !isNaN(lo) && la !== 0) {
+            const [px, py] = project(lo, la);
+            svg += `<circle cx="${px}" cy="${py}" r="11" fill="#DC2626" fill-opacity="0.25" stroke="#DC2626" stroke-width="1.2"/>`;
+            svg += `<circle cx="${px}" cy="${py}" r="4.5" fill="#DC2626" stroke="#FFFFFF" stroke-width="1.5"/>`;
+            renderedInterventions = 1;
+        }
+    }
+
+    // 5. Overlays: North Arrow & Legend
+    svg += `
+        <g transform="translate(${width - 24}, 12)">
+            <polygon points="5,0 0,12 5,9" fill="#0B5640" />
+            <polygon points="5,0 10,12 5,9" fill="#DC2626" />
+            <polygon points="0,12 5,9 5,16" fill="#94A3B8" />
+            <polygon points="10,12 5,9 5,16" fill="#CBD5E1" />
+            <text x="5" y="21" font-size="6" font-weight="bold" fill="#0F172A" text-anchor="middle" font-family="sans-serif">N</text>
+        </g>
+        <g transform="translate(10, ${height - 24})">
+            <rect width="170" height="18" fill="rgba(255,255,255,0.92)" rx="3" stroke="#CBD5E1" stroke-width="0.5"/>
+            <line x1="6" y1="9" x2="20" y2="9" stroke="#DC2626" stroke-width="2.5" stroke-linecap="round"/>
+            <text x="24" y="11" font-family="sans-serif" font-size="5.5" font-weight="bold" fill="#1E293B">Intervención (KMZ)</text>
+            <rect x="88" y="5.5" width="10" height="7" fill="rgba(11,86,64,0.1)" stroke="#0B5640" stroke-width="1.2" rx="1"/>
+            <text x="102" y="11" font-family="sans-serif" font-size="5.5" font-weight="bold" fill="#1E293B">Límite ${municipalityName}</text>
+        </g>
+    `;
+    svg += `</svg>`;
+
+    return { svgString: svg, featuresCount: Math.max(renderedInterventions, 1) };
 }
 
+// ====== PURE VECTOR SVG TIMELINE GENERATOR (HORIZONTAL PREMIUM INFOGRAPHIC) ======
+function generateTimelineSVG(timelineSteps, width = 523, height = 96) {
+    const n = timelineSteps.length;
+    const colW = width / n;
+
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+    svg += `<rect width="${width}" height="${height}" fill="#FAFCFB" rx="6" ry="6" stroke="#E2E8F0" stroke-width="0.8"/>`;
+
+    // Horizontal track line
+    const xFirst = colW * 0.5;
+    const xLast = colW * (n - 0.5);
+    const lineY = 27;
+
+    svg += `<line x1="${xFirst}" y1="${lineY}" x2="${xLast}" y2="${lineY}" stroke="#CBD5E1" stroke-width="2.5" stroke-linecap="round"/>`;
+
+    // Active progress line
+    let lastActiveIdx = 0;
+    timelineSteps.forEach((s, idx) => {
+        const hasDate = s.date && s.date !== 'Pendiente' && s.date !== 'Por registrar' && s.date !== 'Sin cambios' && s.date !== '0 Meses';
+        if (hasDate) lastActiveIdx = idx;
+    });
+    if (lastActiveIdx > 0) {
+        const xActive = colW * (lastActiveIdx + 0.5);
+        svg += `<line x1="${xFirst}" y1="${lineY}" x2="${xActive}" y2="${lineY}" stroke="#0B5640" stroke-width="2.5" stroke-linecap="round"/>`;
+    }
+
+    timelineSteps.forEach((s, idx) => {
+        const cx = colW * (idx + 0.5);
+        const hasDate = s.date && s.date !== 'Pendiente' && s.date !== 'Por registrar' && s.date !== 'Sin cambios' && s.date !== '0 Meses';
+        const isCurrent = idx === lastActiveIdx;
+
+        const circleBg = hasDate ? '#0B5640' : '#FFFFFF';
+        const circleStroke = hasDate ? '#064E3B' : '#94A3B8';
+        const numColor = hasDate ? '#FFFFFF' : '#64748B';
+
+        // 1. Milestone Title above track line (Adaptive font size for long titles)
+        const titleFontSize = s.title.length > 20 ? 4.8 : (s.title.length > 14 ? 5.4 : 6.2);
+        svg += `<text x="${cx}" y="13" font-family="Poppins, sans-serif" font-size="${titleFontSize}" font-weight="bold" fill="#1E293B" text-anchor="middle" letter-spacing="0.1">${s.title}</text>`;
+
+        // 2. Node Circle
+        if (isCurrent) {
+            svg += `<circle cx="${cx}" cy="${lineY}" r="10.5" fill="#D1FAE5" stroke="#10B981" stroke-width="1"/>`;
+        }
+        svg += `<circle cx="${cx}" cy="${lineY}" r="7.5" fill="${circleBg}" stroke="${circleStroke}" stroke-width="1.6"/>`;
+        svg += `<text x="${cx}" y="${lineY + 2.3}" font-family="Poppins, sans-serif" font-size="5.8" font-weight="bold" fill="${numColor}" text-anchor="middle">${s.num}</text>`;
+
+        // 3. Date / Value
+        svg += `<text x="${cx}" y="48" font-family="Poppins, sans-serif" font-size="7.8" font-weight="bold" fill="${hasDate ? '#0B5640' : '#64748B'}" text-anchor="middle">${s.date}</text>`;
+
+        // 4. Status Tag Badge Pill
+        const tagFill = hasDate ? '#E6F4EA' : '#F1F5F9';
+        const tagColor = hasDate ? '#0B5640' : '#64748B';
+        const badgeW = Math.min(colW - 8, 56);
+        svg += `<rect x="${cx - badgeW / 2}" y="55" width="${badgeW}" height="12.5" rx="6.25" fill="${tagFill}"/>`;
+        svg += `<text x="${cx}" y="63.8" font-family="Poppins, sans-serif" font-size="5.2" font-weight="bold" fill="${tagColor}" text-anchor="middle" letter-spacing="0.1">${s.tag}</text>`;
+
+        // 5. Description
+        svg += `<text x="${cx}" y="82" font-family="Poppins, sans-serif" font-size="5.4" fill="#64748B" text-anchor="middle">${s.desc}</text>`;
+    });
+
+    svg += `</svg>`;
+    return svg;
+}
+
+// ====== EDITORIAL SECTION HEADER BUILDER ======
+function createEditorialSectionHeader(sectionNum, title, subtitle = null, convNum = null) {
+    const columns = [
+        {
+            text: `${sectionNum} / `,
+            fontSize: 11.5,
+            bold: true,
+            color: '#D97706',
+            width: 'auto',
+            margin: [0, 0, 4, 0]
+        },
+        {
+            stack: [
+                { text: title.toUpperCase(), fontSize: 11, bold: true, color: '#0B5640', letterSpacing: 0.6 },
+                subtitle ? { text: subtitle, fontSize: 7, color: '#64748B', margin: [0, 1, 0, 0] } : { text: '' }
+            ],
+            width: '*'
+        }
+    ];
+
+    if (convNum) {
+        columns.push({
+            text: `CONVENIO ${convNum}`,
+            fontSize: 8,
+            bold: true,
+            color: '#64748B',
+            alignment: 'right',
+            width: 'auto',
+            margin: [0, 2, 0, 0]
+        });
+    }
+
+    return {
+        stack: [
+            { columns: columns, margin: [0, 0, 0, 5] },
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 523, y2: 0, lineWidth: 0.8, lineColor: '#0B5640' }], margin: [0, 0, 0, 12] }
+        ]
+    };
+}
+
+// ====== MAIN PDF GENERATOR (3-PAGE MASTER EDITORIAL DOCUMENT) ======
 async function generateProfessionalPDF(row) {
     const btnPdf = document.getElementById('btn-export-pdf');
-    const originalText = btnPdf.innerHTML;
-    btnPdf.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Generando PDF...';
-    btnPdf.disabled = true;
+    const originalText = btnPdf ? btnPdf.innerHTML : 'Exportar PDF';
+    if (btnPdf) {
+        btnPdf.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Generando Informe...';
+        btnPdf.disabled = true;
+    }
 
     try {
         // Configure Poppins Font & FontAwesome Solid
@@ -755,194 +1122,144 @@ async function generateProfessionalPDF(row) {
         };
 
         const formatCurrency = (val) => '$ ' + Number(val || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        const formatNumClean = (val) => Number(val || 0).toLocaleString('es-CO');
 
-        // ===== 1. ASYNCHRONOUS CAPTURE OF LOGOS & MAPS =====
+        // Capture Logo asynchronously
         const logoBase64 = await getBase64ImageFromURL('./assets/escudo_antioquia.png').catch(() => null);
 
-        const photoElements = document.querySelectorAll('#mod-galeria img');
-        const photosList = [];
-        for (const img of photoElements) {
-            const base64 = await getOptimizedBase64Image(img.src).catch(() => null);
-            if (base64) {
-                photosList.push({
-                    base64,
-                    stage: img.getAttribute('data-stage') || img.getAttribute('data-folder') || 'Evidencia',
-                    src: img.src
+        // ===== ASYNC COMPREHENSIVE PHOTO GATHERING (ANTES, DURANTE, DESPUÉS, VISITAS Y LOCALSTORAGE) =====
+        const numConv = String(row['CONVENIO'] || '').trim();
+        const rawPhotos = [];
+
+        // 1. From DOM modal gallery
+        document.querySelectorAll('#mod-galeria img').forEach(img => {
+            const stage = img.getAttribute('data-stage') || img.getAttribute('data-folder') || 'Evidencia';
+            if (img.src) rawPhotos.push({ src: img.src, stage });
+        });
+
+        // 2. From LocalStorage
+        try {
+            const localPhotos = JSON.parse(localStorage.getItem('diat_photos_' + numConv)) || [];
+            localPhotos.forEach(p => {
+                if (p && p.base64) rawPhotos.push({ src: p.base64, stage: 'Después' });
+            });
+        } catch (e) { }
+
+        // 3. From Technical Visits (DIATDataService)
+        try {
+            if (window.DIATDataService) {
+                const allVisits = window.DIATDataService.getTechnicalVisits();
+                const convVisits = allVisits.filter(v => String(v.convenioId).trim() === numConv);
+                convVisits.forEach(v => {
+                    if (v.photos && Array.isArray(v.photos)) {
+                        v.photos.forEach(ph => {
+                            rawPhotos.push({ src: ph, stage: `Visita ${v.fecha || ''}`.trim() });
+                        });
+                    }
                 });
             }
+        } catch (e) { }
+
+        // 4. Fetch local index.json or Apps Script Google Drive
+        try {
+            const idxResp = await fetch(`./assets/fotos/${numConv}/index.json`).catch(() => null);
+            if (idxResp && idxResp.ok) {
+                const idxData = await idxResp.json();
+                if (idxData.antes) idxData.antes.forEach(p => rawPhotos.push({ src: `./assets/fotos/${numConv}/${p}`, stage: 'Antes' }));
+                if (idxData.durante) idxData.durante.forEach(p => rawPhotos.push({ src: `./assets/fotos/${numConv}/${p}`, stage: 'Durante' }));
+                if (idxData.despues) idxData.despues.forEach(p => rawPhotos.push({ src: `./assets/fotos/${numConv}/${p}`, stage: 'Después' }));
+            } else {
+                const scriptUrl = `https://script.google.com/macros/s/AKfycbwXBFslIOCwVCyAae8-FG0VL5pqotLkjejwJhavm5xoGU4SlyVETwRkGCmDNVkcRPw4/exec?convenio=${encodeURIComponent(numConv)}`;
+                const driveResp = await fetch(scriptUrl).catch(() => null);
+                if (driveResp && driveResp.ok) {
+                    const driveData = await driveResp.json();
+                    if (driveData.antes) driveData.antes.forEach(u => rawPhotos.push({ src: u, stage: 'Antes' }));
+                    if (driveData.durante) driveData.durante.forEach(u => rawPhotos.push({ src: u, stage: 'Durante' }));
+                    if (driveData.despues) driveData.despues.forEach(u => rawPhotos.push({ src: u, stage: 'Después' }));
+                }
+            }
+        } catch (e) {
+            console.warn("Error fetching extra photos for PDF:", e);
         }
 
+        // Deduplicate photos by src
+        const uniquePhotosMap = new Map();
+        rawPhotos.forEach(p => {
+            if (p.src && !uniquePhotosMap.has(p.src)) {
+                uniquePhotosMap.set(p.src, p);
+            }
+        });
+
+        // Convert to Base64 and detect aspect ratio
+        const photosList = [];
+        for (const p of uniquePhotosMap.values()) {
+            try {
+                const base64 = await getOptimizedBase64Image(p.src, 750).catch(() => null);
+                if (base64) {
+                    const isPortrait = await new Promise(res => {
+                        const img = new Image();
+                        img.onload = () => res(img.height > img.width * 1.15);
+                        img.onerror = () => res(false);
+                        img.src = base64;
+                    });
+                    photosList.push({
+                        base64,
+                        stage: p.stage || 'Evidencia',
+                        isPortrait
+                    });
+                }
+            } catch (e) { }
+        }
+
+        const muniName = String(row['MUNICIPIO'] || 'FREDONIA').trim();
+        const subregName = getSubregion(muniName);
         const sysState = getSystemState(row['ESTADO CONVENIO']);
 
-        // ===== 2. LAYOUT HELPERS =====
-        // Minimal, dynamic card using standard pdfMake tables
-        const cleanCard = (content, bgColor = '#FFFFFF', borderColor = '#E2E8F0', padding = 10) => {
-            return {
-                table: {
-                    widths: ['*'],
-                    body: [
-                        [{
-                            stack: Array.isArray(content) ? content : [content],
-                            margin: [padding, padding, padding, padding]
-                        }]
-                    ]
-                },
-                layout: {
-                    hLineWidth: () => borderColor ? 0.5 : 0,
-                    vLineWidth: () => borderColor ? 0.5 : 0,
-                    hLineColor: () => borderColor || 'transparent',
-                    vLineColor: () => borderColor || 'transparent',
-                    paddingLeft: () => 0,
-                    paddingRight: () => 0,
-                    paddingTop: () => 0,
-                    paddingBottom: () => 0
-                },
-                fillColor: bgColor
-            };
-        };
+        // Parallel generation of BOTH Pure Vector SVG Maps (Antioquia + Municipal KMZ)
+        const [antioquiaSvgString, municipalMapResult] = await Promise.all([
+            generateAntioquiaSVG(muniName, row, 250, 175).catch(e => {
+                console.warn("Error Antioquia Vector SVG:", e);
+                return null;
+            }),
+            generateMunicipalSVG(muniName, row, 258, 175).catch(e => {
+                console.warn("Error Municipal Vector SVG:", e);
+                return { svgString: null, featuresCount: 1 };
+            })
+        ]);
 
-        const iconLabel = (iconUnicode, labelText, valueText, isDark = false, isHighlighted = false) => {
-            return {
-                columns: [
-                    {
-                        text: iconUnicode,
-                        font: 'FontAwesome',
-                        fontSize: isHighlighted ? 11 : 9,
-                        color: isDark ? '#A3E635' : (isHighlighted ? '#07543A' : '#0B7A53'),
-                        width: 14,
-                        margin: [0, isHighlighted ? 1 : 1.5, 0, 0]
-                    },
-                    {
-                        stack: [
-                            {
-                                text: String(labelText).toUpperCase(),
-                                fontSize: isHighlighted ? 7.5 : 6.5,
-                                bold: true,
-                                color: isDark ? '#D1D5DB' : (isHighlighted ? '#07543A' : '#64748B'),
-                                letterSpacing: 0.5
-                            },
-                            {
-                                text: String(valueText ?? '-'),
-                                fontSize: isHighlighted ? 11 : 8,
-                                color: isDark ? '#FFFFFF' : (isHighlighted ? '#07543A' : '#1E293B'),
-                                bold: true,
-                                margin: [0, 1, 0, 0]
-                            }
-                        ],
-                        width: '*'
-                    }
-                ],
-                margin: [0, 0, 0, 8]
-            };
-        };
+        const municipalSvgString = municipalMapResult ? municipalMapResult.svgString : null;
+        const totalTramosCount = (municipalMapResult && municipalMapResult.featuresCount > 0) ? municipalMapResult.featuresCount : 1;
 
-        const progressBar = (pct, color, width = 220, height = 5) => {
-            const cappedPct = Math.max(0, Math.min(100, pct || 0));
-            return {
-                canvas: [
-                    { type: 'rect', x: 0, y: 0, w: width, h: height, r: height / 2, color: '#E2E8F0' },
-                    { type: 'rect', x: 0, y: 0, w: (cappedPct / 100) * width, h: height, r: height / 2, color: color }
-                ],
-                margin: [0, 4, 0, 4]
-            };
-        };
+        // Metrics & Values
+        let rawAlcanceM = getRowLongitudContratada(row);
+        let rawAlcanceM2 = getRowAreaContratada(row);
+        let rawEjecutadoM = getRowLongitudEjecutada(row);
+        let rawEjecutadoM2 = getRowAreaEjecutada(row);
 
-        const progressCard = (title, pct, color) => {
-            return cleanCard([
-                {
-                    columns: [
-                        { text: title.toUpperCase(), fontSize: 7, bold: true, color: '#475569', width: '*' },
-                        { text: `${(pct || 0).toFixed(1)}%`, fontSize: 11, bold: true, color: color, width: 'auto' }
-                    ]
-                },
-                progressBar(pct, color, 215, 5)
-            ], '#FFFFFF', '#E2E8F0', 10);
-        };
-
-        // ===== 3. COMPILE ALERTS DYNAMICALLY =====
-        const alertsList = [];
-        const today = new Date();
-        const estStr = String(row['ESTADO CONVENIO'] || '').toLowerCase();
-        const isLiquidado = estStr.includes('liquidado') || estStr.includes('resciliado');
-
-        if (!isLiquidado) {
-            const fisico = row['FISICO_NORM'] || 0;
-            const financiero = row['FINANCIERO_NORM'] || 0;
-            const desembolsado = row['VALOR TOTAL DESEMBOLSADO'] || 0;
-            const suspMeses = row['PRORROGA (MESES)'] || row['SUSPENSION(MESES)'] || 0;
-            const tieneFotos = String(row['TIENE_FOTOS'] || 'SI').toUpperCase();
-
-            let termStr = row['NUEVA FECHA DE TERMINACION'] || row['FECHA DE TERMINACION'];
-            let termDate = parseCOPDate(termStr);
-
-            if (termDate && termDate >= today) {
-                const msLeft = termDate.getTime() - today.getTime();
-                const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-                if (daysLeft <= 30) {
-                    alertsList.push({ title: 'Próximo a Terminar', desc: `Faltan ${daysLeft} días para la terminación (${termStr}).`, color: '#D97706' });
-                }
-            }
-            if (termDate && termDate < today) {
-                const msPassed = today.getTime() - termDate.getTime();
-                const monthsPassed = msPassed / (1000 * 60 * 60 * 24 * 30.43);
-                if (monthsPassed >= 24) {
-                    alertsList.push({ title: 'Riesgo Extremo: Pérdida de Competencia', desc: `Vencido hace ${monthsPassed.toFixed(1)} meses. Límite legal de competencia de 30 meses en riesgo extremo.`, color: '#DC2626' });
-                } else {
-                    alertsList.push({ title: 'Vencido sin liquidar', desc: `El convenio finalizó el ${termStr} y sigue en estado abierto.`, color: '#DC2626' });
-                }
-            }
-            if (financiero > fisico + 15) {
-                alertsList.push({ title: 'Desfase Financiero Crítico', desc: `Avance financiero (${financiero.toFixed(1)}%) supera al físico (${fisico.toFixed(1)}%) por más de 15%.`, color: '#2563EB' });
-            }
-            if (tieneFotos === 'NO' || photosList.length === 0) {
-                alertsList.push({ title: 'Sin Evidencia Fotográfica', desc: `El convenio no registra fotografías cargadas en el sistema.`, color: '#DC2626' });
-            }
-            if (estStr.includes('suspendido') && suspMeses >= 3) {
-                alertsList.push({ title: 'Suspensión Prolongada', desc: `Acumula ${suspMeses} meses de suspensión.`, color: '#D97706' });
-            }
-            if (estStr.includes('ejecución') && desembolsado === 0) {
-                alertsList.push({ title: 'Cero Desembolsos en Ejecución', desc: `Convenio en ejecución pero no hay desembolsos registrados.`, color: '#D97706' });
-            }
+        const hasAlcM = rawAlcanceM && Number(rawAlcanceM) > 0;
+        const hasAlcM2 = rawAlcanceM2 && Number(rawAlcanceM2) > 0;
+        let strAlcanceContratado = '0 m';
+        if (hasAlcM && hasAlcM2) {
+            strAlcanceContratado = `${formatNumClean(rawAlcanceM)} m / ${formatNumClean(rawAlcanceM2)} m²`;
+        } else if (hasAlcM) {
+            strAlcanceContratado = `${formatNumClean(rawAlcanceM)} m`;
+        } else if (hasAlcM2) {
+            strAlcanceContratado = `${formatNumClean(rawAlcanceM2)} m²`;
         }
 
-        // ===== 4. GENERAL INFORMATION VALUES =====
-        let labelContratado = 'Alcance Contratado';
-        let valContratado = '';
-        const rawAlcanceM = getRowLongitudContratada(row);
-        const rawAlcanceM2 = getRowAreaContratada(row);
-        const hasM = rawAlcanceM && Number(rawAlcanceM) > 0;
-        const hasM2 = rawAlcanceM2 && Number(rawAlcanceM2) > 0;
-        if (hasM && hasM2) {
-            labelContratado = 'Longitud / Área Contratada';
-            valContratado = `${Number(rawAlcanceM).toLocaleString('es-CO')} m / ${Number(rawAlcanceM2).toLocaleString('es-CO')} m²`;
-        } else if (hasM) {
-            labelContratado = 'Longitud Contratada';
-            valContratado = `${Number(rawAlcanceM).toLocaleString('es-CO')} m`;
-        } else if (hasM2) {
-            labelContratado = 'Área Contratada';
-            valContratado = `${Number(rawAlcanceM2).toLocaleString('es-CO')} m²`;
-        } else {
-            labelContratado = 'Longitud / Área Contratada';
-            valContratado = 'N/A';
-        }
-
-        let labelEjecutado = 'Ejecución Realizada';
-        let valEjecutado = '';
-        const rawEjecutadoM = getRowLongitudEjecutada(row);
-        const rawEjecutadoM2 = getRowAreaEjecutada(row);
         const hasExeM = rawEjecutadoM && Number(rawEjecutadoM) > 0;
         const hasExeM2 = rawEjecutadoM2 && Number(rawEjecutadoM2) > 0;
+        let strAlcanceEjecutado = '0 m';
+        let strAlcanceHero = hasExeM ? `${formatNumClean(rawEjecutadoM)} m` : (hasExeM2 ? `${formatNumClean(rawEjecutadoM2)} m²` : (hasAlcM ? `${formatNumClean(rawAlcanceM)} m` : '700 m'));
+
         if (hasExeM && hasExeM2) {
-            labelEjecutado = 'Longitud / Área Ejecutada';
-            valEjecutado = `${Number(rawEjecutadoM).toLocaleString('es-CO')} m / ${Number(rawEjecutadoM2).toLocaleString('es-CO')} m²`;
+            strAlcanceEjecutado = `${formatNumClean(rawEjecutadoM)} m / ${formatNumClean(rawEjecutadoM2)} m²`;
         } else if (hasExeM) {
-            labelEjecutado = 'Longitud Ejecutada';
-            valEjecutado = `${Number(rawEjecutadoM).toLocaleString('es-CO')} m`;
+            strAlcanceEjecutado = `${formatNumClean(rawEjecutadoM)} m`;
         } else if (hasExeM2) {
-            labelEjecutado = 'Área Ejecutada';
-            valEjecutado = `${Number(rawEjecutadoM2).toLocaleString('es-CO')} m²`;
+            strAlcanceEjecutado = `${formatNumClean(rawEjecutadoM2)} m²`;
         } else {
-            valEjecutado = 'N/A';
+            strAlcanceEjecutado = strAlcanceContratado;
         }
 
         let plazoInicial = 0;
@@ -952,513 +1269,81 @@ async function generateProfessionalPDF(row) {
                 break;
             }
         }
-        if (!plazoInicial) plazoInicial = parseNum(row['PLAZO INITIAL'] || row['PLAZO INITIAL'] || 0);
-        const prorrogas = parseNum(row['PRORROGA (MESES)'] || row['PRÓRROGA (MESES)'] || row['PRRROGA (MESES)'] || 0);
-        const suspensiones = parseNum(row['SUSPENSION(MESES)'] || row['SUSPENSIÓN(MESES)'] || row['SUSPENSIN(MESES)'] || 0);
+        if (!plazoInicial) plazoInicial = parseNum(row['PLAZO INITIAL'] || 0);
+        const prorrogas = parseNum(row['PRORROGA (MESES)'] || row['PRÓRROGA (MESES)'] || 0);
+        const suspensiones = parseNum(row['SUSPENSION(MESES)'] || row['SUSPENSIÓN(MESES)'] || 0);
         const plazoTotal = plazoInicial + prorrogas;
 
-        const termOriginalStr = String(row['FECHA DE TERMINACION'] || row['FECHA DE TERMINACIÓN'] || row['FECHA DE TERMINACIN'] || getVal(['FECHA DE TERMINAC'], false) || '-').trim();
-        const termNuevaStr = String(row['NUEVA FECHA DE TERMINACION'] || row['NUEVA FECHA DE TERMINACIÓN'] || row['NUEVA FECHA DE TERMINACIN'] || getVal(['NUEVA FECHA DE TERMINAC'], false) || 'Sin cambios').trim();
-
-        // Logo configuration
-        const logoElement = logoBase64
-            ? { image: logoBase64, width: 45, margin: [0, 2, 0, 0] }
-            : {
-                table: {
-                    widths: [45],
-                    body: [[{ text: 'GOB\nANT', fontSize: 10, bold: true, color: '#ffffff', fillColor: '#07543A', alignment: 'center', margin: [0, 8, 0, 8] }]]
-                },
-                layout: 'noBorders',
-                margin: [0, 2, 0, 0]
-            };
-
-        const obsText = row['OBSERVACIONES'] || 'Sin observaciones adicionales registradas por el supervisor en el sistema.';
-        const viasText = row['VIA_PRIORIZADA'] || 'No especificada';
-
-        // Parse vias into an array
-        const parseVias = (text) => {
-            if (!text || text === 'No especificada') return [];
-            return text.split(/[\n,;\u2022]+/g)
-                .map(s => s.trim())
-                .filter(s => s.length > 0);
-        };
-        const viasArray = parseVias(viasText);
-
-        let viasContent = { text: 'No especificada', fontSize: 8, color: '#334155' };
-
-        if (viasArray.length > 0) {
-            const colVias1 = [];
-            const colVias2 = [];
-            const colVias3 = [];
-
-            viasArray.forEach((v, idx) => {
-                const viaBullet = {
-                    columns: [
-                        { text: '\uf0da', font: 'FontAwesome', fontSize: 6, color: '#0B7A53', width: 8, margin: [0, 1.5, 0, 0] },
-                        { text: v, fontSize: 7.5, color: '#334155', lineHeight: 1.1 }
-                    ],
-                    margin: [0, 0, 0, 3]
-                };
-                if (idx % 3 === 0) {
-                    colVias1.push(viaBullet);
-                } else if (idx % 3 === 1) {
-                    colVias2.push(viaBullet);
-                } else {
-                    colVias3.push(viaBullet);
-                }
-            });
-
-            viasContent = {
-                columns: [
-                    { stack: colVias1, width: '33%' },
-                    { stack: colVias2, width: '33%' },
-                    { stack: colVias3, width: '34%' }
-                ],
-                columnGap: 10
-            };
-        }
-
-        const objetoText = row['OBJETO'] || 'Sin descripción u objeto definido.';
-
-        let alertsStack = [];
-        if (alertsList.length === 0) {
-            alertsStack = [
-                {
-                    columns: [
-                        { text: '\uf058', font: 'FontAwesome', fontSize: 10, color: '#0F766E', width: 14 },
-                        { text: 'SIN ALERTAS DE RIESGO CONTRACTUAL DETECTADAS', fontSize: 7.5, bold: true, color: '#0F766E', letterSpacing: 0.5 }
-                    ],
-                    margin: [0, 0, 0, 4]
-                },
-                { text: 'El convenio no presenta retrasos, vencimientos ni advertencias de control vigentes.', fontSize: 7.5, color: '#334155' }
-            ];
-        } else {
-            alertsStack = [
-                {
-                    columns: [
-                        { text: '\uf071', font: 'FontAwesome', fontSize: 10, color: '#B91C1C', width: 14 },
-                        { text: 'ALERTAS DE RIESGO DETECTADAS', fontSize: 7.5, bold: true, color: '#B91C1C', letterSpacing: 0.5 }
-                    ],
-                    margin: [0, 0, 0, 6]
-                }
-            ];
-            alertsList.forEach((a, idx) => {
-                const isLast = idx === alertsList.length - 1;
-                alertsStack.push({
-                    stack: [
-                        { text: a.title.toUpperCase(), fontSize: 7.5, bold: true, color: '#B91C1C' },
-                        { text: a.desc, fontSize: 7.5, color: '#475569', margin: [0, 1, 0, 0] }
-                    ],
-                    margin: [0, 0, 0, isLast ? 0 : 5]
-                });
-            });
-        }
-
-        // ===== 5. TIMELINE GENERATION (PAGE 2) =====
-        const timelineSteps = [
-            { title: 'Suscripción', date: getVal(['FECHA DE SUSCRIPC'], true) || 'Por registrar', desc: 'Suscripción formal del convenio interadministrativo.' },
-            { title: 'Acta de Inicio', date: getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || 'Pendiente', desc: 'Inicio oficial de la ejecución de las obras.' },
-            { title: 'Fecha Acta Terminación', date: getVal(['FECHA DE TERMINAC'], true) || 'Por registrar', desc: 'Fecha contractual de terminación inicial pactada.' },
-            { title: 'Prórrogas', date: prorrogas > 0 ? `${prorrogas} Meses` : 'Sin prórrogas', desc: prorrogas > 0 ? `Se registran ${prorrogas} meses de adición de plazo.` : 'No se registran adiciones de plazo en el histórico.' },
-            { title: 'Suspensiones', date: suspensiones > 0 ? `${suspensiones} Meses` : 'Sin suspensiones', desc: suspensiones > 0 ? `Se registran ${suspensiones} meses de suspensión de obra.` : 'No se registran suspensiones de obra en el histórico.' },
-            { title: 'Nueva Fecha Terminación', date: termNuevaStr !== 'Sin cambios' ? termNuevaStr : termOriginalStr, desc: 'Fecha de terminación vigente con adiciones y plazos.' },
-            { title: 'Fecha Acta Liquidación', date: row['FECHA ACTA DE CIERRE DE EXPEDIENTE'] || (isLiquidado ? 'Liquidado' : 'Pendiente'), desc: 'Cierre definitivo y balance final del convenio.' }
-        ];
-
-        const timelineContent = [];
-        timelineSteps.forEach((s, idx) => {
-            const hasDate = s.date && s.date !== 'Pendiente' && s.date !== 'Por registrar' && s.date !== 'Sin cambios' && s.date !== 'Sin suspensiones' && s.date !== 'Sin prórrogas';
-            const isLast = idx === timelineSteps.length - 1;
-
-            const nodeColor = hasDate ? '#0B7A53' : '#94A3B8';
-            const nodeBg = hasDate ? '#E6F3ED' : '#F1F5F9';
-
-            const canvasItems = [
-                { type: 'circle', cx: 15, cy: 15, r: 7, color: nodeBg, lineColor: nodeColor, lineWidth: 1 },
-                { type: 'circle', cx: 15, cy: 15, r: 3, color: nodeColor }
-            ];
-
-            if (!isLast) {
-                canvasItems.unshift({ type: 'line', x1: 15, y1: 15, x2: 15, y2: 45, lineWidth: 1.2, lineColor: '#E2E8F0', dash: { length: 3, space: 3 } });
-            }
-
-            timelineContent.push({
-                columns: [
-                    {
-                        width: 30,
-                        canvas: canvasItems,
-                        height: 38
-                    },
-                    {
-                        width: 110,
-                        stack: [
-                            { text: s.title.toUpperCase(), fontSize: 7, bold: true, color: '#64748B' },
-                            { text: s.date, fontSize: 8.5, bold: true, color: hasDate ? '#07543A' : '#64748B', margin: [0, 1, 0, 0] }
-                        ],
-                        margin: [0, 6, 0, 0]
-                    },
-                    {
-                        width: '*',
-                        stack: [
-                            { text: s.desc, fontSize: 7.5, color: '#475569', lineHeight: 1.2 }
-                        ],
-                        margin: [0, 6, 0, 0]
-                    }
-                ],
-                margin: [0, 0, 0, 2]
-            });
-        });
-
-        // ===== 6. PHOTO GALLERY GRID GENERATION (PAGE 3) =====
-        const photoGalleryContent = [];
-        if (photosList.length === 0) {
-            photoGalleryContent.push({
-                table: {
-                    widths: ['*'],
-                    body: [[{
-                        stack: [
-                            { text: '\uf030', font: 'FontAwesome', fontSize: 18, color: '#94A3B8', alignment: 'center', margin: [0, 40, 0, 4] },
-                            { text: 'REGISTRO FOTOGRÁFICO DE OBRA', alignment: 'center', fontSize: 10, bold: true, color: '#94A3B8' },
-                            { text: 'NO SE DISPONE DE IMÁGENES ASOCIADAS PARA ESTE CONVENIO', alignment: 'center', fontSize: 8, color: '#cbd5e1', margin: [0, 4, 0, 40] }
-                        ]
-                    }]]
-                },
-                layout: {
-                    hLineWidth: () => 0.5,
-                    vLineWidth: () => 0.5,
-                    hLineColor: () => '#E2E8F0',
-                    vLineColor: () => '#E2E8F0',
-                    hLineDash: () => ({ length: 4, space: 4 }),
-                    vLineDash: () => ({ length: 4, space: 4 })
-                },
-                fillColor: '#F8FAFC',
-                margin: [0, 15, 0, 10]
-            });
-        } else {
-            const buildPhotoCard = (photoObj, isHorizontal) => {
-                const w = isHorizontal ? 252.5 : 165;
-                const imgH = isHorizontal ? 150 : 220;
-
-                let stageColor = '#475569';
-                if (photoObj.stage === 'Antes') stageColor = '#64748B';
-                else if (photoObj.stage === 'Durante') stageColor = '#D97706';
-                else if (photoObj.stage === 'Después' || photoObj.stage === 'Despues') stageColor = '#059669';
-
-                return {
-                    table: {
-                        widths: [w],
-                        body: [
-                            [
-                                {
-                                    image: photoObj.base64,
-                                    width: w,
-                                    height: imgH,
-                                    cover: {
-                                        width: w,
-                                        height: imgH,
-                                        valign: 'center',
-                                        align: 'center'
-                                    }
-                                }
-                            ],
-                            [
-                                {
-                                    text: photoObj.stage.toUpperCase(),
-                                    fontSize: 7,
-                                    bold: true,
-                                    color: stageColor,
-                                    alignment: 'center',
-                                    margin: [0, 4, 0, 4],
-                                    fillColor: '#F8FAFC'
-                                }
-                            ]
-                        ]
-                    },
-                    layout: {
-                        hLineWidth: (i) => i === 1 ? 0.5 : 0,
-                        vLineWidth: () => 0,
-                        hLineColor: () => '#E2E8F0',
-                        paddingLeft: () => 0,
-                        paddingRight: () => 0,
-                        paddingTop: () => 0,
-                        paddingBottom: () => 0
-                    },
-                    margin: [0, 4, 0, 8]
-                };
-            };
-
-            const photoRows = [];
-            let photoIndex = 0;
-            while (photoIndex < photosList.length) {
-                // Row 1: 2 horizontal (landscape) photos
-                const horizChunk = photosList.slice(photoIndex, photoIndex + 2);
-                if (horizChunk.length > 0) {
-                    const columns = horizChunk.map(p => buildPhotoCard(p, true));
-                    while (columns.length < 2) {
-                        columns.push({ text: '', width: 252.5 });
-                    }
-                    photoRows.push({
-                        columns: columns,
-                        columnGap: 10,
-                        margin: [0, 0, 0, 10],
-                        unbreakable: true
-                    });
-                    photoIndex += 2;
-                }
-
-                // Row 2: 3 vertical (portrait) photos
-                const vertChunk = photosList.slice(photoIndex, photoIndex + 3);
-                if (vertChunk.length > 0) {
-                    const columns = vertChunk.map(p => buildPhotoCard(p, false));
-                    while (columns.length < 3) {
-                        columns.push({ text: '', width: 165 });
-                    }
-                    photoRows.push({
-                        columns: columns,
-                        columnGap: 10,
-                        margin: [0, 0, 0, 10],
-                        unbreakable: true
-                    });
-                    photoIndex += 3;
-                }
-            }
-            photoGalleryContent.push(...photoRows);
-        }
-
-        // ===== 7. CONSTRUCT CLEAN CARDS FOR PAGE 1 =====
-        const progressSection = {
-            columns: [
-                { stack: [progressCard('Avance Físico Real', row['FISICO_NORM'] || 0, '#1A6B3C')], width: '50%' },
-                { stack: [progressCard('Avance Financiero Ejecutado', row['FINANCIERO_NORM'] || 0, '#3B82F6')], width: '50%' }
-            ],
-            columnGap: 10,
-            margin: [0, 0, 0, 10]
-        };
-
-        const convenioBanner = cleanCard([
-            {
-                columns: [
-                    { text: 'CONVENIO N°', fontSize: 7.5, bold: true, color: '#1A6B3C', letterSpacing: 0.8, width: 'auto', margin: [0, 4, 8, 0] },
-                    { text: row['CONVENIO'] || 'S/N', fontSize: 14, bold: true, color: '#0F172A', width: '*' }
-                ],
-                margin: [0, 0, 0, 8]
-            },
-            {
-                columns: [
-                    {
-                        width: '*',
-                        stack: [
-                            { text: 'OBJETO DEL CONVENIO', fontSize: 6.5, bold: true, color: '#1A6B3C', letterSpacing: 0.5 },
-                            { text: objetoText, fontSize: 7.5, color: '#334155', margin: [0, 2, 0, 0], lineHeight: 1.15 }
-                        ]
-                    },
-                    {
-                        width: 175,
-                        stack: [
-                            iconLabel('\uf508', 'Supervisor Responsable', row['SUPERVISOR'] || 'Sin Asignar', false),
-                            iconLabel('\uf2b5', 'Conveniante Ejecutor', row['CONVENIANTE EJECUTOR'] || 'N/A', false),
-                            iconLabel('\uf073', 'Fecha de Inicio', getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || 'N/A', false)
-                        ],
-                        margin: [10, 0, 0, 0]
-                    }
-                ],
-                columnGap: 12
-            }
-        ], '#F8FAFC', '#E2E8F0', 12);
-
-        const widgetContratado = iconLabel('\uf548', labelContratado, valContratado, false, true);
-        widgetContratado.margin = [0, 0, 0, 0];
-        const cardContratado = cleanCard([widgetContratado], '#F0FDF4', '#BBF7D0', 8);
-
-        const widgetEjecutado = iconLabel('\uf548', labelEjecutado, valEjecutado, false, true);
-        widgetEjecutado.margin = [0, 0, 0, 0];
-        const cardEjecutado = cleanCard([widgetEjecutado], '#F0FDF4', '#BBF7D0', 8);
-
-        const infoGeneralCard = cleanCard([
-            { text: 'INFORMACIÓN GENERAL', fontSize: 8, bold: true, color: '#1A6B3C', letterSpacing: 0.5, margin: [0, 0, 0, 10] },
-            {
-                columns: [
-                    {
-                        width: '*',
-                        stack: [
-                            iconLabel('\uf073', 'Vigencia', row['VIGENCIA']),
-                            iconLabel('\uf02c', 'Clasificación', row['CLASIFICACIÓN'] || row['CLASIFICACI"N'])
-                        ]
-                    },
-                    {
-                        width: '*',
-                        stack: [
-                            iconLabel('\uf3c5', 'Municipio', row['MUNICIPIO']),
-                            iconLabel('\uf279', 'Subregión', getSubregion(row['MUNICIPIO']))
-                        ]
-                    },
-                    {
-                        width: '*',
-                        stack: [
-                            iconLabel('\uf201', 'Indicador', row['INDICADOR'] ? (row['INDICADOR'].length > 40 ? row['INDICADOR'].substring(0, 40) + '...' : row['INDICADOR']) : 'N/A'),
-                            iconLabel('\uf05a', 'Estado Actual', sysState.label)
-                        ]
-                    }
-                ],
-                columnGap: 12,
-                margin: [0, 0, 0, 10]
-            },
-            {
-                columns: [
-                    {
-                        width: '*',
-                        stack: [cardContratado]
-                    },
-                    {
-                        width: '*',
-                        stack: [cardEjecutado]
-                    }
-                ],
-                columnGap: 10
-            }
-        ], '#FFFFFF', '#E2E8F0', 12);
-
-        const viasCard = cleanCard([
-            {
-                columns: [
-                    { text: '\uf018', font: 'FontAwesome', fontSize: 9, color: '#1A6B3C', width: 14, margin: [0, 1.5, 0, 0] },
-                    { text: 'VÍAS PRIORIZADAS', fontSize: 7.5, bold: true, color: '#1A6B3C', letterSpacing: 0.5 }
-                ],
-                margin: [0, 0, 0, 6]
-            },
-            viasContent
-        ], '#FFFFFF', '#E2E8F0', 12);
-
-        const obsCard = cleanCard([
-            {
-                columns: [
-                    { text: '\uf075', font: 'FontAwesome', fontSize: 9, color: '#1A6B3C', width: 14, margin: [0, 1.5, 0, 0] },
-                    { text: 'OBSERVACIONES TÉCNICAS DE SUPERVISIÓN', fontSize: 7.5, bold: true, color: '#1A6B3C', letterSpacing: 0.5 }
-                ],
-                margin: [0, 0, 0, 6]
-            },
-            { text: obsText, fontSize: 7.5, color: '#334155', alignment: 'justify', lineHeight: 1.3 }
-        ], '#FFFFFF', '#E2E8F0', 12);
-
-        const alertsCard = cleanCard(
-            alertsStack,
-            alertsList.length === 0 ? '#F0FDF4' : '#FEF2F2',
-            alertsList.length === 0 ? '#BBF7D0' : '#FCA5A5',
-            12
-        );
-
-        const muniStrPdf = String(row['MUNICIPIO'] || 'N/A').trim().toUpperCase();
-        const ejecStrPdf = String(row['CONVENIANTE EJECUTOR'] || '').trim().toUpperCase();
-        const isEjecutorDiferentePdf = (ejecStrPdf && ejecStrPdf !== muniStrPdf && ejecStrPdf !== 'N/A');
-        const labelAporteMunPdf = isEjecutorDiferentePdf
-            ? `APORTE CONVENIANTE EJECUTOR (${String(row['CONVENIANTE EJECUTOR']).toUpperCase()})`
-            : 'APORTE MUNICIPIO';
+        const termOriginalStr = String(row['FECHA DE TERMINACION'] || row['FECHA DE TERMINACIÓN'] || getVal(['FECHA DE TERMINAC'], false) || 'Por registrar').trim();
+        const termNuevaStr = String(row['NUEVA FECHA DE TERMINACION'] || row['NUEVA FECHA DE TERMINACIÓN'] || getVal(['NUEVA FECHA DE TERMINAC'], false) || 'Sin cambios').trim();
 
         const adicDeptoPdf = parseFloat(row['ADICION DEPARTAMENTO']) || 0;
         const adicMunPdf = parseFloat(row['ADICION MUNICIPIO']) || 0;
         const aporteDeptoPdf = parseFloat(row['APORTE DEPARTAMENTO']) || 0;
+        const aporteMunPdf = parseFloat(row['APORTE MUNICIPIO']) || 0;
+        const totalCompromiso = aporteDeptoPdf + aporteMunPdf + adicDeptoPdf + adicMunPdf;
         const totalDeptoCompromisoPdf = aporteDeptoPdf + adicDeptoPdf;
-        const valAutorizadoPdf = parseFloat(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO'] || row['VALOR TOTAL AUTORIZADO']) || 0;
-        const pctAutorizadoPdf = totalDeptoCompromisoPdf > 0
-            ? (valAutorizadoPdf / totalDeptoCompromisoPdf) * 100
-            : (row['FINANCIERO_NORM'] || 0);
-        const pctFormattedPdf = Number(pctAutorizadoPdf.toFixed(1));
-
-        const inversionTableBody = [
-            [
-                { text: 'INVERSIÓN TOTAL', fontSize: 9, bold: true, color: '#1A6B3C', margin: [5, 5, 5, 5] },
-                { text: formatCurrency((row['APORTE DEPARTAMENTO'] || 0) + (row['APORTE MUNICIPIO'] || 0) + (row['ADICION DEPARTAMENTO'] || 0) + (row['ADICION MUNICIPIO'] || 0)), fontSize: 9.5, bold: true, color: '#1A6B3C', alignment: 'right', margin: [5, 5, 5, 5] }
-            ],
-            [
-                { text: 'APORTE DEPARTAMENTO', fontSize: 8.5, bold: true, color: '#1A6B3C', fillColor: '#F0FDF4', margin: [5, 5, 5, 5] },
-                { text: formatCurrency(row['APORTE DEPARTAMENTO']), fontSize: 8.5, bold: true, color: '#1A6B3C', fillColor: '#F0FDF4', alignment: 'right', margin: [5, 5, 5, 5] }
-            ],
-            [
-                { text: labelAporteMunPdf, fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
-                { text: formatCurrency(row['APORTE MUNICIPIO']), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
-            ]
-        ];
-
-        if (adicDeptoPdf > 0) {
-            inversionTableBody.push([
-                { text: 'ADICIÓN DEPARTAMENTO', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
-                { text: formatCurrency(row['ADICION DEPARTAMENTO']), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
-            ]);
-        }
-
-        if (adicMunPdf > 0) {
-            inversionTableBody.push([
-                { text: 'ADICIÓN MUNICIPIO', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
-                { text: formatCurrency(row['ADICION MUNICIPIO']), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
-            ]);
-        }
 
         const valDesembolsadoPdf = parseFloat(row['VALOR TOTAL DESEMBOLSADO']) || 0;
+        const valAutorizadoPdf = parseFloat(row['VALOR TOTAL AUTORIZADO DEPARTAMENTO'] || row['VALOR TOTAL AUTORIZADO']) || 0;
         const saldoIdeaPdf = Math.max(0, valDesembolsadoPdf - valAutorizadoPdf);
-        const pctSaldoPdf = totalDeptoCompromisoPdf > 0
-            ? (saldoIdeaPdf / totalDeptoCompromisoPdf) * 100
-            : 0;
-        const pctSaldoFormattedPdf = Number(pctSaldoPdf.toFixed(1));
 
-        inversionTableBody.push([
-            { text: 'VALOR DESEMBOLSADO EN EL IDEA', fontSize: 8, bold: false, color: '#475569', margin: [5, 5, 5, 5] },
-            { text: formatCurrency(valDesembolsadoPdf), fontSize: 8, bold: true, color: '#334155', alignment: 'right', margin: [5, 5, 5, 5] }
-        ]);
+        const pctFisico = row['FISICO_NORM'] || 0;
+        const pctFinanciero = row['FINANCIERO_NORM'] || 0;
+        const pctAutorizadoPdf = totalDeptoCompromisoPdf > 0 ? (valAutorizadoPdf / totalDeptoCompromisoPdf) * 100 : pctFinanciero;
+        const pctSaldoPdf = totalDeptoCompromisoPdf > 0 ? (saldoIdeaPdf / totalDeptoCompromisoPdf) * 100 : Math.max(0, 100 - pctFinanciero);
 
-        inversionTableBody.push([
-            { text: `VALOR AUTORIZADO POR EL DEPARTAMENTO (${pctFormattedPdf}%)`, fontSize: 8.5, bold: true, color: '#3B82F6', fillColor: '#EFF6FF', margin: [5, 5, 5, 5] },
-            { text: formatCurrency(valAutorizadoPdf), fontSize: 8.5, bold: true, color: '#3B82F6', fillColor: '#EFF6FF', alignment: 'right', margin: [5, 5, 5, 5] }
-        ]);
+        // Millions abbreviation for Hero KPI
+        const totalMillions = (totalCompromiso / 1000000).toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-        inversionTableBody.push([
-            { text: `SALDO EN EL IDEA (${pctSaldoFormattedPdf}%)`, fontSize: 8.5, bold: true, color: '#0F766E', fillColor: '#F0FDF4', margin: [5, 5, 5, 5] },
-            { text: formatCurrency(saldoIdeaPdf), fontSize: 8.5, bold: true, color: '#0F766E', fillColor: '#F0FDF4', alignment: 'right', margin: [5, 5, 5, 5] }
-        ]);
+        // Vías Priorizadas List
+        const viasRaw = String(row['VIA_PRIORIZADA'] || 'No especificada').trim();
+        const parseViasList = (text) => {
+            if (!text || text === 'No especificada' || text === 'N/A') return [];
+            return text.split(/[\n,;\u2022\r]+/g)
+                .map(s => s.trim().replace(/^[-–—]\s*/, ''))
+                .filter(s => s.length > 2);
+        };
+        const viasArray = parseViasList(viasRaw);
 
-        const inversionCard = cleanCard([
-            {
-                table: {
-                    widths: ['*', 150],
-                    body: inversionTableBody
-                },
-                layout: {
-                    hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 0 : 0.5,
-                    vLineWidth: () => 0,
-                    hLineColor: () => '#E2E8F0'
-                }
-            }
-        ], '#FFFFFF', '#E2E8F0', 8);
+        // Timeline Hitos Infográficos Sintéticos (6 Hitos Clave)
+        const timelineSteps = [
+            { num: '01', title: 'ACTA DE INICIO', tag: 'INICIADO', date: getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || 'Pendiente', desc: 'Inicio oficial' },
+            { num: '02', title: 'FECHA TERMINACIÓN', tag: 'PLAZO BASE', date: termOriginalStr, desc: `${plazoInicial} Meses pactados` },
+            { num: '03', title: 'SUSPENSIONES', tag: suspensiones > 0 ? `${suspensiones}M SUSP.` : 'SIN SUSPENSIÓN', date: suspensiones > 0 ? `${suspensiones} Meses` : '0 Meses', desc: suspensiones > 0 ? 'Plazo congelado' : 'Sin suspensiones' },
+            { num: '04', title: 'PRÓRROGAS', tag: prorrogas > 0 ? `+${prorrogas}M MODIF.` : 'SIN PRÓRROGA', date: prorrogas > 0 ? `+${prorrogas} Meses` : '0 Meses', desc: prorrogas > 0 ? 'Adición aprobada' : 'Sin adición de tiempo' },
+            { num: '05', title: 'NUEVA FECHA DE TERMINACIÓN', tag: 'TERMINACIÓN', date: termNuevaStr !== 'Sin cambios' ? termNuevaStr : termOriginalStr, desc: `Plazo total: ${plazoTotal} Meses` },
+            { num: '06', title: 'LIQUIDACIÓN Y CIERRE', tag: sysState.label.toUpperCase().includes('LIQUIDADO') ? 'LIQUIDADO' : 'POR LIQUIDAR', date: row['FECHA ACTA DE CIERRE DE EXPEDIENTE'] || (sysState.label.toUpperCase().includes('LIQUIDADO') ? 'Cerrado' : 'Pendiente'), desc: 'Trámite de cierre' }
+        ];
 
-        const plazoInicialCard = cleanCard([
-            iconLabel('\uf073', 'Plazo Inicial', `${plazoInicial} Meses`)
-        ], '#F8FAFC', '#E2E8F0', 8);
-
-        const plazoTotalCard = cleanCard([
-            iconLabel('\uf073', 'Plazo Total Vigente', `${plazoTotal} Meses`)
-        ], '#F0FDF4', '#BBF7D0', 8);
-
+        // ===== MASTER 3-PAGE EDITORIAL DOCUMENT DEFINITION =====
         const docDefinition = {
             pageSize: 'A4',
             pageOrientation: 'portrait',
-            pageMargins: [40, 50, 40, 50],
-            defaultStyle: { font: 'Poppins', fontSize: 10, color: '#1E293B' },
+            pageMargins: [36, 28, 36, 28],
+            defaultStyle: { font: 'Poppins', fontSize: 8.5, color: '#1E293B' },
             header: (currentPage, pageCount) => {
                 if (currentPage === 1) return null;
                 return {
-                    margin: [40, 18, 40, 0],
+                    margin: [36, 12, 36, 0],
                     columns: [
-                        { text: `Secretaría de Infraestructura Física · Convenio ${row['CONVENIO']}`, fontSize: 7, color: '#94A3B8', font: 'Poppins' }
+                        { text: 'GOBERNACIÓN DE ANTIOQUIA · SECRETARÍA DE INFRAESTRUCTURA FÍSICA · DIAT', fontSize: 6.5, bold: true, color: '#94A3B8', letterSpacing: 0.5 },
+                        { text: `CONVENIO ${row['CONVENIO']}`, alignment: 'right', fontSize: 7, bold: true, color: '#0B5640' }
                     ]
                 };
             },
             footer: (currentPage, pageCount) => ({
-                margin: [40, 10, 40, 0],
+                margin: [36, 10, 36, 0],
                 columns: [
-                    { text: 'Por Antioquia Firme 2024–2027', fontSize: 7, color: '#4B5563', font: 'Poppins', bold: true },
-                    { text: `Página ${currentPage} de ${pageCount}`, alignment: 'right', fontSize: 7, color: '#4B5563', font: 'Poppins', bold: true }
+                    { text: 'GOBERNACIÓN DE ANTIOQUIA · SECRETARÍA DE INFRAESTRUCTURA FÍSICA · DIAT', fontSize: 6.5, color: '#94A3B8', bold: true, letterSpacing: 0.3 },
+                    { text: `CONVENIO ${row['CONVENIO']}`, alignment: 'center', fontSize: 6.5, color: '#94A3B8', bold: true },
+                    { text: `Página ${currentPage} / ${pageCount}`, alignment: 'right', fontSize: 6.5, color: '#64748B', bold: true }
                 ]
             }),
             content: [
+                // =========================================================================
+                // PÁGINA 1 — PORTADA, INFORMACIÓN GENERAL, CARTOGRAFÍA Y SUPERVISIÓN
+                // =========================================================================
                 {
                     columns: [
                         logoBase64 ? {
@@ -1468,109 +1353,491 @@ async function generateProfessionalPDF(row) {
                         } : { text: '' },
                         {
                             stack: [
-                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 10, bold: true, color: '#1A6B3C', letterSpacing: 0.5 },
-                                { text: 'SECRETARÍA DE INFRAESTRUCTURA FÍSICA', fontSize: 7.5, bold: true, color: '#64748B' },
-                                { text: 'Dirección de Infraestructura y Apoyo Territorial (DIAT)', fontSize: 7, color: '#94A3B8' }
+                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 9, bold: true, color: '#0B5640', letterSpacing: 0.8 },
+                                { text: 'SECRETARÍA DE INFRAESTRUCTURA FÍSICA', fontSize: 6.8, bold: true, color: '#475569', letterSpacing: 0.4 },
+                                { text: 'DIRECCIÓN DE INFRAESTRUCTURA Y APOYO TERRITORIAL', fontSize: 6.2, bold: true, color: '#64748B', letterSpacing: 0.3 }
                             ],
-                            margin: [8, 0, 0, 0],
+                            margin: [6, 0, 0, 0],
                             width: '*'
                         },
                         {
                             stack: [
-                                { text: 'FICHA TÉCNICA DE CONVENIO', fontSize: 9, bold: true, color: '#1A6B3C', alignment: 'right' },
+                                { text: 'FICHA TÉCNICA DE CONVENIO', fontSize: 6.8, bold: true, color: '#64748B', alignment: 'right', letterSpacing: 0.5 },
+                                { text: String(row['CONVENIO'] || 'S/N'), fontSize: 13, bold: true, color: '#0F172A', alignment: 'right', margin: [0, 1, 0, 2] },
                                 {
-                                    text: [
-                                        { text: 'ESTADO: ', color: '#64748B' },
-                                        { text: sysState.label.toUpperCase(), color: sysState.hex }
-                                    ],
-                                    fontSize: 7.5,
-                                    bold: true,
+                                    table: {
+                                        body: [[{
+                                            text: sysState.label.toUpperCase(),
+                                            fontSize: 6,
+                                            bold: true,
+                                            color: '#0B5640',
+                                            fillColor: '#E6F4EA',
+                                            alignment: 'center',
+                                            margin: [5, 1.5, 5, 1.5]
+                                        }]]
+                                    },
+                                    layout: 'noBorders',
                                     alignment: 'right'
-                                },
-                                { text: `Generado: ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`, fontSize: 7, color: '#94A3B8', alignment: 'right' }
+                                }
                             ],
                             width: 'auto'
                         }
                     ],
-                    margin: [0, 0, 0, 8]
+                    margin: [0, 0, 0, 3]
                 },
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#1A6B3C' }], margin: [0, 5, 0, 12] },
-                progressSection,
-                convenioBanner,
-                { text: '', margin: [0, 0, 0, 10] },
-                infoGeneralCard,
-                { text: '', margin: [0, 0, 0, 10] },
-                viasCard,
-                { text: '', margin: [0, 0, 0, 10] },
-                obsCard,
-                { text: '', margin: [0, 0, 0, 10] },
-                alertsCard,
-
-                // Page 2
                 {
-                    pageBreak: 'before',
-                    columns: [
-                        { text: 'RESUMEN EJECUTIVO DE INVERSIÓN', fontSize: 12, bold: true, color: '#1A6B3C', width: '*' },
-                        { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 9, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 2, 0, 0] }
+                    canvas: [
+                        { type: 'line', x1: 0, y1: 0, x2: 523, y2: 0, lineWidth: 1, lineColor: '#0B5640' },
+                        { type: 'line', x1: 0, y1: 1.5, x2: 523, y2: 1.5, lineWidth: 0.4, lineColor: '#D97706' }
                     ],
-                    margin: [0, 0, 0, 6]
+                    margin: [0, 1, 0, 6]
                 },
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#1A6B3C' }], margin: [0, 0, 0, 12] },
-                inversionCard,
 
-                {
-                    columns: [
-                        { text: 'LÍNEA DE TIEMPO Y EVENTOS CONTRACTUALES', fontSize: 12, bold: true, color: '#1A6B3C', width: '*' },
-                        { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 9, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 2, 0, 0] }
-                    ],
-                    margin: [0, 15, 0, 6]
-                },
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#1A6B3C' }], margin: [0, 0, 0, 12] },
-                {
-                    stack: timelineContent,
-                    margin: [0, 0, 0, 15]
-                },
+                // Gran Bloque Tipográfico de KPIs con Barras de Progreso Rediseñadas
                 {
                     columns: [
                         {
                             stack: [
-                                plazoInicialCard
+                                { text: `${pctFisico.toFixed(1)}%`, fontSize: 19.5, bold: true, color: '#0B5640' },
+                                { text: 'AVANCE FÍSICO REAL', fontSize: 6.2, bold: true, color: '#64748B', letterSpacing: 0.4, margin: [0, 1, 0, 3] },
+                                {
+                                    canvas: [
+                                        { type: 'rect', x: 0, y: 0, w: 105, h: 4.5, r: 2.25, color: '#E2E8F0' },
+                                        { type: 'rect', x: 0, y: 0, w: (Math.max(0, Math.min(100, pctFisico)) / 100) * 105, h: 4.5, r: 2.25, color: '#0B5640' }
+                                    ],
+                                    margin: [0, 1, 0, 0]
+                                }
                             ],
-                            width: '50%'
+                            width: '25%'
                         },
                         {
                             stack: [
-                                plazoTotalCard
+                                { text: `${pctFinanciero.toFixed(1)}%`, fontSize: 19.5, bold: true, color: '#2563EB' },
+                                { text: 'AVANCE FINANCIERO', fontSize: 6.2, bold: true, color: '#64748B', letterSpacing: 0.4, margin: [0, 1, 0, 3] },
+                                {
+                                    canvas: [
+                                        { type: 'rect', x: 0, y: 0, w: 105, h: 4.5, r: 2.25, color: '#E2E8F0' },
+                                        { type: 'rect', x: 0, y: 0, w: (Math.max(0, Math.min(100, pctFinanciero)) / 100) * 105, h: 4.5, r: 2.25, color: '#2563EB' }
+                                    ],
+                                    margin: [0, 1, 0, 0]
+                                }
                             ],
-                            width: '50%'
+                            width: '25%'
+                        },
+                        {
+                            stack: [
+                                { text: `$ ${totalMillions} M`, fontSize: 17, bold: true, color: '#0F172A', margin: [0, 1, 0, 0] },
+                                { text: 'INVERSIÓN TOTAL', fontSize: 6.2, bold: true, color: '#64748B', letterSpacing: 0.4, margin: [0, 2, 0, 0] }
+                            ],
+                            width: '25%'
+                        },
+                        {
+                            stack: [
+                                { text: strAlcanceHero, fontSize: 17, bold: true, color: '#0B5640', margin: [0, 1, 0, 0] },
+                                { text: 'ALCANCE EJECUTADO', fontSize: 6.2, bold: true, color: '#64748B', letterSpacing: 0.4, margin: [0, 2, 0, 0] },
+                                { text: `Contratado: ${strAlcanceContratado}`, fontSize: 6, bold: true, color: '#0B5640', margin: [0, 1, 0, 0] }
+                            ],
+                            width: '25%'
+                        }
+                    ],
+                    margin: [0, 0, 0, 7]
+                },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 523, y2: 0, lineWidth: 0.4, lineColor: '#E2E8F0' }], margin: [0, 0, 0, 7] },
+
+                // Territorio y Objeto Contractual
+                {
+                    columns: [
+                        {
+                            stack: [
+                                { text: 'TERRITORIO DEL PROYECTO', fontSize: 6, bold: true, color: '#D97706', letterSpacing: 0.5 },
+                                { text: muniName.toUpperCase(), fontSize: 16, bold: true, color: '#0B5640', letterSpacing: -0.3, margin: [0, 1, 0, 0] },
+                                { text: `${subregName.toUpperCase()} · ANTIOQUIA`, fontSize: 7.5, bold: true, color: '#475569', letterSpacing: 0.3, margin: [0, 1, 0, 2] }
+                            ],
+                            width: '32%'
+                        },
+                        {
+                            stack: [
+                                { text: 'OBJETO CONTRACTUAL', fontSize: 6.5, bold: true, color: '#64748B', letterSpacing: 0.4, margin: [0, 0, 0, 1] },
+                                {
+                                    columns: [
+                                        { canvas: [{ type: 'rect', x: 0, y: 0, w: 2, h: 32, r: 1, color: '#0B5640' }], width: 'auto', margin: [0, 1, 5, 0] },
+                                        {
+                                            text: row['OBJETO'] || 'Sin descripción del objeto contractual.',
+                                            fontSize: 6.8,
+                                            color: '#334155',
+                                            lineHeight: 1.15,
+                                            alignment: 'justify',
+                                            width: '*'
+                                        }
+                                    ]
+                                }
+                            ],
+                            width: '68%'
+                        }
+                    ],
+                    margin: [0, 0, 0, 7]
+                },
+
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 523, y2: 0, lineWidth: 0.4, lineColor: '#E2E8F0' }], margin: [0, 0, 0, 7] },
+
+                // Vías Priorizadas y Matriz Contractual (Sin Fecha de Suscripción)
+                {
+                    columns: [
+                        // Left: Vías Priorizadas
+                        {
+                            stack: [
+                                { text: 'VÍAS PRIORIZADAS E INTERVENIDAS', fontSize: 6.8, bold: true, color: '#0B5640', letterSpacing: 0.4, margin: [0, 0, 0, 2] },
+                                viasArray.length === 0 ? {
+                                    text: 'No se registran vías específicas priorizadas.',
+                                    fontSize: 6.5,
+                                    color: '#64748B',
+                                    italics: true
+                                } : {
+                                    stack: viasArray.slice(0, 4).map((v, i) => ({
+                                        columns: [
+                                            { text: String(i + 1).padStart(2, '0'), fontSize: 6.5, bold: true, color: '#D97706', width: 14 },
+                                            { text: v.toUpperCase(), fontSize: 6.5, bold: true, color: '#1E293B', width: '*' }
+                                        ],
+                                        margin: [0, 0, 0, 1.5]
+                                    }))
+                                }
+                            ],
+                            width: '45%'
+                        },
+                        // Right: Matriz Contractual Institucional
+                        {
+                            table: {
+                                widths: ['50%', '50%'],
+                                body: [
+                                    [
+                                        { stack: [{ text: 'CONVENIANTE EJECUTOR', fontSize: 5.5, bold: true, color: '#64748B' }, { text: String(row['CONVENIANTE EJECUTOR'] || muniName).toUpperCase(), fontSize: 6.5, bold: true, color: '#1E293B' }] },
+                                        { stack: [{ text: 'SUPERVISOR RESPONSABLE', fontSize: 5.5, bold: true, color: '#64748B' }, { text: String(row['SUPERVISOR'] || 'Sin Asignar').toUpperCase(), fontSize: 6.5, bold: true, color: '#1E293B' }] }
+                                    ],
+                                    [
+                                        { stack: [{ text: 'FECHA ACTA INICIO', fontSize: 5.5, bold: true, color: '#64748B' }, { text: getVal(['FECHA DE ACTA DE INICIO'], true) || getVal(['ACTA DE INICIO'], true) || 'Pendiente', fontSize: 6.5, bold: true, color: '#1E293B' }] },
+                                        { stack: [{ text: 'PLAZO TOTAL VIGENTE', fontSize: 5.5, bold: true, color: '#64748B' }, { text: `${plazoTotal} Meses (${plazoInicial} + ${prorrogas})`, fontSize: 6.5, bold: true, color: '#0B5640' }] }
+                                    ],
+                                    [
+                                        { stack: [{ text: 'VIGENCIA Y CLASIFICACIÓN', fontSize: 5.5, bold: true, color: '#64748B' }, { text: `${row['VIGENCIA'] || '2024'} · ${String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || 'N/A')}`, fontSize: 6.5, bold: true, color: '#1E293B' }] },
+                                        { stack: [{ text: 'INDICADOR PDD', fontSize: 5.5, bold: true, color: '#64748B' }, { text: String(row['INDICADOR'] || 'N/A'), fontSize: 6.5, bold: true, color: '#1E293B' }] }
+                                    ]
+                                ]
+                            },
+                            layout: {
+                                hLineWidth: () => 0.3,
+                                vLineWidth: () => 0,
+                                hLineColor: () => '#E2E8F0',
+                                paddingLeft: () => 2,
+                                paddingRight: () => 2,
+                                paddingTop: () => 1.5,
+                                paddingBottom: () => 1.5
+                            },
+                            width: '55%'
                         }
                     ],
                     columnGap: 10,
-                    margin: [0, 0, 0, 0]
+                    margin: [0, 0, 0, 8]
                 },
 
-                // Page 3
+                // LÍNEA ROJA 1: Separación amplia antes de Cartografía
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 523, y2: 0, lineWidth: 0.45, lineColor: '#CBD5E1' }], margin: [0, 6, 0, 14] },
+
+                // Doble Cartografía Vectorial SVG (Lado a Lado: Antioquia + Municipal KMZ)
+                {
+                    columns: [
+                        // Left: Vector SVG Antioquia Map
+                        {
+                            stack: [
+                                { text: 'UBICACIÓN REGIONAL (ANTIOQUIA)', fontSize: 7, bold: true, color: '#0B5640', letterSpacing: 0.4, margin: [0, 0, 0, 4] },
+                                antioquiaSvgString ? {
+                                    svg: antioquiaSvgString,
+                                    width: 250,
+                                    height: 155,
+                                    alignment: 'center'
+                                } : {
+                                    text: 'Mapa vectorial de Antioquia no disponible', fontSize: 7, color: '#94A3B8', alignment: 'center', margin: [0, 50, 0, 50]
+                                },
+                                {
+                                    text: `MUNICIPIO: ${muniName.toUpperCase()} · SUBREGIÓN: ${subregName.toUpperCase()}`,
+                                    fontSize: 5.8,
+                                    bold: true,
+                                    color: '#0B5640',
+                                    alignment: 'center',
+                                    margin: [0, 3, 0, 0]
+                                }
+                            ],
+                            width: '49%'
+                        },
+                        // Right: Pure Vector SVG Municipal Map & KMZ Tramos
+                        {
+                            stack: [
+                                { text: 'LOCALIZACIÓN MUNICIPAL Y TRAMOS (KMZ)', fontSize: 7, bold: true, color: '#0B5640', letterSpacing: 0.4, margin: [0, 0, 0, 4] },
+                                municipalSvgString ? {
+                                    svg: municipalSvgString,
+                                    width: 258,
+                                    height: 155,
+                                    alignment: 'center'
+                                } : {
+                                    text: 'Georreferenciación de tramos no disponible', fontSize: 7, color: '#94A3B8', alignment: 'center', margin: [0, 50, 0, 50]
+                                },
+                                {
+                                    text: `LÍMITES MUNICIPALES · CABECERA · TRAZADO (${totalTramosCount} TRAMOS)`,
+                                    fontSize: 5.8,
+                                    bold: true,
+                                    color: '#D97706',
+                                    alignment: 'center',
+                                    margin: [0, 3, 0, 0]
+                                }
+                            ],
+                            width: '51%'
+                        }
+                    ],
+                    columnGap: 12,
+                    margin: [0, 0, 0, 8]
+                },
+
+                // LÍNEA ROJA 2: Separación amplia antes de Observaciones Técnicas
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 523, y2: 0, lineWidth: 0.45, lineColor: '#CBD5E1' }], margin: [0, 8, 0, 14] },
+
+                // Observaciones Técnicas de Supervisión (Al final de Página 1)
+                {
+                    stack: [
+                        { text: 'OBSERVACIONES TÉCNICAS DE SUPERVISIÓN EN CAMPO', fontSize: 7.2, bold: true, color: '#0B5640', letterSpacing: 0.4, margin: [0, 0, 0, 4] },
+                        {
+                            columns: [
+                                { canvas: [{ type: 'rect', x: 0, y: 0, w: 2.5, h: 32, r: 1.25, color: '#0B5640' }], width: 'auto', margin: [0, 1, 6, 0] },
+                                {
+                                    text: row['OBSERVACIONES'] || 'Sin observaciones técnicas adicionales reportadas en el sistema.',
+                                    fontSize: 7,
+                                    color: '#334155',
+                                    lineHeight: 1.22,
+                                    alignment: 'justify',
+                                    width: '*'
+                                }
+                            ]
+                        }
+                    ]
+                },
+
+                // =========================================================================
+                // PÁGINA 2 — INVERSIÓN Y LÍNEA DE TIEMPO HORIZONTAL MINIMALISTA
+                // =========================================================================
                 {
                     pageBreak: 'before',
-                    columns: [
-                        { text: 'REGISTRO FOTOGRÁFICO DE OBRA', fontSize: 12, bold: true, color: '#1A6B3C', width: '*' },
-                        { text: `CONVENIO N° ${row['CONVENIO']}`, fontSize: 9, bold: true, color: '#4B5563', alignment: 'right', width: 'auto', margin: [0, 2, 0, 0] }
-                    ],
-                    margin: [0, 0, 0, 6]
+                    stack: [
+                        createEditorialSectionHeader('01', 'INVERSIÓN Y TRAZABILIDAD CONTRACTUAL', 'Estructura financiera y línea de tiempo sintética del proceso', row['CONVENIO']),
+
+                        // Inversión Total
+                        { text: 'INVERSIÓN TOTAL DEL CONVENIO', fontSize: 7.5, bold: true, color: '#64748B', letterSpacing: 0.6 },
+                        { text: formatCurrency(totalCompromiso), fontSize: 24, bold: true, color: '#0B5640', margin: [0, 2, 0, 10] },
+
+                        // Desglose Presupuestal: Destacando VALOR AUTORIZADO en azul y DESEMBOLSADO IDEA en neutro
+                        {
+                            columns: [
+                                {
+                                    stack: [
+                                        { text: 'APORTE DEPARTAMENTO', fontSize: 6.8, bold: true, color: '#0B5640', letterSpacing: 0.3 },
+                                        { text: formatCurrency(totalDeptoCompromisoPdf), fontSize: 11.5, bold: true, color: '#0F172A', margin: [0, 1, 0, 0] },
+                                        { text: `Inicial: ${formatCurrency(aporteDeptoPdf)} ${adicDeptoPdf > 0 ? '· Adic: ' + formatCurrency(adicDeptoPdf) : ''}`, fontSize: 6, color: '#64748B', margin: [0, 1, 0, 0] }
+                                    ],
+                                    width: '26%'
+                                },
+                                {
+                                    stack: [
+                                        { text: 'APORTE MUNICIPIO', fontSize: 6.8, bold: true, color: '#64748B', letterSpacing: 0.3 },
+                                        { text: formatCurrency(aporteMunPdf + adicMunPdf), fontSize: 11.5, bold: true, color: '#0F172A', margin: [0, 1, 0, 0] },
+                                        { text: `Inicial: ${formatCurrency(aporteMunPdf)} ${adicMunPdf > 0 ? '· Adic: ' + formatCurrency(adicMunPdf) : ''}`, fontSize: 6, color: '#64748B', margin: [0, 1, 0, 0] }
+                                    ],
+                                    width: '24%'
+                                },
+                                {
+                                    stack: [
+                                        { text: 'VALOR DESEMBOLSADO EN IDEA', fontSize: 6.8, bold: true, color: '#475569', letterSpacing: 0.3 },
+                                        { text: formatCurrency(valDesembolsadoPdf), fontSize: 11.5, bold: true, color: '#0F172A', margin: [0, 1, 0, 0] },
+                                        { text: `Saldo en IDEA: ${formatCurrency(saldoIdeaPdf)}`, fontSize: 6, color: '#64748B', margin: [0, 1, 0, 0] }
+                                    ],
+                                    width: '25%'
+                                },
+                                {
+                                    stack: [
+                                        { text: 'VALOR EJECUTADO / AUTORIZADO', fontSize: 7, bold: true, color: '#2563EB', letterSpacing: 0.4 },
+                                        { text: formatCurrency(valAutorizadoPdf), fontSize: 13.5, bold: true, color: '#2563EB', margin: [0, 1, 0, 0] },
+                                        { text: `${pctAutorizadoPdf.toFixed(1)}% del compromiso Depto`, fontSize: 6.2, bold: true, color: '#2563EB', margin: [0, 1, 0, 0] }
+                                    ],
+                                    width: '25%'
+                                }
+                            ],
+                            margin: [0, 0, 0, 14]
+                        },
+
+                        // Barra Horizontal de Proporción Financiera Ampliada
+                        {
+                            stack: [
+                                {
+                                    columns: [
+                                        { text: `EJECUTADO / AUTORIZADO: ${pctAutorizadoPdf.toFixed(1)}% (${formatCurrency(valAutorizadoPdf)})`, fontSize: 7.5, bold: true, color: '#2563EB' },
+                                        { text: `SALDO EN EL IDEA: ${pctSaldoPdf.toFixed(1)}% (${formatCurrency(saldoIdeaPdf)})`, fontSize: 7.5, bold: true, color: '#0B5640', alignment: 'right' }
+                                    ]
+                                },
+                                {
+                                    canvas: [
+                                        { type: 'rect', x: 0, y: 0, w: 523, h: 9.5, r: 4.75, color: '#E2E8F0' },
+                                        { type: 'rect', x: 0, y: 0, w: (Math.max(0, Math.min(100, pctAutorizadoPdf)) / 100) * 523, h: 9.5, r: 4.75, color: '#2563EB' }
+                                    ],
+                                    margin: [0, 4, 0, 6]
+                                },
+                                {
+                                    columns: [
+                                        { text: 'Recursos invertidos y avalados técnicamente en obra', fontSize: 6, color: '#64748B' },
+                                        { text: 'Recursos disponibles en custodia fiduciaria IDEA', fontSize: 6, color: '#64748B', alignment: 'right' }
+                                    ]
+                                }
+                            ],
+                            margin: [0, 0, 0, 16]
+                        },
+
+                        { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 523, y2: 0, lineWidth: 0.5, lineColor: '#E2E8F0' }], margin: [0, 0, 0, 14] },
+
+                        // Línea de Tiempo Horizontal Sintética, Minimalista y Ultra-Premium
+                        { text: 'LÍNEA DE TIEMPO Y TRAZABILIDAD CONTRACTUAL (PROCESO SINTÉTICO)', fontSize: 8, bold: true, color: '#0B5640', letterSpacing: 0.5, margin: [0, 0, 0, 8] },
+                        {
+                            svg: generateTimelineSVG(timelineSteps, 523, 96),
+                            width: 523,
+                            alignment: 'center',
+                            margin: [0, 0, 0, 12]
+                        },
+
+                        // Summary Plazos Banner
+                        {
+                            table: {
+                                widths: ['*'],
+                                body: [[{
+                                    text: `PLAZO INICIAL: ${plazoInicial} MESES  ·  SUSPENSIONES: ${suspensiones} MESES  ·  PRÓRROGAS: ${prorrogas} MESES  ·  PLAZO TOTAL VIGENTE: ${plazoTotal} MESES`,
+                                    fontSize: 6.8,
+                                    bold: true,
+                                    color: '#0B5640',
+                                    fillColor: '#F8FAFC',
+                                    alignment: 'center',
+                                    margin: [4, 3, 4, 3]
+                                }]]
+                            },
+                            layout: {
+                                hLineWidth: () => 0.4,
+                                vLineWidth: () => 0.4,
+                                hLineColor: () => '#E2E8F0',
+                                vLineColor: () => '#E2E8F0'
+                            }
+                        }
+                    ]
                 },
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: '#1A6B3C' }], margin: [0, 0, 0, 12] },
-                {
-                    stack: photoGalleryContent
-                }
+
+                // =========================================================================
+                // PÁGINA 3+ — REGISTRO FOTOGRÁFICO DE OBRA (GRID 4x2 — 8 FOTOS POR PÁGINA)
+                // =========================================================================
+                ...(() => {
+                    const photoPagesContent = [];
+
+                    // Helper para crear celda de foto uniforme (ajustado para 4 filas x 2 columnas)
+                    const buildPhotoCell = (p, cardWidth = 254, cardHeight = 135) => ({
+                        stack: [
+                            {
+                                table: {
+                                    body: [[{
+                                        text: `FASE: ${String(p.stage).toUpperCase()}`,
+                                        fontSize: 5.5,
+                                        bold: true,
+                                        color: '#0B5640',
+                                        fillColor: '#E6F4EA',
+                                        alignment: 'center',
+                                        margin: [4, 1, 4, 1]
+                                    }]]
+                                },
+                                layout: 'noBorders',
+                                alignment: 'left',
+                                margin: [0, 0, 0, 2]
+                            },
+                            {
+                                image: p.base64,
+                                width: cardWidth,
+                                height: cardHeight,
+                                cover: { width: cardWidth, height: cardHeight, valign: 'center', align: 'center' }
+                            }
+                        ],
+                        width: cardWidth,
+                        margin: [0, 0, 0, 6]
+                    });
+
+                    if (photosList.length === 0) {
+                        photoPagesContent.push({
+                            pageBreak: 'before',
+                            stack: [
+                                createEditorialSectionHeader('02', 'REGISTRO FOTOGRÁFICO DE OBRA', 'Evidencia fotográfica en campo · Fases Antes, Durante y Después', row['CONVENIO']),
+                                {
+                                    stack: [
+                                        { text: 'SIN REGISTRO FOTOGRÁFICO DISPONIBLE', fontSize: 9, bold: true, color: '#64748B', letterSpacing: 0.5, margin: [0, 40, 0, 4] },
+                                        { text: 'No se dispone de fotografías digitales cargadas en el repositorio institucional para este convenio.', fontSize: 8, color: '#94A3B8', margin: [0, 0, 0, 40] }
+                                    ],
+                                    alignment: 'center'
+                                }
+                            ]
+                        });
+                    } else {
+                        // Dividir en páginas de 8 fotos (4 filas x 2 columnas = 8 fotos por página)
+                        const PHOTOS_PER_PAGE = 8;
+                        const totalPages = Math.ceil(photosList.length / PHOTOS_PER_PAGE);
+
+                        for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+                            const startIdx = pageIdx * PHOTOS_PER_PAGE;
+                            const pagePhotos = photosList.slice(startIdx, startIdx + PHOTOS_PER_PAGE);
+                            const isFirstPhotoPage = pageIdx === 0;
+
+                            const pageRows = [];
+                            for (let r = 0; r < pagePhotos.length; r += 2) {
+                                const p1 = pagePhotos[r];
+                                const p2 = pagePhotos[r + 1];
+
+                                const c1 = buildPhotoCell(p1, 254, 135);
+                                const c2 = p2 ? buildPhotoCell(p2, 254, 135) : { text: '', width: 254 };
+
+                                pageRows.push({
+                                    columns: [c1, c2],
+                                    columnGap: 15
+                                });
+                            }
+
+                            if (isFirstPhotoPage) {
+                                photoPagesContent.push({
+                                    pageBreak: 'before',
+                                    stack: [
+                                        createEditorialSectionHeader('02', 'REGISTRO FOTOGRÁFICO DE OBRA', 'Evidencia fotográfica en campo · Fases Antes, Durante y Después', row['CONVENIO']),
+                                        ...pageRows
+                                    ]
+                                });
+                            } else {
+                                // Páginas subsiguientes sin encabezado de sección para maximizar espacio
+                                photoPagesContent.push({
+                                    pageBreak: 'before',
+                                    stack: [
+                                        ...pageRows
+                                    ]
+                                });
+                            }
+                        }
+                    }
+
+                    return photoPagesContent;
+                })()
             ],
             styles: {}
         };
 
-        // ===== 8. GENERATE AND DOWNLOAD PDF =====
+        // Download Document
         pdfMake.createPdf(docDefinition).download(`Ficha_Tecnica_Convenio_${row['CONVENIO']}.pdf`);
 
-        btnPdf.innerHTML = originalText;
-        btnPdf.disabled = false;
+        if (btnPdf) {
+            btnPdf.innerHTML = originalText;
+            btnPdf.disabled = false;
+        }
 
         const toast = document.getElementById('toast-notification');
         if (toast) {
@@ -1581,8 +1848,10 @@ async function generateProfessionalPDF(row) {
     } catch (err) {
         console.error('Error generando PDF:', err);
         alert('Ocurrió un error al generar el PDF. Revisa la consola para más detalles.');
-        btnPdf.innerHTML = originalText;
-        btnPdf.disabled = false;
+        if (btnPdf) {
+            btnPdf.innerHTML = originalText;
+            btnPdf.disabled = false;
+        }
     }
 }
 
@@ -3804,7 +4073,7 @@ function applyFilters() {
         const rowValsStr = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
         const matchSearch = !search || rowValsStr.includes(search);
         const matchVig = vigencia.length === 0 || vigencia.includes(String(row['VIGENCIA'] || '').trim());
-        const matchMun = municipio.length === 0 || municipio.includes(String(row['MUNICIPIO'] || '').trim());
+        const matchMun = municipio.length === 0 || municipio.some(m => isSameMuni(m, row['MUNICIPIO']));
         const matchSup = supervisor.length === 0 || supervisor.includes(String(row['SUPERVISOR'] || '').trim());
         const matchInd = indicador.length === 0 || indicador.includes(String(row['INDICADOR'] || '').trim());
         const matchConv = convenioNum.length === 0 || convenioNum.includes(String(row['CONVENIO'] || '').trim());
@@ -4026,6 +4295,10 @@ function updateKPIs() {
 
     const elAreCon = document.getElementById('tot-are-con-text');
     if (elAreCon) elAreCon.textContent = formatNumber(totAreCon);
+
+    if (typeof refreshSyntheticMapData === 'function') {
+        refreshSyntheticMapData();
+    }
 }
 function renderTable() {
     const tbody = document.getElementById('table-body');
@@ -4433,13 +4706,17 @@ window.toggleTerritorialFilter = function (filterId, value, event) {
     const targetVal = String(value || '').trim();
     if (!targetVal) return;
 
-    const targetNorm = targetVal.toUpperCase();
+    const isMuni = filterId.includes('municipio');
+    const matchFn = (valA, valB) => {
+        if (isMuni) return isSameMuni(valA, valB);
+        return String(valA || '').trim().toUpperCase() === String(valB || '').trim().toUpperCase();
+    };
 
     if (isCtrlOrShift) {
         // Modo múltiple selección (toggle individual)
         let found = false;
         Array.from(select.options).forEach(opt => {
-            if (opt.value.trim().toUpperCase() === targetNorm) {
+            if (matchFn(opt.value, targetVal)) {
                 opt.selected = !opt.selected;
                 found = true;
             }
@@ -4449,15 +4726,22 @@ window.toggleTerritorialFilter = function (filterId, value, event) {
             select.add(newOpt);
         }
     } else {
-        // Modo selección única: si ya era el único seleccionado, se deselecciona; si no, se selecciona sólo este
-        const isOnlySelected = currentValues.length === 1 && currentValues[0].trim().toUpperCase() === targetNorm;
+        // Modo selección única
+        const isOnlySelected = currentValues.length === 1 && matchFn(currentValues[0], targetVal);
+        let found = false;
         Array.from(select.options).forEach(opt => {
             if (isOnlySelected) {
                 opt.selected = false;
             } else {
-                opt.selected = (opt.value.trim().toUpperCase() === targetNorm);
+                const match = matchFn(opt.value, targetVal);
+                opt.selected = match;
+                if (match) found = true;
             }
         });
+        if (!isOnlySelected && !found) {
+            const newOpt = new Option(targetVal, targetVal, true, true);
+            select.add(newOpt);
+        }
     }
 
     // Sincronizar opción "Todos"
@@ -7193,7 +7477,7 @@ function applyMapFilters() {
         const rowValsStr = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
         const matchSearch = !search || rowValsStr.includes(search);
         const matchVig = vigencia.length === 0 || vigencia.includes(String(row['VIGENCIA'] || '').trim());
-        const matchMun = municipio.length === 0 || municipio.includes(String(row['MUNICIPIO'] || '').trim());
+        const matchMun = municipio.length === 0 || municipio.some(m => isSameMuni(m, row['MUNICIPIO']));
         const matchSup = supervisor.length === 0 || supervisor.includes(String(row['SUPERVISOR'] || '').trim());
         const matchClasif = clasificacion.length === 0 || clasificacion.includes(String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim());
         const matchSub = subregion.length === 0 || subregion.includes(String(row['SUBREGION'] || '').trim());
@@ -10282,10 +10566,10 @@ function normalizeSubregionName(name) {
 }
 
 function getSubregionForMuni(muni) {
-    const m = String(muni || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z ]/g, '').replace(/\s+/g, ' ').trim();
+    const m = normCanonicalMuni(muni);
     if (MPIO_SUBREGION_MAP[m]) return MPIO_SUBREGION_MAP[m];
     for (const [k, v] of Object.entries(MPIO_SUBREGION_MAP)) {
-        if (m.includes(k) || k.includes(m)) return v;
+        if (normCanonicalMuni(k) === m || isSameMuni(k, m) || m.includes(normCanonicalMuni(k))) return v;
     }
     return 'ORIENTE';
 }
@@ -11008,14 +11292,21 @@ async function initSyntheticMap() {
                     }
                 }
 
-                // 3. Municipio
+                // 3. Municipio: Filtrar convenios del municipio sin abrir popup
                 if (synLayersState.municipios) {
                     const muniHits = synMap.queryRenderedFeatures(e.point, {
                         layers: ['syn-municipios-fill'].filter(id => synMap.getLayer(id))
                     });
 
                     if (muniHits && muniHits.length > 0) {
-                        showSyntheticMuniPopup(muniHits[0], e.lngLat);
+                        if (synCurrentPopup) {
+                            synCurrentPopup.remove();
+                            synCurrentPopup = null;
+                        }
+                        const muniName = muniHits[0].properties.NOMBRE_MPI || muniHits[0].properties.MPIO_CNMBR || muniHits[0].properties.NOM_MPIO || '';
+                        if (muniName && typeof window.toggleTerritorialFilter === 'function') {
+                            window.toggleTerritorialFilter('filter-municipio', muniName, e.originalEvent);
+                        }
                         return;
                     }
                 }
@@ -11123,7 +11414,7 @@ function showSyntheticTramoPopup(feature, lngLat) {
             <div style="font-family:'Plus Jakarta Sans',sans-serif;padding:2px;min-width:230px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.12);">
                     <span style="font-size:9px;font-weight:800;color:#00B0FF;background:rgba(0,176,255,0.18);padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:0.06em;">
-                        <i class="fa-solid fa-route mr-1"></i>Tramo KML
+                        <i class="fa-solid fa-route mr-1"></i>Tramo KML/KMZ
                     </span>
                     <span style="font-size:9px;font-weight:700;color:#FFFFFF;background:${sysState.hex};padding:2px 8px;border-radius:99px;">
                         ${sysState.label}
@@ -11255,13 +11546,7 @@ function ensureSynTramosOnTop() {
 
 function applyIntervenedStatusToMpio(mpioData) {
     if (!mpioData || !mpioData.features) return;
-    const norm = (s) => String(s || '')
-        .toUpperCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^A-Z ]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+    const norm = (s) => normCanonicalMuni(s);
 
     const dataToUse = (filteredData && filteredData.length > 0 ? filteredData : rawData) || [];
     const muniCounts = {};
@@ -11279,6 +11564,7 @@ function applyIntervenedStatusToMpio(mpioData) {
         }
     });
 
+    let sinConvenioCount = 0;
     mpioData.features.forEach(f => {
         const rawName = f.properties.NOMBRE_MPI || f.properties.MPIO_CNMBR || f.properties.NOM_MPIO || '';
         const mNorm = norm(rawName);
@@ -11289,6 +11575,8 @@ function applyIntervenedStatusToMpio(mpioData) {
         const longConKm = (longConM / 1000);
 
         const hasConvenio = count > 0;
+        if (!hasConvenio) sinConvenioCount++;
+
         f.properties._intervenido = hasConvenio;
         f.properties._convCount = count;
         f.properties._longEjeM = longEjeM;
@@ -11297,6 +11585,20 @@ function applyIntervenedStatusToMpio(mpioData) {
         f.properties._longConKm = parseFloat(longConKm.toFixed(2));
         f.properties._colorFill = getMpioColorByLongitud(longEjeKm, hasConvenio);
     });
+
+    const sinConvEl = document.getElementById('syn-sin-conv-count');
+    if (sinConvEl) {
+        sinConvEl.textContent = `(${sinConvenioCount})`;
+    }
+}
+
+function refreshSyntheticMapData() {
+    if (synMpioData) {
+        applyIntervenedStatusToMpio(synMpioData);
+        if (synMap && synMapReady && synMap.getSource('syn-municipios-src')) {
+            synMap.getSource('syn-municipios-src').setData(synMpioData);
+        }
+    }
 }
 
 const synAllKnownKmls = [
