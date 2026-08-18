@@ -12289,7 +12289,17 @@ const DiatAI = {
             return this.formatSupervisorResponse(matchedSup, supConvs);
         }
 
-        // 4. BÚSQUEDA POR MUNICIPIO
+        // 4. CONSULTA DE MUNICIPIOS SIN CONVENIO (ej: "¿Cuáles municipios no tienen convenios?", "municipios sin convenio")
+        const isSinConvenioQuery = (
+            (qUpper.includes('MUNICIPIO') || qUpper.includes('MUNICIPIOS') || qUpper.includes('PUEBLO') || qUpper.includes('PUEBLOS')) &&
+            (qUpper.includes('NO TIENEN') || qUpper.includes('NO TIENE') || qUpper.includes('SIN CONVENIO') || qUpper.includes('NO INTERVENIDO') || qUpper.includes('SIN CONVENIOS') || qUpper.includes('CERO KM') || qUpper.includes('0 KM') || qUpper.includes('FALTAN') || qUpper.includes('NO CUENTAN') || qUpper.includes('SIN OBRAS'))
+        ) || qUpper.includes('SIN CONVENIO') || qUpper.includes('SIN CONVENIOS') || qUpper.includes('NO TIENEN CONVENIO') || qUpper.includes('NO TIENEN CONVENIOS') || qUpper.includes('NO TIENE CONVENIO');
+
+        if (isSinConvenioQuery) {
+            return this.formatMunicipiosSinConvenioResponse(data);
+        }
+
+        // 5. BÚSQUEDA POR MUNICIPIO ESPECÍFICO
         const matchedMuni = this.findMunicipioInText(qUpper);
         if (matchedMuni) {
             const muniConvs = data.filter(r => isSameMuni(r['MUNICIPIO'], matchedMuni));
@@ -12851,6 +12861,104 @@ const DiatAI = {
             <div class="diat-action-btn-group">
                 <button type="button" class="diat-action-btn" onclick="DiatAI.sendPrompt('¿Cuál supervisor tiene más convenios?')">
                     <i class="fa-solid fa-user-tie"></i> Ver ranking de supervisores
+                </button>
+            </div>
+        `;
+    },
+
+    // ── Formateador de Municipios Sin Convenio ──────────────────────────────
+    formatMunicipiosSinConvenioResponse(data) {
+        const ALL_125_MUNI = [
+            { name: 'MEDELLÍN', sub: 'VALLE DE ABURRÁ' }, { name: 'BELLO', sub: 'VALLE DE ABURRÁ' }, { name: 'ITAGÜÍ', sub: 'VALLE DE ABURRÁ' },
+            { name: 'ENVIGADO', sub: 'VALLE DE ABURRÁ' }, { name: 'SABANETA', sub: 'VALLE DE ABURRÁ' }, { name: 'CALDAS', sub: 'VALLE DE ABURRÁ' },
+            { name: 'COPACABANA', sub: 'VALLE DE ABURRÁ' }, { name: 'GIRARDOTA', sub: 'VALLE DE ABURRÁ' }, { name: 'LA ESTRELLA', sub: 'VALLE DE ABURRÁ' },
+            { name: 'BARBOSA', sub: 'VALLE DE ABURRÁ' },
+            { name: 'CAUCASIA', sub: 'BAJO CAUCA' }, { name: 'EL BAGRE', sub: 'BAJO CAUCA' }, { name: 'NECHÍ', sub: 'BAJO CAUCA' },
+            { name: 'TARAZÁ', sub: 'BAJO CAUCA' }, { name: 'CÁCERES', sub: 'BAJO CAUCA' }, { name: 'ZARAGOZA', sub: 'BAJO CAUCA' },
+            { name: 'PUERTO BERRÍO', sub: 'MAGDALENA MEDIO' }, { name: 'PUERTO NARE', sub: 'MAGDALENA MEDIO' }, { name: 'PUERTO TRIUNFO', sub: 'MAGDALENA MEDIO' },
+            { name: 'YONDÓ', sub: 'MAGDALENA MEDIO' }, { name: 'CARACOLÍ', sub: 'MAGDALENA MEDIO' }, { name: 'MACEO', sub: 'MAGDALENA MEDIO' },
+            { name: 'AMALFI', sub: 'NORDESTE' }, { name: 'ANORÍ', sub: 'NORDESTE' }, { name: 'CISNEROS', sub: 'NORDESTE' },
+            { name: 'REMEDIOS', sub: 'NORDESTE' }, { name: 'SAN ROQUE', sub: 'NORDESTE' }, { name: 'SANTO DOMINGO', sub: 'NORDESTE' },
+            { name: 'SEGOVIA', sub: 'NORDESTE' }, { name: 'VEGACHÍ', sub: 'NORDESTE' }, { name: 'YALÍ', sub: 'NORDESTE' }, { name: 'YOLOMBÓ', sub: 'NORDESTE' },
+            { name: 'ANGOSTURA', sub: 'NORTE' }, { name: 'BELMIRA', sub: 'NORTE' }, { name: 'BRICEÑO', sub: 'NORTE' },
+            { name: 'CAMPAMENTO', sub: 'NORTE' }, { name: 'CAROLINA DEL PRÍNCIPE', sub: 'NORTE' }, { name: 'DONMATÍAS', sub: 'NORTE' },
+            { name: 'ENTRERRÍOS', sub: 'NORTE' }, { name: 'GÓMEZ PLATA', sub: 'NORTE' }, { name: 'GUADALUPE', sub: 'NORTE' },
+            { name: 'ITUANGO', sub: 'NORTE' }, { name: 'SAN ANDRÉS DE CUERQUIA', sub: 'NORTE' }, { name: 'SAN JOSÉ DE LA MONTAÑA', sub: 'NORTE' },
+            { name: 'SAN PEDRO DE LOS MILAGROS', sub: 'NORTE' }, { name: 'SANTA ROSA DE OSOS', sub: 'NORTE' }, { name: 'TOLEDO', sub: 'NORTE' },
+            { name: 'VALDIVIA', sub: 'NORTE' }, { name: 'YARUMAL', sub: 'NORTE' },
+            { name: 'ABRIAQUÍ', sub: 'OCCIDENTE' }, { name: 'ANZÁ', sub: 'OCCIDENTE' }, { name: 'ARMENIA', sub: 'OCCIDENTE' },
+            { name: 'BURITICÁ', sub: 'OCCIDENTE' }, { name: 'CAICEDO', sub: 'OCCIDENTE' }, { name: 'CAÑASGORDAS', sub: 'OCCIDENTE' },
+            { name: 'DABEIBA', sub: 'OCCIDENTE' }, { name: 'EBÉJICO', sub: 'OCCIDENTE' }, { name: 'FRONTINO', sub: 'OCCIDENTE' },
+            { name: 'GIRALDO', sub: 'OCCIDENTE' }, { name: 'HELICONIA', sub: 'OCCIDENTE' }, { name: 'LIBORINA', sub: 'OCCIDENTE' },
+            { name: 'OLAYA', sub: 'OCCIDENTE' }, { name: 'PEQUE', sub: 'OCCIDENTE' }, { name: 'SABANALARGA', sub: 'OCCIDENTE' },
+            { name: 'SAN JERÓNIMO', sub: 'OCCIDENTE' }, { name: 'SANTA FE DE ANTIOQUIA', sub: 'OCCIDENTE' }, { name: 'SOPETRÁN', sub: 'OCCIDENTE' }, { name: 'URAMITA', sub: 'OCCIDENTE' },
+            { name: 'ABEJORRAL', sub: 'ORIENTE' }, { name: 'ALEJANDRÍA', sub: 'ORIENTE' }, { name: 'ARGELIA', sub: 'ORIENTE' },
+            { name: 'COCORNÁ', sub: 'ORIENTE' }, { name: 'CONCEPCIÓN', sub: 'ORIENTE' }, { name: 'EL CARMEN DE VIBORAL', sub: 'ORIENTE' },
+            { name: 'EL PEÑOL', sub: 'ORIENTE' }, { name: 'EL RETIRO', sub: 'ORIENTE' }, { name: 'EL SANTUARIO', sub: 'ORIENTE' },
+            { name: 'GRANADA', sub: 'ORIENTE' }, { name: 'GUATAPÉ', sub: 'ORIENTE' }, { name: 'GUARNE', sub: 'ORIENTE' },
+            { name: 'LA CEJA', sub: 'ORIENTE' }, { name: 'LA UNIÓN', sub: 'ORIENTE' }, { name: 'MARINILLA', sub: 'ORIENTE' },
+            { name: 'NARIÑO', sub: 'ORIENTE' }, { name: 'RIONEGRO', sub: 'ORIENTE' }, { name: 'SAN CARLOS', sub: 'ORIENTE' },
+            { name: 'SAN FRANCISCO', sub: 'ORIENTE' }, { name: 'SAN LUIS', sub: 'ORIENTE' }, { name: 'SAN RAFAEL', sub: 'ORIENTE' },
+            { name: 'SAN VICENTE FERRER', sub: 'ORIENTE' }, { name: 'SONSÓN', sub: 'ORIENTE' },
+            { name: 'AMAGÁ', sub: 'SUROESTE' }, { name: 'ANDES', sub: 'SUROESTE' }, { name: 'ANGELÓPOLIS', sub: 'SUROESTE' },
+            { name: 'BETANIA', sub: 'SUROESTE' }, { name: 'BETULIA', sub: 'SUROESTE' }, { name: 'CARAMANTA', sub: 'SUROESTE' },
+            { name: 'CIUDAD BOLÍVAR', sub: 'SUROESTE' }, { name: 'CONCORDIA', sub: 'SUROESTE' }, { name: 'FREDONIA', sub: 'SUROESTE' },
+            { name: 'HISPANIA', sub: 'SUROESTE' }, { name: 'JARDÍN', sub: 'SUROESTE' }, { name: 'JERICÓ', sub: 'SUROESTE' },
+            { name: 'LA PINTADA', sub: 'SUROESTE' }, { name: 'MONTEBELLO', sub: 'SUROESTE' }, { name: 'PUEBLORRICO', sub: 'SUROESTE' },
+            { name: 'SALGAR', sub: 'SUROESTE' }, { name: 'SANTA BÁRBARA', sub: 'SUROESTE' }, { name: 'TÁMESIS', sub: 'SUROESTE' },
+            { name: 'TARSO', sub: 'SUROESTE' }, { name: 'TITIRIBÍ', sub: 'SUROESTE' }, { name: 'URRAO', sub: 'SUROESTE' },
+            { name: 'VALPARAÍSO', sub: 'SUROESTE' }, { name: 'VENECIA', sub: 'SUROESTE' },
+            { name: 'APARTADÓ', sub: 'URABÁ' }, { name: 'ARBOLETES', sub: 'URABÁ' }, { name: 'CAREPA', sub: 'URABÁ' },
+            { name: 'CHIGORODÓ', sub: 'URABÁ' }, { name: 'MURINDÓ', sub: 'URABÁ' }, { name: 'MUTATÁ', sub: 'URABÁ' },
+            { name: 'NECOCLÍ', sub: 'URABÁ' }, { name: 'SAN JUAN DE URABÁ', sub: 'URABÁ' }, { name: 'SAN PEDRO DE URABÁ', sub: 'URABÁ' },
+            { name: 'TURBO', sub: 'URABÁ' }, { name: 'VIGÍA DEL FUERTE', sub: 'URABÁ' }
+        ];
+
+        const sinConvenio = ALL_125_MUNI.filter(m => {
+            return !data.some(r => isSameMuni(r['MUNICIPIO'], m.name));
+        });
+
+        const porSubreg = {};
+        sinConvenio.forEach(m => {
+            if (!porSubreg[m.sub]) porSubreg[m.sub] = [];
+            porSubreg[m.sub].push(m.name);
+        });
+
+        const subregCardsHTML = Object.entries(porSubreg).map(([sub, munis]) => `
+            <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-left:3px solid #64748B;border-radius:6px;padding:6px 8px;margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;color:#1E293B;margin-bottom:3px;">
+                    <span>🗺️ ${sub}</span>
+                    <span style="color:#64748B;font-weight:700;">${munis.length} mpio${munis.length > 1 ? 's' : ''}</span>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:3px;">
+                    ${munis.map(m => `<span style="background:#F1F5F9;color:#334155;font-size:9.5px;font-weight:600;padding:2px 6px;border-radius:4px;border:1px solid #CBD5E1;cursor:pointer;" onclick="DiatAI.sendPrompt('¿Cuántos convenios hay en ${m}?')">${m}</span>`).join('')}
+                </div>
+            </div>
+        `).join('');
+
+        const totalConvs = data.length;
+        const totalMunisConConvenio = 125 - sinConvenio.length;
+
+        return `
+            <div style="margin-bottom:6px;">
+                <p style="margin:0 0 3px;font-size:12.5px;line-height:1.4;">
+                    📍 En Antioquia hay <strong>${sinConvenio.length} municipios sin convenio activo</strong> (0 km) de los 125 municipios del departamento.
+                </p>
+                <p style="margin:0 0 6px;font-size:11px;color:#475569;">
+                    Actualmente la DIAT tiene presencia en <strong>${totalMunisConConvenio} municipios (${((totalMunisConConvenio/125)*100).toFixed(1)}%)</strong> con ${totalConvs} convenios viales.
+                </p>
+            </div>
+
+            <div style="max-height:220px;overflow-y:auto;margin-bottom:8px;">
+                ${subregCardsHTML}
+            </div>
+
+            <div class="diat-action-btn-group">
+                <button type="button" class="diat-action-btn" onclick="const synLeg = document.getElementById('syn-map-legend'); if(synLeg){ synLeg.scrollIntoView({behavior:'smooth'}); }">
+                    <i class="fa-solid fa-map-location-dot"></i> Ver en Geovisor Territorial
+                </button>
+                <button type="button" class="diat-action-btn" onclick="DiatAI.sendPrompt('¿Cuál municipio tiene más convenios?')">
+                    <i class="fa-solid fa-trophy"></i> Ver municipios con más convenios
                 </button>
             </div>
         `;
