@@ -4423,6 +4423,66 @@ window.toggleFisicoMetric = function (metric) {
 // Almacena referencias a los 4 charts territoriales para destruirlos al redibujar
 const _territorialCharts = {};
 
+// Función global para alternar filtro desde los gráficos territoriales
+window.toggleTerritorialFilter = function (filterId, value, event) {
+    const select = document.getElementById(filterId);
+    if (!select) return;
+
+    const currentValues = getSelectValues(filterId);
+    const isCtrlOrShift = event && (event.ctrlKey || event.metaKey || event.shiftKey);
+    const targetVal = String(value || '').trim();
+    if (!targetVal) return;
+
+    const targetNorm = targetVal.toUpperCase();
+
+    if (isCtrlOrShift) {
+        // Modo múltiple selección (toggle individual)
+        let found = false;
+        Array.from(select.options).forEach(opt => {
+            if (opt.value.trim().toUpperCase() === targetNorm) {
+                opt.selected = !opt.selected;
+                found = true;
+            }
+        });
+        if (!found) {
+            const newOpt = new Option(targetVal, targetVal, true, true);
+            select.add(newOpt);
+        }
+    } else {
+        // Modo selección única: si ya era el único seleccionado, se deselecciona; si no, se selecciona sólo este
+        const isOnlySelected = currentValues.length === 1 && currentValues[0].trim().toUpperCase() === targetNorm;
+        Array.from(select.options).forEach(opt => {
+            if (isOnlySelected) {
+                opt.selected = false;
+            } else {
+                opt.selected = (opt.value.trim().toUpperCase() === targetNorm);
+            }
+        });
+    }
+
+    // Sincronizar opción "Todos"
+    const remaining = Array.from(select.options).filter(o => o.selected && o.value !== '' && o.value !== 'todos' && o.value !== 'TODOS');
+    if (remaining.length === 0 && select.options[0]) {
+        select.options[0].selected = true;
+    } else if (remaining.length > 0 && select.options[0] && (select.options[0].value === '' || select.options[0].value === 'todos' || select.options[0].value === 'TODOS')) {
+        select.options[0].selected = false;
+    }
+
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+};
+
+// Función global para limpiar filtros territoriales
+window.clearTerritorialFilters = function () {
+    ['filter-subregion', 'filter-municipio'].forEach(id => {
+        const select = document.getElementById(id);
+        if (select) {
+            Array.from(select.options).forEach(o => o.selected = false);
+            if (select.options[0]) select.options[0].selected = true;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    });
+};
+
 function updateTerritorialCharts() {
     if (typeof Chart === 'undefined') return;
 
@@ -4431,12 +4491,17 @@ function updateTerritorialCharts() {
     const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.04)';
 
     // ── Helpers ──────────────────────────────────────────────────────────────
-    const formatKm = (v) => `${(v / 1000).toFixed(1)} km`;
     const formatBillones = (v) => {
         if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}B`;
         if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}MM`;
         if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
         return `$${v.toFixed(0)}`;
+    };
+
+    const hoverCursor = (e, el) => {
+        if (e && e.native && e.native.target) {
+            e.native.target.style.cursor = el && el.length > 0 ? 'pointer' : 'default';
+        }
     };
 
     const makeChart = (id, config) => {
@@ -4446,29 +4511,137 @@ function updateTerritorialCharts() {
         _territorialCharts[id] = new Chart(canvas, config);
     };
 
-    // ── Acumular datos ────────────────────────────────────────────────────────
-    const subregLong = {};   // { subregion: metros }
-    const subregInv = {};   // { subregion: COP }
-    const muniLong = {};   // { municipio: metros }
-    const muniInv = {};   // { municipio: COP }
+    // ── Filtros Activos ───────────────────────────────────────────────────────
+    const search = document.getElementById('filter-search')?.value.toLowerCase().trim() || '';
+    const vigencia = getSelectValues('filter-vigencia');
+    const supervisor = getSelectValues('filter-supervisor');
+    const indicador = getSelectValues('filter-indicador');
+    const convenioNum = getSelectValues('filter-convenio-num');
+    const clasificacion = getSelectValues('filter-clasificacion');
+    const estado = getSelectValues('filter-estado');
+    const activeSubregions = getSelectValues('filter-subregion');
+    const activeMunicipios = getSelectValues('filter-municipio');
 
-    filteredData.forEach(r => {
+    // Filas base para subregiones (respetan todos los filtros excepto subregión y municipio para mantener el contexto global comparativo)
+    const subregionBaseRows = rawData.filter(row => {
+        const rowValsStr = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
+        const matchSearch = !search || rowValsStr.includes(search);
+        const matchVig = vigencia.length === 0 || vigencia.includes(String(row['VIGENCIA'] || '').trim());
+        const matchSup = supervisor.length === 0 || supervisor.includes(String(row['SUPERVISOR'] || '').trim());
+        const matchInd = indicador.length === 0 || indicador.includes(String(row['INDICADOR'] || '').trim());
+        const matchConv = convenioNum.length === 0 || convenioNum.includes(String(row['CONVENIO'] || '').trim());
+        const clasifValue = String(row['CLASIFICACIÓN'] || row['CLASIFICACI"N'] || '').trim();
+        const matchClasif = clasificacion.length === 0 || clasificacion.includes(clasifValue);
+        const matchEstado = estado.length === 0 || estado.includes(String(row['ESTADO CONVENIO'] || '').trim());
+        return matchSearch && matchVig && matchSup && matchInd && matchConv && matchClasif && matchEstado;
+    });
+
+    // Filas base para municipios (si hay subregión activa, limitan a la subregión activa; si no, usan subregionBaseRows)
+    const municipioBaseRows = subregionBaseRows.filter(row => {
+        const sub = String(row['SUBREGION'] || getSubregion(row['MUNICIPIO']) || '').trim().toUpperCase();
+        return activeSubregions.length === 0 || activeSubregions.some(s => s.toUpperCase() === sub);
+    });
+
+    // ── Acumular datos de Subregiones ──────────────────────────────────────────
+    const subregLong = {};
+    const subregInv = {};
+    const subregCount = {};
+
+    subregionBaseRows.forEach(r => {
         const muni = String(r['MUNICIPIO'] || 'S/D').trim();
-        const sub = getSubregion(muni) || 'Otras';
+        const sub = String(r['SUBREGION'] || getSubregion(muni) || 'OTRAS').trim().toUpperCase();
         const longM = getRowLongitudContratada(r) || 0;
         const inv = (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
 
         subregLong[sub] = (subregLong[sub] || 0) + longM;
         subregInv[sub] = (subregInv[sub] || 0) + inv;
+        subregCount[sub] = (subregCount[sub] || 0) + 1;
+    });
+
+    // ── Acumular datos de Municipios ──────────────────────────────────────────
+    const muniLong = {};
+    const muniInv = {};
+    const muniCount = {};
+
+    const isInvalidMuni = (m) => {
+        const s = String(m || '').trim().toUpperCase();
+        return !s || s === 'S/D' || s === 'SD' || s === 'SIN DATO' || s === 'N/A' || s === 'NO DEFINIDO' || s === 'S / D' || s === 'SIN DEFINIR';
+    };
+
+    municipioBaseRows.forEach(r => {
+        const muni = String(r['MUNICIPIO'] || '').trim().toUpperCase();
+        if (isInvalidMuni(muni)) return; // Ocultar registros sin municipio ("S/D") en los gráficos de Top Municipios
+
+        const longM = getRowLongitudContratada(r) || 0;
+        const inv = (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
+
         muniLong[muni] = (muniLong[muni] || 0) + longM;
         muniInv[muni] = (muniInv[muni] || 0) + inv;
+        muniCount[muni] = (muniCount[muni] || 0) + 1;
     });
+
+    // ── Actualizar Píldoras de Filtro en el Encabezado ────────────────────────
+    const tagsContainer = document.getElementById('territorial-filter-tags');
+    if (tagsContainer) {
+        const tagItems = [];
+        activeSubregions.forEach(sub => {
+            tagItems.push(`
+                <span style="display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;color:#0B5640;background:#E6F4EA;border:1.5px solid rgba(11,86,64,0.3);padding:2px 8px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                    <i class="fa-solid fa-map-pin" style="font-size:8.5px;"></i>
+                    <span>Subregión: ${sub}</span>
+                    <button type="button" onclick="toggleTerritorialFilter('filter-subregion', '${sub}', event)" style="background:none;border:none;cursor:pointer;color:#0B5640;font-size:11px;padding:0 2px;line-height:1;margin-left:2px;font-weight:800;" title="Quitar filtro">✕</button>
+                </span>
+            `);
+        });
+        activeMunicipios.forEach(muni => {
+            tagItems.push(`
+                <span style="display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;color:#0B5640;background:#E6F4EA;border:1.5px solid rgba(11,86,64,0.3);padding:2px 8px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                    <i class="fa-solid fa-city" style="font-size:8.5px;"></i>
+                    <span>Municipio: ${muni}</span>
+                    <button type="button" onclick="toggleTerritorialFilter('filter-municipio', '${muni}', event)" style="background:none;border:none;cursor:pointer;color:#0B5640;font-size:11px;padding:0 2px;line-height:1;margin-left:2px;font-weight:800;" title="Quitar filtro">✕</button>
+                </span>
+            `);
+        });
+        if (tagItems.length > 0) {
+            tagItems.push(`
+                <button type="button" onclick="clearTerritorialFilters()" style="font-size:9px;font-weight:700;color:#DC2626;background:#FEE2E2;border:1px solid rgba(220,38,38,0.25);padding:2px 8px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.15s;" title="Restablecer filtros territoriales">
+                    <i class="fa-solid fa-rotate-left" style="font-size:8.5px;"></i> Restablecer
+                </button>
+            `);
+            tagsContainer.innerHTML = tagItems.join('');
+            tagsContainer.style.display = 'flex';
+        } else {
+            tagsContainer.innerHTML = '';
+            tagsContainer.style.display = 'none';
+        }
+    }
 
     // ── GRÁFICO 1: Longitud por Subregión (barras verticales) ─────────────────
     {
         const sorted = Object.entries(subregLong).sort((a, b) => b[1] - a[1]);
         const labels = sorted.map(([k]) => k);
         const data = sorted.map(([, v]) => v / 1000); // km
+        const maxVal = Math.max(...data, 1);
+        const hasSubSelection = activeSubregions.length > 0;
+
+        const bgColors = labels.map((sub, i) => {
+            const isSelected = activeSubregions.some(s => s.toUpperCase() === sub.toUpperCase());
+            if (hasSubSelection) {
+                return isSelected ? '#0B5640' : 'rgba(11,86,64,0.18)';
+            }
+            const alpha = 0.35 + 0.65 * (data[i] / maxVal);
+            return `rgba(11,86,64,${alpha.toFixed(2)})`;
+        });
+
+        const borderColors = labels.map(sub => {
+            const isSelected = activeSubregions.some(s => s.toUpperCase() === sub.toUpperCase());
+            return isSelected ? '#043d2c' : 'transparent';
+        });
+
+        const borderWidths = labels.map(sub => {
+            const isSelected = activeSubregions.some(s => s.toUpperCase() === sub.toUpperCase());
+            return isSelected ? 2 : 0;
+        });
 
         makeChart('chart-longitud-subregion', {
             type: 'bar',
@@ -4477,22 +4650,53 @@ function updateTerritorialCharts() {
                 datasets: [{
                     label: 'Longitud (km)',
                     data,
-                    backgroundColor: data.map((v) => {
-                        const max = data[0] || 1;
-                        const alpha = 0.35 + 0.65 * (v / max);
-                        return `rgba(11,86,64,${alpha.toFixed(2)})`;
-                    }),
+                    backgroundColor: bgColors,
+                    borderColor: borderColors,
+                    borderWidth: borderWidths,
                     borderRadius: 4,
                     borderSkipped: false,
-                    borderWidth: 0
+                    hoverBackgroundColor: '#018D38'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                onHover: hoverCursor,
+                onClick: (event, activeEls) => {
+                    if (activeEls && activeEls.length > 0) {
+                        const idx = activeEls[0].index;
+                        const sub = labels[idx];
+                        if (sub) window.toggleTerritorialFilter('filter-subregion', sub, event.native);
+                    }
+                },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(1)} km` } }
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.92)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#f1f5f9',
+                        borderColor: '#018D38',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        titleFont: { size: 11, weight: 'bold', family: 'Poppins' },
+                        bodyFont: { size: 10, family: 'Poppins' },
+                        footerFont: { size: 9, weight: '600', family: 'Poppins' },
+                        footerColor: '#86efac',
+                        callbacks: {
+                            label: ctx => {
+                                const sub = ctx.label;
+                                const cnt = subregCount[sub] || 0;
+                                return ` Longitud: ${ctx.parsed.y.toFixed(1)} km (${cnt} convenio${cnt !== 1 ? 's' : ''})`;
+                            },
+                            footer: items => {
+                                if (!items.length) return '';
+                                const sub = items[0].label;
+                                const isSel = activeSubregions.some(s => s.toUpperCase() === sub.toUpperCase());
+                                return isSel ? '✓ Subregión seleccionada · Clic para deseleccionar' : '👆 Clic para filtrar por esta subregión';
+                            }
+                        }
+                    }
                 },
                 scales: {
                     x: {
@@ -4513,11 +4717,30 @@ function updateTerritorialCharts() {
         const sorted = Object.entries(subregInv).sort((a, b) => b[1] - a[1]);
         const labels = sorted.map(([k]) => k);
         const data = sorted.map(([, v]) => v);
+        const hasSubSelection = activeSubregions.length > 0;
 
         const greenShades = [
             '#0B5640', '#0D6B4E', '#0F7A59', '#118A64', '#14A376',
             '#17BB88', '#1DD3A0', '#22C55E', '#4ADE80', '#86EFAC'
         ];
+
+        const bgColors = labels.map((sub, i) => {
+            const isSelected = activeSubregions.some(s => s.toUpperCase() === sub.toUpperCase());
+            if (hasSubSelection) {
+                return isSelected ? '#018D38' : 'rgba(1, 141, 56, 0.18)';
+            }
+            return greenShades[i % greenShades.length];
+        });
+
+        const borderColors = labels.map(sub => {
+            const isSelected = activeSubregions.some(s => s.toUpperCase() === sub.toUpperCase());
+            return isSelected ? '#043d2c' : 'transparent';
+        });
+
+        const borderWidths = labels.map(sub => {
+            const isSelected = activeSubregions.some(s => s.toUpperCase() === sub.toUpperCase());
+            return isSelected ? 2 : 0;
+        });
 
         makeChart('chart-inversion-subregion', {
             type: 'bar',
@@ -4526,18 +4749,53 @@ function updateTerritorialCharts() {
                 datasets: [{
                     label: 'Inversión',
                     data,
-                    backgroundColor: labels.map((_, i) => greenShades[i % greenShades.length]),
+                    backgroundColor: bgColors,
+                    borderColor: borderColors,
+                    borderWidth: borderWidths,
                     borderRadius: 4,
                     borderSkipped: false,
-                    borderWidth: 0
+                    hoverBackgroundColor: '#0B5640'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                onHover: hoverCursor,
+                onClick: (event, activeEls) => {
+                    if (activeEls && activeEls.length > 0) {
+                        const idx = activeEls[0].index;
+                        const sub = labels[idx];
+                        if (sub) window.toggleTerritorialFilter('filter-subregion', sub, event.native);
+                    }
+                },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: ctx => ` ${formatBillones(ctx.parsed.y)}` } }
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.92)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#f1f5f9',
+                        borderColor: '#018D38',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        titleFont: { size: 11, weight: 'bold', family: 'Poppins' },
+                        bodyFont: { size: 10, family: 'Poppins' },
+                        footerFont: { size: 9, weight: '600', family: 'Poppins' },
+                        footerColor: '#86efac',
+                        callbacks: {
+                            label: ctx => {
+                                const sub = ctx.label;
+                                const cnt = subregCount[sub] || 0;
+                                return ` Inversión: ${formatBillones(ctx.parsed.y)} (${cnt} convenio${cnt !== 1 ? 's' : ''})`;
+                            },
+                            footer: items => {
+                                if (!items.length) return '';
+                                const sub = items[0].label;
+                                const isSel = activeSubregions.some(s => s.toUpperCase() === sub.toUpperCase());
+                                return isSel ? '✓ Subregión seleccionada · Clic para deseleccionar' : '👆 Clic para filtrar por esta subregión';
+                            }
+                        }
+                    }
                 },
                 scales: {
                     x: {
@@ -4556,9 +4814,31 @@ function updateTerritorialCharts() {
     // ── GRÁFICO 3: Top 10 Municipios por Longitud (barras verticales) ──────────
     {
         const sorted = Object.entries(muniLong)
+            .filter(([k]) => !isInvalidMuni(k))
             .sort((a, b) => b[1] - a[1]).slice(0, 10);
         const labels = sorted.map(([k]) => k);
         const data = sorted.map(([, v]) => v / 1000);
+        const maxVal = Math.max(...data, 1);
+        const hasMuniSelection = activeMunicipios.length > 0;
+
+        const bgColors = labels.map((muni, i) => {
+            const isSelected = activeMunicipios.some(m => m.toUpperCase() === muni.toUpperCase());
+            if (hasMuniSelection) {
+                return isSelected ? '#0B5640' : 'rgba(11,86,64,0.18)';
+            }
+            const alpha = 0.45 + 0.55 * (data[i] / maxVal);
+            return `rgba(11,86,64,${alpha.toFixed(2)})`;
+        });
+
+        const borderColors = labels.map(muni => {
+            const isSelected = activeMunicipios.some(m => m.toUpperCase() === muni.toUpperCase());
+            return isSelected ? '#043d2c' : 'transparent';
+        });
+
+        const borderWidths = labels.map(muni => {
+            const isSelected = activeMunicipios.some(m => m.toUpperCase() === muni.toUpperCase());
+            return isSelected ? 2 : 0;
+        });
 
         makeChart('chart-top-municipios-longitud', {
             type: 'bar',
@@ -4567,22 +4847,53 @@ function updateTerritorialCharts() {
                 datasets: [{
                     label: 'Longitud (km)',
                     data,
-                    backgroundColor: data.map((v) => {
-                        const max = data[0] || 1;
-                        const alpha = 0.45 + 0.55 * (v / max);
-                        return `rgba(11,86,64,${alpha.toFixed(2)})`;
-                    }),
+                    backgroundColor: bgColors,
+                    borderColor: borderColors,
+                    borderWidth: borderWidths,
                     borderRadius: 4,
                     borderSkipped: false,
-                    borderWidth: 0
+                    hoverBackgroundColor: '#018D38'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                onHover: hoverCursor,
+                onClick: (event, activeEls) => {
+                    if (activeEls && activeEls.length > 0) {
+                        const idx = activeEls[0].index;
+                        const muni = labels[idx];
+                        if (muni) window.toggleTerritorialFilter('filter-municipio', muni, event.native);
+                    }
+                },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(1)} km` } }
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.92)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#f1f5f9',
+                        borderColor: '#018D38',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        titleFont: { size: 11, weight: 'bold', family: 'Poppins' },
+                        bodyFont: { size: 10, family: 'Poppins' },
+                        footerFont: { size: 9, weight: '600', family: 'Poppins' },
+                        footerColor: '#86efac',
+                        callbacks: {
+                            label: ctx => {
+                                const muni = ctx.label;
+                                const cnt = muniCount[muni] || 0;
+                                return ` Longitud: ${ctx.parsed.y.toFixed(1)} km (${cnt} convenio${cnt !== 1 ? 's' : ''})`;
+                            },
+                            footer: items => {
+                                if (!items.length) return '';
+                                const muni = items[0].label;
+                                const isSel = activeMunicipios.some(m => m.toUpperCase() === muni.toUpperCase());
+                                return isSel ? '✓ Municipio seleccionado · Clic para deseleccionar' : '👆 Clic para filtrar por este municipio';
+                            }
+                        }
+                    }
                 },
                 scales: {
                     x: {
@@ -4601,9 +4912,31 @@ function updateTerritorialCharts() {
     // ── GRÁFICO 4: Top 10 Municipios por Inversión (barras verticales) ────────
     {
         const sorted = Object.entries(muniInv)
+            .filter(([k]) => !isInvalidMuni(k))
             .sort((a, b) => b[1] - a[1]).slice(0, 10);
         const labels = sorted.map(([k]) => k);
         const data = sorted.map(([, v]) => v);
+        const maxVal = Math.max(...data, 1);
+        const hasMuniSelection = activeMunicipios.length > 0;
+
+        const bgColors = labels.map((muni, i) => {
+            const isSelected = activeMunicipios.some(m => m.toUpperCase() === muni.toUpperCase());
+            if (hasMuniSelection) {
+                return isSelected ? '#018D38' : 'rgba(1, 141, 56, 0.18)';
+            }
+            const alpha = 0.35 + 0.65 * (data[i] / maxVal);
+            return `rgba(11,86,64,${alpha.toFixed(2)})`;
+        });
+
+        const borderColors = labels.map(muni => {
+            const isSelected = activeMunicipios.some(m => m.toUpperCase() === muni.toUpperCase());
+            return isSelected ? '#043d2c' : 'transparent';
+        });
+
+        const borderWidths = labels.map(muni => {
+            const isSelected = activeMunicipios.some(m => m.toUpperCase() === muni.toUpperCase());
+            return isSelected ? 2 : 0;
+        });
 
         makeChart('chart-top-municipios-inversion', {
             type: 'bar',
@@ -4612,22 +4945,53 @@ function updateTerritorialCharts() {
                 datasets: [{
                     label: 'Inversión',
                     data,
-                    backgroundColor: data.map((v) => {
-                        const max = data[0] || 1;
-                        const alpha = 0.35 + 0.65 * (v / max);
-                        return `rgba(11,86,64,${alpha.toFixed(2)})`;
-                    }),
+                    backgroundColor: bgColors,
+                    borderColor: borderColors,
+                    borderWidth: borderWidths,
                     borderRadius: 4,
                     borderSkipped: false,
-                    borderWidth: 0
+                    hoverBackgroundColor: '#0B5640'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                onHover: hoverCursor,
+                onClick: (event, activeEls) => {
+                    if (activeEls && activeEls.length > 0) {
+                        const idx = activeEls[0].index;
+                        const muni = labels[idx];
+                        if (muni) window.toggleTerritorialFilter('filter-municipio', muni, event.native);
+                    }
+                },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: ctx => ` ${formatBillones(ctx.parsed.y)}` } }
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.92)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#f1f5f9',
+                        borderColor: '#018D38',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        titleFont: { size: 11, weight: 'bold', family: 'Poppins' },
+                        bodyFont: { size: 10, family: 'Poppins' },
+                        footerFont: { size: 9, weight: '600', family: 'Poppins' },
+                        footerColor: '#86efac',
+                        callbacks: {
+                            label: ctx => {
+                                const muni = ctx.label;
+                                const cnt = muniCount[muni] || 0;
+                                return ` Inversión: ${formatBillones(ctx.parsed.y)} (${cnt} convenio${cnt !== 1 ? 's' : ''})`;
+                            },
+                            footer: items => {
+                                if (!items.length) return '';
+                                const muni = items[0].label;
+                                const isSel = activeMunicipios.some(m => m.toUpperCase() === muni.toUpperCase());
+                                return isSel ? '✓ Municipio seleccionado · Clic para deseleccionar' : '👆 Clic para filtrar por este municipio';
+                            }
+                        }
+                    }
                 },
                 scales: {
                     x: {

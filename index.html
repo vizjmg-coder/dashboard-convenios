@@ -1238,19 +1238,28 @@
                                 </div>
                             </div>
 
-                            <!-- ANÁLISIS TERRITORIAL — 4 GRÁFICOS -->
+                            <!-- ANÁLISIS TERRITORIAL — 4 GRÁFICOS INTERACTIVOS -->
                             <section id="section-charts-territorial" style="margin-bottom:0;">
                                 <div
-                                    style="padding:10px 20px 8px 20px;background:white;border-bottom:1.5px solid #E2E8F0;display:flex;align-items:center;gap:10px;position:relative;overflow:hidden;">
+                                    style="padding:10px 20px 8px 20px;background:white;border-bottom:1.5px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:relative;overflow:hidden;">
                                     <div
                                         style="position:absolute;top:0;left:0;width:3px;height:100%;background:linear-gradient(180deg,#0B5640,#018D38);">
                                     </div>
                                     <div style="padding-left:12px;">
-                                        <h2
-                                            style="font-size:13px;font-weight:800;color:#0F172A;letter-spacing:-0.01em;margin:0;">
-                                            Análisis Territorial</h2>
+                                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                            <h2
+                                                style="font-size:13px;font-weight:800;color:#0F172A;letter-spacing:-0.01em;margin:0;">
+                                                Análisis Territorial</h2>
+                                            <span
+                                                style="font-size:9.5px;font-weight:600;color:#0B5640;background:#E6F4EA;border:1px solid rgba(11,86,64,0.18);padding:2px 8px;border-radius:12px;display:inline-flex;align-items:center;gap:4px;">
+                                                <i class="fa-solid fa-hand-pointer" style="font-size:8.5px;"></i> Clic en una barra para filtrar
+                                            </span>
+                                        </div>
                                         <p style="font-size:10px;color:#94A3B8;font-weight:500;margin:0;">Distribución
                                             por subregión y municipio según datos filtrados</p>
+                                    </div>
+                                    <div id="territorial-filter-tags" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                        <!-- Se puebla dinámicamente con las subregiones o municipios seleccionados -->
                                     </div>
                                 </div>
                                 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:#E2E8F0;">
