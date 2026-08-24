@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>24. GEORREFERENCIACIÓN VÍAS.kml</name>
+	<StyleMap id="m_ylw-pushpin8">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#s_ylw-pushpin150</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#s_ylw-pushpin_hl0</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="m_ylw-pushpin80">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#s_ylw-pushpin15</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#s_ylw-pushpin_hl</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="msn_ylw-pushpin">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#sn_ylw-pushpin</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#sh_ylw-pushpin</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="s_ylw-pushpin15">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="s_ylw-pushpin150">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="s_ylw-pushpin_hl">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="s_ylw-pushpin_hl0">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="sh_ylw-pushpin">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<BalloonStyle>
+		</BalloonStyle>
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>4</width>
+		</LineStyle>
+	</Style>
+	<Style id="sn_ylw-pushpin">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<BalloonStyle>
+		</BalloonStyle>
+		<LineStyle>
+			<color>ff0000ff</color>
+			<width>4</width>
+		</LineStyle>
+	</Style>
+	<Folder>
+		<name>PC 200 M</name>
+		<open>1</open>
+		<Placemark>
+			<name>PI1</name>
+			<LookAt>
+				<longitude>-74.76106474656915</longitude>
+				<latitude>6.505758835376461</latitude>
+				<altitude>0</altitude>
+				<heading>-0.1492909719287356</heading>
+				<tilt>0</tilt>
+				<range>289.9632980940486</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin80</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-74.76084983521777,6.506053690981689,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>PF1</name>
+			<LookAt>
+				<longitude>-74.76106474656915</longitude>
+				<latitude>6.505758835376461</latitude>
+				<altitude>0</altitude>
+				<heading>-0.1492909719287356</heading>
+				<tilt>0</tilt>
+				<range>289.9632980940486</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin80</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-74.76120834353438,6.506050858012522,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>PC INGENIO 1 - 40M</name>
+			<styleUrl>#msn_ylw-pushpin</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<coordinates>
+					-74.76084792302122,6.50605560077887,0 -74.76088818887494,6.506057401383555,0 -74.76094764654377,6.50606677171773,0 -74.76101283079137,6.506066602965365,0 -74.76109719685412,6.506070194247929,0 -74.76115471235848,6.506070045349481,0 -74.76120643135233,6.506052767809488,0 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>PI2</name>
+			<Camera>
+				<longitude>-74.76178211477824</longitude>
+				<latitude>6.505564478416028</latitude>
+				<altitude>184.3861724169442</altitude>
+				<heading>-106.4722660558256</heading>
+				<tilt>0.07270627781277225</tilt>
+				<roll>-90.08863787904798</roll>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</Camera>
+			<styleUrl>#m_ylw-pushpin8</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-74.76168292876662,6.505782176350803,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>PF2</name>
+			<Camera>
+				<longitude>-74.76178211477824</longitude>
+				<latitude>6.505564478416028</latitude>
+				<altitude>184.3861724169442</altitude>
+				<heading>-106.4722660558256</heading>
+				<tilt>0.07270627781277225</tilt>
+				<roll>-90.08863787904798</roll>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</Camera>
+			<styleUrl>#m_ylw-pushpin8</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-74.76223886567573,6.505165174303776,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>PC INGENIO 2 -100M</name>
+			<styleUrl>#msn_ylw-pushpin</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<coordinates>
+					-74.762236626646,6.505168857671551,0 -74.76221343988983,6.505200815136472,0 -74.76220138659994,6.505238377783222,0 -74.76216645129945,6.505283241565303,0 -74.76214396287722,6.505329024830997,0 -74.7621086452815,6.505397008735546,0 -74.76207750061852,6.505455544159637,0 -74.76205810448708,6.505501173296214,0 -74.76203414748689,6.505548569865834,0 -74.76197184687616,6.505604038528224,0 -74.76193803307163,6.505627092128988,0 -74.76190175173987,6.505650069016284,0 -74.76186738840815,6.505670219375983,0 -74.76181913559813,6.505707789394341,0 -74.76178024108756,6.505730043697584,0 -74.76173681541893,6.505754401919164,0 -74.76168601372822,6.505778958446592,0 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>PI3</name>
+			<Camera>
+				<longitude>-74.76224982243963</longitude>
+				<latitude>6.504937971966783</latitude>
+				<altitude>184.3861724183605</altitude>
+				<heading>-106.4723190423275</heading>
+				<tilt>0.07270627779773373</tilt>
+				<roll>-90.08863787904302</roll>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</Camera>
+			<styleUrl>#m_ylw-pushpin8</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-74.76237308825758,6.504924057513049,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>PF3</name>
+			<LookAt>
+				<longitude>-74.76210351585462</longitude>
+				<latitude>6.505149223824779</latitude>
+				<altitude>0</altitude>
+				<heading>-8.051470439454684</heading>
+				<tilt>0</tilt>
+				<range>219.3783346666608</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin80</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-74.762511,6.504706,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>PC INGENIO 3 - 30M</name>
+			<styleUrl>#msn_ylw-pushpin</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<coordinates>
+					-74.76251354784111,6.504721170113751,0 -74.76250944237898,6.504708634349459,0 -74.76248378389171,6.504753035777536,0 -74.7624499291048,6.504788605407637,0 -74.76241824121028,6.504836387546255,0 -74.7623998480795,6.504871186231159,0 -74.76237473278553,6.504926340965017,0 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>PI4</name>
+			<LookAt>
+				<longitude>-74.76122792138966</longitude>
+				<latitude>6.502400859787318</latitude>
+				<altitude>0</altitude>
+				<heading>-6.221932186829651</heading>
+				<tilt>0</tilt>
+				<range>191.4973566028404</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin8</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-74.761357,6.502443,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>PC CAPILLA - 30</name>
+			<styleUrl>#msn_ylw-pushpin</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<coordinates>
+					-74.76135507896761,6.502439602093046,0 -74.76135151113154,6.502407086894366,0 -74.76134862941907,6.502380824618288,0 -74.76134240700547,6.502347331516996,0 -74.76133659625921,6.502317590169113,0 -74.76132744480606,6.502280617996375,0 -74.76131799524536,6.502252536250321,0 -74.76131218450341,6.502222794893325,0 -74.76129802198908,6.502174976454706,0 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<Placemark>
+			<name>PF4</name>
+			<LookAt>
+				<longitude>-74.76122792138966</longitude>
+				<latitude>6.502400859787318</latitude>
+				<altitude>0</altitude>
+				<heading>-6.221932186829651</heading>
+				<tilt>0</tilt>
+				<range>191.4973566028404</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin8</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-74.76129593996865,6.502167609298951,0</coordinates>
+			</Point>
+		</Placemark>
+		<atom:link rel="app" href="https://www.google.com/earth/about/versions/#earth-pro" title="Google Earth Pro 7.3.6.10201"></atom:link>
+	</Folder>
+</Document>
+</kml>

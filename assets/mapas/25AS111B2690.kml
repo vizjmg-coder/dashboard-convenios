@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>Proyecto sin título</name>
+	<gx:CascadingStyle kml:id="__managed_style_108A73C04D34C7F8E200">
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>6</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<displayMode>hide</displayMode>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_0229BB744B34C7F8E200">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>4</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<displayMode>hide</displayMode>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_0788D3D26534C7F8E1FF">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_0229BB744B34C7F8E200</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_108A73C04D34C7F8E200</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Placemark id="07B83736A534C7F8E1F3">
+		<name>TRAMO 1 CHIVOS-PATO</name>
+		<LookAt>
+			<longitude>-74.89705284901538</longitude>
+			<latitude>7.495732372178905</latitude>
+			<altitude>74.09844402345324</altitude>
+			<heading>-63.70705223431862</heading>
+			<tilt>0.3215023143149674</tilt>
+			<gx:fovy>34.99978075000001</gx:fovy>
+			<range>3609.703058152227</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0788D3D26534C7F8E1FF</styleUrl>
+		<LineString>
+			<coordinates>
+				-74.89406220085804,7.495768867954469,0 -74.89453281748014,7.495586075004034,0 -74.89506421674534,7.495583585787355,0 -74.89523726809097,7.496153343857684,0 -74.89737840780836,7.496945755464428,0 -74.89783879623475,7.497548974635769,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+	<Placemark id="00BAD7A00234C7FBECAB">
+		<name>TRAMO 2 CHIVOS - PATO</name>
+		<LookAt>
+			<longitude>-74.90159002349769</longitude>
+			<latitude>7.498882644605332</latitude>
+			<altitude>84.08398013351268</altitude>
+			<heading>-62.13822695711598</heading>
+			<tilt>1.700058759604443</tilt>
+			<gx:fovy>34.99978075000001</gx:fovy>
+			<range>1219.039281334699</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0788D3D26534C7F8E1FF</styleUrl>
+		<LineString>
+			<coordinates>
+				-74.9006060514714,7.498165747189466,0 -74.9010204952239,7.49835902429228,0 -74.90116549505325,7.498351007569045,0 -74.90133057430543,7.498222982458199,0 -74.90158493937157,7.498150085799299,0 -74.90180131438169,7.498253186912724,0 -74.90194645163439,7.49853542265323,0 -74.90217154470707,7.498804093055067,0 -74.90240033813367,7.498949045385142,0 -74.90250523471873,7.499169482213139,0 -74.90233727407991,7.499524668701577,0 -74.90232457123193,7.500099064057927,0 -74.90229162310763,7.500465359920985,0 -74.90208222280691,7.500752851799122,0 -74.90197490427752,7.501174090655846,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+</Document>
+</kml>

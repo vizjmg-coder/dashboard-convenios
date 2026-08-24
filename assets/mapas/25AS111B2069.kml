@@ -1,0 +1,1344 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document id="Tramos_vias_rurales_placa_huellas" xsi:schemaLocation="http://www.opengis.net/kml/2.2 http://schemas.opengis.net/kml/2.2.0/ogckml22.xsd http://www.google.com/kml/ext/2.2 http://code.google.com/apis/kml/schema/kml22gx.xsd">
+	<name>Tramos_vias_rurales_placa_huellas</name>
+	<Snippet maxLines="0"></Snippet>
+	<gx:CascadingStyle kml:id="__managed_style_2AE4AF136D33B1EFD08A">
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+				</Icon>
+			</IconStyle>
+			<LabelStyle>
+				<color>00000000</color>
+				<scale>0</scale>
+			</LabelStyle>
+			<LineStyle>
+				<color>ffff0000</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>00000000</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<text><![CDATA[<html xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:msxsl="urn:schemas-microsoft-com:xslt">
+
+<head>
+
+<META http-equiv="Content-Type" content="text/html">
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+</head>
+
+<body style="margin:0px 0px 0px 0px;overflow:auto;background:#FFFFFF;">
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-collapse:collapse;padding:3px 3px 3px 3px">
+
+<tr style="text-align:center;font-weight:bold;background:#9CBCE2">
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px">
+
+<tr>
+
+<td>FID</td>
+
+<td>7</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>LEFT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>RIGHT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>SHAPE_Leng</td>
+
+<td>100</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+</body>
+
+</html>]]></text>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_0E489EBA9D33B1EFD08A">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_137C63BA5933B1EFD08A</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_2AE4AF136D33B1EFD08A</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="__managed_style_0F29E0EE3B33B1EEA56D">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_1968D91E0933B1EEA56D</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_2EF6B87EA233B1EEA56D</styleUrl>
+		</Pair>
+	</StyleMap>
+	<gx:CascadingStyle kml:id="__managed_style_2FB41C19D833B1EA98E7">
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+				</Icon>
+			</IconStyle>
+			<LabelStyle>
+				<color>00000000</color>
+				<scale>0</scale>
+			</LabelStyle>
+			<LineStyle>
+				<color>ffff0000</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>00000000</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<text><![CDATA[<html xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:msxsl="urn:schemas-microsoft-com:xslt">
+
+<head>
+
+<META http-equiv="Content-Type" content="text/html">
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+</head>
+
+<body style="margin:0px 0px 0px 0px;overflow:auto;background:#FFFFFF;">
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-collapse:collapse;padding:3px 3px 3px 3px">
+
+<tr style="text-align:center;font-weight:bold;background:#9CBCE2">
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px">
+
+<tr>
+
+<td>FID</td>
+
+<td>5</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>LEFT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>RIGHT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>SHAPE_Leng</td>
+
+<td>150</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+</body>
+
+</html>]]></text>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_137C63BA5933B1EFD08A">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+				</Icon>
+			</IconStyle>
+			<LabelStyle>
+				<color>00000000</color>
+				<scale>0</scale>
+			</LabelStyle>
+			<LineStyle>
+				<color>ffff0000</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>00000000</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<text><![CDATA[<html xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:msxsl="urn:schemas-microsoft-com:xslt">
+
+<head>
+
+<META http-equiv="Content-Type" content="text/html">
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+</head>
+
+<body style="margin:0px 0px 0px 0px;overflow:auto;background:#FFFFFF;">
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-collapse:collapse;padding:3px 3px 3px 3px">
+
+<tr style="text-align:center;font-weight:bold;background:#9CBCE2">
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px">
+
+<tr>
+
+<td>FID</td>
+
+<td>7</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>LEFT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>RIGHT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>SHAPE_Leng</td>
+
+<td>100</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+</body>
+
+</html>]]></text>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_0BFDD54FE033B1EA98E7">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_11132FA05333B1EA98E7</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_2FB41C19D833B1EA98E7</styleUrl>
+		</Pair>
+	</StyleMap>
+	<gx:CascadingStyle kml:id="__managed_style_2EF6B87EA233B1EEA56D">
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+				</Icon>
+			</IconStyle>
+			<LabelStyle>
+				<color>00000000</color>
+				<scale>0</scale>
+			</LabelStyle>
+			<LineStyle>
+				<color>ffff0000</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>00000000</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<text><![CDATA[<html xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:msxsl="urn:schemas-microsoft-com:xslt">
+
+<head>
+
+<META http-equiv="Content-Type" content="text/html">
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+</head>
+
+<body style="margin:0px 0px 0px 0px;overflow:auto;background:#FFFFFF;">
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-collapse:collapse;padding:3px 3px 3px 3px">
+
+<tr style="text-align:center;font-weight:bold;background:#9CBCE2">
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px">
+
+<tr>
+
+<td>FID</td>
+
+<td>6</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>LEFT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>RIGHT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>SHAPE_Leng</td>
+
+<td>150</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+</body>
+
+</html>]]></text>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_2D446D3F9933B1E1B587">
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+				</Icon>
+			</IconStyle>
+			<LabelStyle>
+				<color>00000000</color>
+				<scale>0</scale>
+			</LabelStyle>
+			<LineStyle>
+				<color>ffff0000</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>00000000</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<text><![CDATA[<html xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:msxsl="urn:schemas-microsoft-com:xslt">
+
+<head>
+
+<META http-equiv="Content-Type" content="text/html">
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+</head>
+
+<body style="margin:0px 0px 0px 0px;overflow:auto;background:#FFFFFF;">
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-collapse:collapse;padding:3px 3px 3px 3px">
+
+<tr style="text-align:center;font-weight:bold;background:#9CBCE2">
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px">
+
+<tr>
+
+<td>FID</td>
+
+<td>3</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>LEFT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>RIGHT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>SHAPE_Leng</td>
+
+<td>150</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+</body>
+
+</html>]]></text>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_11132FA05333B1EA98E7">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+				</Icon>
+			</IconStyle>
+			<LabelStyle>
+				<color>00000000</color>
+				<scale>0</scale>
+			</LabelStyle>
+			<LineStyle>
+				<color>ffff0000</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>00000000</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<text><![CDATA[<html xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:msxsl="urn:schemas-microsoft-com:xslt">
+
+<head>
+
+<META http-equiv="Content-Type" content="text/html">
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+</head>
+
+<body style="margin:0px 0px 0px 0px;overflow:auto;background:#FFFFFF;">
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-collapse:collapse;padding:3px 3px 3px 3px">
+
+<tr style="text-align:center;font-weight:bold;background:#9CBCE2">
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px">
+
+<tr>
+
+<td>FID</td>
+
+<td>5</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>LEFT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>RIGHT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>SHAPE_Leng</td>
+
+<td>150</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+</body>
+
+</html>]]></text>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_06AF2DCB4133B1E1B587">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_16EE29FAA233B1E1B587</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_2D446D3F9933B1E1B587</styleUrl>
+		</Pair>
+	</StyleMap>
+	<gx:CascadingStyle kml:id="__managed_style_16EE29FAA233B1E1B587">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+				</Icon>
+			</IconStyle>
+			<LabelStyle>
+				<color>00000000</color>
+				<scale>0</scale>
+			</LabelStyle>
+			<LineStyle>
+				<color>ffff0000</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>00000000</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<text><![CDATA[<html xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:msxsl="urn:schemas-microsoft-com:xslt">
+
+<head>
+
+<META http-equiv="Content-Type" content="text/html">
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+</head>
+
+<body style="margin:0px 0px 0px 0px;overflow:auto;background:#FFFFFF;">
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-collapse:collapse;padding:3px 3px 3px 3px">
+
+<tr style="text-align:center;font-weight:bold;background:#9CBCE2">
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px">
+
+<tr>
+
+<td>FID</td>
+
+<td>3</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>LEFT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>RIGHT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>SHAPE_Leng</td>
+
+<td>150</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+</body>
+
+</html>]]></text>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_29256125B433B1DF3161">
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+				</Icon>
+			</IconStyle>
+			<LabelStyle>
+				<color>00000000</color>
+				<scale>0</scale>
+			</LabelStyle>
+			<LineStyle>
+				<color>ffff0000</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>00000000</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<text><![CDATA[<html xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:msxsl="urn:schemas-microsoft-com:xslt">
+
+<head>
+
+<META http-equiv="Content-Type" content="text/html">
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+</head>
+
+<body style="margin:0px 0px 0px 0px;overflow:auto;background:#FFFFFF;">
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-collapse:collapse;padding:3px 3px 3px 3px">
+
+<tr style="text-align:center;font-weight:bold;background:#9CBCE2">
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px">
+
+<tr>
+
+<td>FID</td>
+
+<td>2</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>LEFT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>RIGHT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>SHAPE_Leng</td>
+
+<td>150</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+</body>
+
+</html>]]></text>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_09F97DC07533B1DF3161">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_1074DE80D833B1DF3161</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_29256125B433B1DF3161</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="__managed_style_0053D9AD8633B1DDF22B">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_196EB1146E33B1DDF22B</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_2FBBBDDCF633B1DDF22B</styleUrl>
+		</Pair>
+	</StyleMap>
+	<gx:CascadingStyle kml:id="__managed_style_1074DE80D833B1DF3161">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+				</Icon>
+			</IconStyle>
+			<LabelStyle>
+				<color>00000000</color>
+				<scale>0</scale>
+			</LabelStyle>
+			<LineStyle>
+				<color>ffff0000</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>00000000</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<text><![CDATA[<html xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:msxsl="urn:schemas-microsoft-com:xslt">
+
+<head>
+
+<META http-equiv="Content-Type" content="text/html">
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+</head>
+
+<body style="margin:0px 0px 0px 0px;overflow:auto;background:#FFFFFF;">
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-collapse:collapse;padding:3px 3px 3px 3px">
+
+<tr style="text-align:center;font-weight:bold;background:#9CBCE2">
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px">
+
+<tr>
+
+<td>FID</td>
+
+<td>2</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>LEFT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>RIGHT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>SHAPE_Leng</td>
+
+<td>150</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+</body>
+
+</html>]]></text>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_1968D91E0933B1EEA56D">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+				</Icon>
+			</IconStyle>
+			<LabelStyle>
+				<color>00000000</color>
+				<scale>0</scale>
+			</LabelStyle>
+			<LineStyle>
+				<color>ffff0000</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>00000000</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<text><![CDATA[<html xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:msxsl="urn:schemas-microsoft-com:xslt">
+
+<head>
+
+<META http-equiv="Content-Type" content="text/html">
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+</head>
+
+<body style="margin:0px 0px 0px 0px;overflow:auto;background:#FFFFFF;">
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-collapse:collapse;padding:3px 3px 3px 3px">
+
+<tr style="text-align:center;font-weight:bold;background:#9CBCE2">
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px">
+
+<tr>
+
+<td>FID</td>
+
+<td>6</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>LEFT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>RIGHT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>SHAPE_Leng</td>
+
+<td>150</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+</body>
+
+</html>]]></text>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_2FBBBDDCF633B1DDF22B">
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+				</Icon>
+			</IconStyle>
+			<LabelStyle>
+				<color>00000000</color>
+				<scale>0</scale>
+			</LabelStyle>
+			<LineStyle>
+				<color>ffff0000</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>00000000</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<text><![CDATA[<html xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:msxsl="urn:schemas-microsoft-com:xslt">
+
+<head>
+
+<META http-equiv="Content-Type" content="text/html">
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+</head>
+
+<body style="margin:0px 0px 0px 0px;overflow:auto;background:#FFFFFF;">
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-collapse:collapse;padding:3px 3px 3px 3px">
+
+<tr style="text-align:center;font-weight:bold;background:#9CBCE2">
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px">
+
+<tr>
+
+<td>FID</td>
+
+<td>1</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>LEFT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>RIGHT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>SHAPE_Leng</td>
+
+<td>250</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+</body>
+
+</html>]]></text>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_196EB1146E33B1DDF22B">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+				</Icon>
+			</IconStyle>
+			<LabelStyle>
+				<color>00000000</color>
+				<scale>0</scale>
+			</LabelStyle>
+			<LineStyle>
+				<color>ffff0000</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>00000000</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<text><![CDATA[<html xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:msxsl="urn:schemas-microsoft-com:xslt">
+
+<head>
+
+<META http-equiv="Content-Type" content="text/html">
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+</head>
+
+<body style="margin:0px 0px 0px 0px;overflow:auto;background:#FFFFFF;">
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-collapse:collapse;padding:3px 3px 3px 3px">
+
+<tr style="text-align:center;font-weight:bold;background:#9CBCE2">
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px">
+
+<tr>
+
+<td>FID</td>
+
+<td>1</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>LEFT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>RIGHT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>SHAPE_Leng</td>
+
+<td>250</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+</body>
+
+</html>]]></text>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<Style id="LineStyle00">
+		<LabelStyle>
+			<color>00000000</color>
+			<scale>0</scale>
+		</LabelStyle>
+		<LineStyle>
+			<color>ffff0000</color>
+			<width>2</width>
+		</LineStyle>
+		<PolyStyle>
+			<color>00000000</color>
+			<outline>0</outline>
+		</PolyStyle>
+	</Style>
+	<Folder id="FeatureLayer0">
+		<name>Tramos_vias_rurales_placa_huellas</name>
+		<open>1</open>
+		<Snippet maxLines="0"></Snippet>
+		<Placemark id="ID_00000">
+			<name>Placa huella vereda La Mariana</name>
+			<Snippet maxLines="0"></Snippet>
+			<description><![CDATA[<html xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:msxsl="urn:schemas-microsoft-com:xslt">
+
+<head>
+
+<META http-equiv="Content-Type" content="text/html">
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+</head>
+
+<body style="margin:0px 0px 0px 0px;overflow:auto;background:#FFFFFF;">
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-collapse:collapse;padding:3px 3px 3px 3px">
+
+<tr style="text-align:center;font-weight:bold;background:#9CBCE2">
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>
+
+<table style="font-family:Arial,Verdana,Times;font-size:12px;text-align:left;width:100%;border-spacing:0px; padding:3px 3px 3px 3px">
+
+<tr>
+
+<td>FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>LEFT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr>
+
+<td>RIGHT_FID</td>
+
+<td>0</td>
+
+</tr>
+
+<tr bgcolor="#D4E4F3">
+
+<td>SHAPE_Leng</td>
+
+<td>49,979453</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+</body>
+
+</html>]]></description>
+			<styleUrl>#LineStyle00</styleUrl>
+			<MultiGeometry>
+				<LineString>
+					<tessellate>1</tessellate>
+					<coordinates>
+						-74.73371877933965,6.787839292062968,0 -74.73326945173397,6.787787740801278,0 
+					</coordinates>
+				</LineString>
+			</MultiGeometry>
+		</Placemark>
+		<Placemark id="ID_00001">
+			<name>Placa huella V Villanita</name>
+			<Snippet maxLines="0"></Snippet>
+			<styleUrl>#__managed_style_0053D9AD8633B1DDF22B</styleUrl>
+			<MultiGeometry>
+				<LineString>
+					<tessellate>1</tessellate>
+					<coordinates>
+						-74.8507457750993,6.68946217813882,0 -74.85076352011859,6.689410721066354,0 -74.85077434335379,6.68931859135579,0 -74.85077651119607,6.68929516998172,0 -74.85078003767114,6.689257069933456,0 -74.85078770216408,6.689084661837655,0 -74.85078163153474,6.688890147221877,0 -74.85077651098108,6.688807465678325,0 -74.85077989399311,6.688737595287324,0 -74.85079376575307,6.688671906810799,0 -74.85081036109855,6.68861977322657,0 -74.85083903495668,6.688562437089687,0 -74.85087794787593,6.688484626944343,0 -74.85090146173236,6.688437608702468,0 -74.85102755321459,6.688185924997587,0 -74.85103960199615,6.688158703171085,0 -74.85104950197548,6.688120387410444,0 -74.85105172813316,6.688085422600913,0 -74.85105091662851,6.688050641853492,0 -74.85104414304503,6.688014835682612,0 -74.85103252411621,6.687962946663403,0 -74.85101009014487,6.687863112617626,0 -74.85099414289624,6.687796897947417,0 -74.8509863850494,6.687766778481507,0 -74.85098061884126,6.687722640531311,0 -74.85097175838534,6.687679433622818,0 -74.85097056523291,6.687674890273899,0 -74.85096270661194,6.687644965798371,0 -74.85095096919103,6.6876184781323,0 -74.85095020192502,6.687617313206395,0 -74.85093451766195,6.687593500075184,0 -74.85086389928011,6.687519490107415,0 -74.85076911097863,6.687420046353066,0 -74.85073714407761,6.687372267565205,0 -74.85073367434875,6.687365501189561,0 -74.8506252997804,6.687154158031302,0 -74.85055352316584,6.687187885950339,0 -74.85054115049348,6.687193699882699,0 
+					</coordinates>
+				</LineString>
+			</MultiGeometry>
+		</Placemark>
+		<Placemark id="ID_00002">
+			<name>Placa huella V Casamora</name>
+			<Snippet maxLines="0"></Snippet>
+			<styleUrl>#__managed_style_09F97DC07533B1DF3161</styleUrl>
+			<MultiGeometry>
+				<LineString>
+					<tessellate>1</tessellate>
+					<coordinates>
+						-74.90850542199995,6.719022720780498,0 -74.90826832199996,6.719183880780523,0 -74.90807515699997,6.719289466780505,0 -74.90797757406975,6.719336661652022,0 -74.90770982399994,6.719466155780493,0 -74.90752428999997,6.719556418780525,0 -74.90733954891485,6.719716129892732,0 -74.90731319592568,6.71973891238732,0 
+					</coordinates>
+				</LineString>
+			</MultiGeometry>
+		</Placemark>
+		<Placemark id="ID_00003">
+			<name>Placa Huella V Santa Lucia</name>
+			<Snippet maxLines="0"></Snippet>
+			<styleUrl>#__managed_style_06AF2DCB4133B1E1B587</styleUrl>
+			<MultiGeometry>
+				<LineString>
+					<tessellate>1</tessellate>
+					<coordinates>
+						-74.74541889841389,6.712483008200735,0 -74.74551221141039,6.712614005664146,0 -74.74557526739758,6.712726940049855,0 -74.74560050978592,6.712760142288182,0 -74.74562111812735,6.712781245239172,0 -74.7456408265309,6.712799300276338,0 -74.74567488375286,6.712819272529272,0 -74.74574015754231,6.712834366158051,0 -74.74574862004694,6.712834948136484,0 -74.74576912382905,6.71283247936577,0 -74.74582255914373,6.71281570519586,0 -74.74588359453743,6.712785947997309,0 -74.74592419416756,6.712760144463334,0 -74.74596954633014,6.712727178064765,0 -74.74601621272969,6.712678140951187,0 -74.74606140463077,6.712612495742829,0 -74.74607703268063,6.712587870976717,0 -74.74608517016917,6.712570580438617,0 -74.74609337455925,6.712527616478908,0 -74.7460981116372,6.712493597500096,0 -74.74609033084512,6.712444037460826,0 -74.74608437581945,6.712415547637764,0 -74.74607249931607,6.712388800793604,0 -74.74604509769921,6.712347552179942,0 -74.74597507279755,6.712265099439978,0 -74.74595219001628,6.712225352589527,0 -74.74593822503488,6.712192239313635,0 -74.74593014731585,6.712159397703701,0 -74.745932298033,6.712135394720226,0 -74.74594507718868,6.712117454338918,0 -74.7459672169948,6.712103712016032,0 -74.74599872633259,6.712101814370599,0 -74.74602746520725,6.712111622558551,0 -74.74606351973453,6.712136033354803,0 -74.74613558372344,6.712202682768661,0 -74.74616692355542,6.712234882444142,0 
+					</coordinates>
+				</LineString>
+			</MultiGeometry>
+		</Placemark>
+		<Placemark id="ID_00005">
+			<name>Placa Huella V San Mauricio</name>
+			<Snippet maxLines="0"></Snippet>
+			<styleUrl>#__managed_style_0BFDD54FE033B1EA98E7</styleUrl>
+			<MultiGeometry>
+				<LineString>
+					<tessellate>1</tessellate>
+					<coordinates>
+						-74.73680556308629,6.684467772161232,0 -74.73688222959269,6.684492682167924,0 -74.7369346542268,6.684515471489144,0 -74.73697229861742,6.684522945931962,0 -74.73701208398748,6.684527626925013,0 -74.73710173522022,6.684528460730529,0 -74.7371446591867,6.68452744881982,0 -74.73717987597699,6.68452549885309,0 -74.73721503528446,6.684521651243902,0 -74.73724365766891,6.684516840799124,0 -74.73728355116641,6.684510950227168,0 -74.73732175113888,6.68451579468169,0 -74.73736152818232,6.684525438464135,0 -74.73741434303564,6.684545518620599,0 -74.73750135183795,6.68457311293743,0 -74.73761352175052,6.684608414055607,0 -74.73774133908366,6.68465817894883,0 -74.73778665566104,6.684684126200565,0 -74.73784807152472,6.684719516645699,0 -74.73789856915668,6.684752431067607,0 -74.7379566411842,6.684822878311581,0 -74.73798400754767,6.684861853330323,0 -74.73800634855809,6.684935304844258,0 -74.73802162926688,6.684991342427828,0 -74.73803543453789,6.685017939608762,0 -74.73805983154924,6.685040396244595,0 -74.73808988236439,6.685070360172429,0 -74.73810858429441,6.685096856529659,0 -74.73813470060907,6.685155632445668,0 -74.73819713848141,6.685302028080555,0 -74.73826139613146,6.685460586489545,0 -74.73828902200084,6.6855109047232,0 -74.73832057957314,6.685560475692713,0 -74.73839053437776,6.685667469058585,0 -74.73845668840372,6.685761139915225,0 -74.73849734615438,6.685821938152936,0 -74.7385101385569,6.685861111145852,0 -74.73851984867652,6.685918880600532,0 -74.73855945955047,6.686178291277056,0 -74.73856530909423,6.686233141367254,0 -74.73856638299104,6.686317649556218,0 -74.73856455724156,6.686386690860068,0 -74.73855897644584,6.686499400663478,0 -74.73856381148144,6.68656860804685,0 -74.73856836757415,6.686587619577514,0 -74.73857673420601,6.686601095180333,0 -74.73858569148095,6.6866117426001,0 -74.73860905406632,6.686626196243795,0 -74.73862962044397,6.686631498673058,0 -74.73865160534775,6.686634903543964,0 -74.73868666027828,6.68663485567808,0 -74.73871681757529,6.686630541690292,0 -74.7388273040773,6.686624367114871,0 -74.73886546217108,6.686621242897424,0 
+					</coordinates>
+				</LineString>
+			</MultiGeometry>
+		</Placemark>
+		<Placemark id="ID_00006">
+			<name>Placa huella V Sector Santa Barbara </name>
+			<Snippet maxLines="0"></Snippet>
+			<styleUrl>#__managed_style_0F29E0EE3B33B1EEA56D</styleUrl>
+			<MultiGeometry>
+				<LineString>
+					<tessellate>1</tessellate>
+					<coordinates>
+						-74.87974365131392,6.696322221564933,0 -74.87978216563701,6.696358598898254,0 -74.87981716255054,6.696398370321781,0 -74.87984834413756,6.696441197275345,0 -74.87989703545688,6.696515130938225,0 -74.87995054003643,6.696585661126814,0 -74.88000862066474,6.696652475145179,0 -74.88005660781357,6.696708031646601,0 -74.88010811784788,6.69676033998451,0 -74.88016293131878,6.696809177308506,0 -74.88022081470348,6.696854335555821,0 -74.88025471341483,6.696883658205322,0 -74.88029180053836,6.696908829330454,0 -74.88033157017608,6.696929505577098,0 -74.88037347983827,6.696945404904915,0 -74.88041695784332,6.696956310434578,0 -74.88049265981465,6.696945549761945,0 -74.88056775625726,6.696931160051632,0 -74.88073041931382,6.696874985856315,0 -74.88089210099108,6.696816047808767,0 -74.88096089089311,6.696797360198446,0 -74.88103397935213,6.696772823583419,0 
+					</coordinates>
+				</LineString>
+			</MultiGeometry>
+		</Placemark>
+		<Placemark id="ID_00007">
+			<name>Placa huella V sector Belgica</name>
+			<Snippet maxLines="0"></Snippet>
+			<styleUrl>#__managed_style_0E489EBA9D33B1EFD08A</styleUrl>
+			<MultiGeometry>
+				<LineString>
+					<tessellate>1</tessellate>
+					<coordinates>
+						-74.78743419898568,6.663310880139424,0 -74.78748240699997,6.663359514782269,0 -74.78756642124658,6.663438220339271,0 -74.78770339699997,6.663566540782243,0 -74.78794394699997,6.663645854782247,0 -74.78796603599993,6.66372547378228,0 -74.78780880499995,6.663843201782315,0 -74.78767911199996,6.663910214782271,0 -74.78751629999992,6.663975368782276,0 -74.78748581499997,6.664054783782237,0 -74.78751219962915,6.664148336560259,0 -74.78752411599997,6.664190588782272,0 -74.78768105699996,6.664302231782256,0 -74.78789760799997,6.664448209782243,0 -74.78802490576378,6.664554401636544,0 -74.78803060915526,6.664559159406411,0 
+					</coordinates>
+				</LineString>
+			</MultiGeometry>
+		</Placemark>
+	</Folder>
+</Document>
+</kml>

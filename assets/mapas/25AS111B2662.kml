@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Folder>
+	<name>Lugares temporales</name>
+	<open>1</open>
+	<Folder>
+		<name>GEOREFERENCIACIÓN DE LAS VÍAS A INTERVENIR</name>
+		<Document>
+			<name>TRAMO VÍA EL CHOCÓ - HORTONÁ.kml</name>
+			<StyleMap id="m_ylw-pushpin">
+				<Pair>
+					<key>normal</key>
+					<styleUrl>#s_ylw-pushpin</styleUrl>
+				</Pair>
+				<Pair>
+					<key>highlight</key>
+					<styleUrl>#s_ylw-pushpin_hl</styleUrl>
+				</Pair>
+			</StyleMap>
+			<Style id="s_ylw-pushpin">
+				<IconStyle>
+					<scale>1.1</scale>
+					<Icon>
+						<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+					</Icon>
+					<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+				</IconStyle>
+				<LineStyle>
+					<color>ff0000ff</color>
+					<width>4</width>
+				</LineStyle>
+			</Style>
+			<Style id="s_ylw-pushpin_hl">
+				<IconStyle>
+					<scale>1.3</scale>
+					<Icon>
+						<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+					</Icon>
+					<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+				</IconStyle>
+				<LineStyle>
+					<color>ff0000ff</color>
+					<width>4</width>
+				</LineStyle>
+			</Style>
+			<Placemark>
+				<name>Ruta sin título</name>
+				<styleUrl>#m_ylw-pushpin</styleUrl>
+				<LineString>
+					<tessellate>1</tessellate>
+					<coordinates>
+						-75.05541558122988,6.131085631713113,0 -75.05545909478674,6.131063774620373,0 -75.05549285681587,6.131041799340814,0 -75.05552411135223,6.131017173803538,0 -75.05555059154014,6.130994882299169,0 -75.05557707340876,6.130965035409772,0 -75.05560610578969,6.130932544356185,0 -75.05563042768041,6.130907440905012,0 -75.05565730517017,6.130882241766503,0 -75.0556916839693,6.130856951311109,0 -75.0557286655136,6.130834121840841,0 -75.05577309582625,6.130829412349943,0 -75.055817174759,6.130860532445055,0 -75.05584871283544,6.13088881725678,0 -75.05589411816929,6.13091814696835,0 -75.05594328472183,6.130964577904,0 -75.05599437451255,6.130997876376483,0 -75.05604639660046,6.131052472276373,0 -75.05607674814581,6.13115348465571,0 -75.05611336854639,6.131230594681607,0 -75.0561239744265,6.131258319501634,0 -75.05615342366245,6.131262950301757,0 -75.05617325791873,6.13128132563631,0 -75.05621761573191,6.131288189855122,0 
+					</coordinates>
+				</LineString>
+			</Placemark>
+		</Document>
+		<Document>
+			<name>VÍA EL JORDÁN - LA LUZ.kml</name>
+			<StyleMap id="m_ylw-pushpin0">
+				<Pair>
+					<key>normal</key>
+					<styleUrl>#s_ylw-pushpin0</styleUrl>
+				</Pair>
+				<Pair>
+					<key>highlight</key>
+					<styleUrl>#s_ylw-pushpin_hl0</styleUrl>
+				</Pair>
+			</StyleMap>
+			<Style id="s_ylw-pushpin0">
+				<IconStyle>
+					<scale>1.1</scale>
+					<Icon>
+						<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+					</Icon>
+					<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+				</IconStyle>
+				<LineStyle>
+					<color>ff0000ff</color>
+					<width>4</width>
+				</LineStyle>
+			</Style>
+			<Style id="s_ylw-pushpin_hl0">
+				<IconStyle>
+					<scale>1.3</scale>
+					<Icon>
+						<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+					</Icon>
+					<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+				</IconStyle>
+				<LineStyle>
+					<color>ff0000ff</color>
+					<width>4</width>
+				</LineStyle>
+			</Style>
+			<Placemark>
+				<name>Ruta sin título</name>
+				<styleUrl>#m_ylw-pushpin0</styleUrl>
+				<LineString>
+					<tessellate>1</tessellate>
+					<coordinates>
+						-74.81901867447222,6.270307894557166,0 -74.8189751919969,6.2704078543079,0 -74.81895057494221,6.270483056919886,0 -74.81888559326461,6.270552664690629,0 -74.81881095299028,6.270619468561719,0 -74.8187641766135,6.270667286777035,0 -74.8186638342808,6.270715926819859,0 -74.8185566350366,6.270730002903343,0 -74.81847746844493,6.270724515362267,0 -74.81838221147534,6.270716012094491,0 -74.81829620162137,6.270720330354365,0 -74.81820360439173,6.270733824624791,0 -74.8181013179646,6.270756585366963,0 
+					</coordinates>
+				</LineString>
+			</Placemark>
+		</Document>
+		<Document>
+			<name>VÍA LA HOLANDA - AGUA LINDA.kml</name>
+			<StyleMap id="m_ylw-pushpin1">
+				<Pair>
+					<key>normal</key>
+					<styleUrl>#s_ylw-pushpin1</styleUrl>
+				</Pair>
+				<Pair>
+					<key>highlight</key>
+					<styleUrl>#s_ylw-pushpin_hl1</styleUrl>
+				</Pair>
+			</StyleMap>
+			<Style id="s_ylw-pushpin1">
+				<IconStyle>
+					<scale>1.1</scale>
+					<Icon>
+						<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+					</Icon>
+					<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+				</IconStyle>
+				<LineStyle>
+					<color>ff0000ff</color>
+					<width>4</width>
+				</LineStyle>
+			</Style>
+			<Style id="s_ylw-pushpin_hl1">
+				<IconStyle>
+					<scale>1.3</scale>
+					<Icon>
+						<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+					</Icon>
+					<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+				</IconStyle>
+				<LineStyle>
+					<color>ff0000ff</color>
+					<width>4</width>
+				</LineStyle>
+			</Style>
+			<Placemark>
+				<name>Ruta sin título</name>
+				<styleUrl>#m_ylw-pushpin1</styleUrl>
+				<LineString>
+					<tessellate>1</tessellate>
+					<coordinates>
+						-74.91417363865968,6.272849097763924,0 -74.91417150698076,6.273024973007428,0 -74.91417289063017,6.27309352534556,0 -74.91411714174073,6.273166917514216,0 -74.91410086959762,6.273240412230691,0 -74.91406145955133,6.27331867554339,0 -74.9140506794151,6.273403324038892,0 -74.9140913894493,6.273478038196429,0 -74.9141215872492,6.273560220379332,0 -74.9141637116299,6.273638041219257,0 -74.91420069030022,6.273739556421509,0 -74.91428584831939,6.273891275075107,0 
+					</coordinates>
+				</LineString>
+			</Placemark>
+		</Document>
+		<Document>
+			<name>VÍA VALLEJUELO - EL TABOR.kml</name>
+			<StyleMap id="m_ylw-pushpin2">
+				<Pair>
+					<key>normal</key>
+					<styleUrl>#s_ylw-pushpin2</styleUrl>
+				</Pair>
+				<Pair>
+					<key>highlight</key>
+					<styleUrl>#s_ylw-pushpin_hl2</styleUrl>
+				</Pair>
+			</StyleMap>
+			<Style id="s_ylw-pushpin2">
+				<IconStyle>
+					<scale>1.1</scale>
+					<Icon>
+						<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+					</Icon>
+					<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+				</IconStyle>
+				<LineStyle>
+					<color>ff0000ff</color>
+					<width>4</width>
+				</LineStyle>
+			</Style>
+			<Style id="s_ylw-pushpin_hl2">
+				<IconStyle>
+					<scale>1.3</scale>
+					<Icon>
+						<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+					</Icon>
+					<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+				</IconStyle>
+				<LineStyle>
+					<color>ff0000ff</color>
+					<width>4</width>
+				</LineStyle>
+			</Style>
+			<Placemark>
+				<name>Ruta sin título</name>
+				<styleUrl>#m_ylw-pushpin2</styleUrl>
+				<LineString>
+					<tessellate>1</tessellate>
+					<coordinates>
+						-75.00152627919495,6.20398558509088,0 -75.00153537495493,6.203925203943856,0 -75.00154759459105,6.203858910097051,0 -75.00154943034025,6.203768932611155,0 -75.00155685349321,6.203695707439902,0 -75.00158184811083,6.203619043908615,0 -75.00161345946704,6.203529660176985,0 -75.00162625514756,6.203499491391239,0 -75.00165158684305,6.203442101933387,0 -75.00169851406343,6.203377871053051,0 -75.00173507100888,6.203365327998326,0 -75.00178362430675,6.203370648132837,0 -75.00184575810771,6.203436502796199,0 -75.0018732895721,6.203523822465464,0 -75.0019401295054,6.203625029025817,0 -75.00198893017986,6.203708108798205,0 
+					</coordinates>
+				</LineString>
+			</Placemark>
+		</Document>
+	</Folder>
+	<atom:link rel="app" href="https://www.google.com/earth/about/versions/#earth-pro" title="Google Earth Pro 7.3.6.10201"></atom:link>
+</Folder>
+</kml>

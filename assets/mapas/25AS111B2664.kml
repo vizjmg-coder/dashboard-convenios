@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>Vía San Miguel A. (Alto Del Dulce) - Chascarala (Sector la capilla - Escuela).kmz</name>
+	<StyleMap id="m_ylw-pushpin">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#s_ylw-pushpin</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#s_ylw-pushpin_hl</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="s_ylw-pushpin">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<LineStyle>
+			<color>ffffff00</color>
+			<width>3</width>
+		</LineStyle>
+	</Style>
+	<Style id="s_ylw-pushpin_hl">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+		<LineStyle>
+			<color>ffffff00</color>
+			<width>3</width>
+		</LineStyle>
+	</Style>
+	<Placemark>
+		<name>Vía San Miguel A. (Alto Del Dulce) - Chascarala (Sector la capilla - Escuela)</name>
+		<styleUrl>#m_ylw-pushpin</styleUrl>
+		<LineString>
+			<tessellate>1</tessellate>
+			<coordinates>
+				-75.34827773462632,5.900158534341409,0 -75.34830218549699,5.90018985055746,0 -75.34834239401546,5.900222938630046,0 -75.34840348817252,5.900243785528456,0 -75.34848401918332,5.900246723610425,0 -75.34856537023666,5.900278385337216,0 -75.34864407668181,5.900317322648609,0 -75.3486887368648,5.900337057641401,0 -75.34873639981591,5.900347321244436,0 -75.34877631849629,5.900335877911413,0 -75.34883437251206,5.900304027330345,0 -75.34888700085629,5.900270058579108,0 -75.3489396978961,5.900263339127117,0 -75.34898810425936,5.900273456831035,0 -75.34904428501497,5.900306094639811,0 -75.34907849212705,5.90035187039242,0 -75.34911417080339,5.900400591869226,0 -75.34914631295217,5.900419359756548,0 -75.34918294197391,5.900430638244968,0 -75.34923843673931,5.900411344139891,0 -75.34928468533778,5.900404171090235,0 -75.34931922847555,5.900409868636992,0 -75.34938763644951,5.900443806447894,0 -75.34947454116687,5.900492000294211,0 -75.34954466315895,5.900542261449486,0 -75.34959085043894,5.900570132825215,0 -75.34961877082407,5.900600194758561,0 -75.34964354269583,5.900631112908253,0 -75.3496555198261,5.900659595077195,0 -75.34965434570336,5.900699252299562,0 -75.34965235932147,5.900726430352607,0 -75.34965544112443,5.90075192986412,0 -75.34966515091463,5.900802375023567,0 -75.34967583819764,5.900839308321877,0 -75.34968116081639,5.900854325548286,0 
+			</coordinates>
+		</LineString>
+		<atom:link rel="app" href="https://www.google.com/earth/about/versions/#earth-pro" title="Google Earth Pro 7.3.6.10201"></atom:link>
+	</Placemark>
+</Document>
+</kml>
