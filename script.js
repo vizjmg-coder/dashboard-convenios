@@ -494,9 +494,14 @@ async function getBase64FromHtmlElement(elementId) {
     }
 }
 
+const isInvalidMuni = (m) => {
+    const s = String(m || '').trim().toUpperCase();
+    return !s || s === 'S/D' || s === 'SD' || s === 'SIN DATO' || s === 'N/A' || s === 'NO DEFINIDO' || s === 'S / D' || s === 'SIN DEFINIR' || s === 'VARIAS' || s === 'VARIOS' || s === 'DEPARTAMENTAL' || s === '0' || s === 'NULL';
+};
+
 // Helper: resolves subregion based on municipality name
 function getSubregion(municipalityName) {
-    if (!municipalityName) return 'N/A';
+    if (!municipalityName || isInvalidMuni(municipalityName)) return null;
     const norm = (s) => String(s)
         .toUpperCase()
         .normalize('NFD')
@@ -510,7 +515,36 @@ function getSubregion(municipalityName) {
             return sub;
         }
     }
-    return 'N/A';
+    return null;
+}
+
+function getCanonicalOfficialSubregion(subName, muniName) {
+    if (subName) {
+        const sNorm = String(subName).trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (sNorm && sNorm !== 'S/D' && sNorm !== 'SD' && sNorm !== 'SIN DATO' && sNorm !== 'SIN DEFINIR' &&
+            sNorm !== 'OTRAS' && sNorm !== 'OTRAS / NO DEFINIDA' && sNorm !== 'OTRAS NO DEFINIDA' &&
+            sNorm !== 'NO DEFINIDA' && sNorm !== 'NO DEFINIDO' && sNorm !== 'VARIAS' && sNorm !== 'VARIOS' &&
+            sNorm !== 'DEPARTAMENTAL' && sNorm !== 'TODAS' && sNorm !== 'N/A' && sNorm !== 'NONE' && sNorm !== '0') {
+            if (sNorm.includes('ABURRA')) return 'VALLE DE ABURRÁ';
+            if (sNorm.includes('BAJO CAUCA')) return 'BAJO CAUCA';
+            if (sNorm.includes('MAGDALENA')) return 'MAGDALENA MEDIO';
+            if (sNorm.includes('NORDESTE')) return 'NORDESTE';
+            if (sNorm.includes('NORTE')) return 'NORTE';
+            if (sNorm.includes('OCCIDENTE')) return 'OCCIDENTE';
+            if (sNorm.includes('ORIENTE')) return 'ORIENTE';
+            if (sNorm.includes('SUROESTE')) return 'SUROESTE';
+            if (sNorm.includes('URABA')) return 'URABÁ';
+        }
+    }
+    if (muniName && !isInvalidMuni(muniName)) {
+        const sub = getSubregion(muniName);
+        if (sub) return sub;
+        if (typeof getSubregionForMuni === 'function') {
+            const sub2 = getSubregionForMuni(muniName);
+            if (sub2) return sub2;
+        }
+    }
+    return null;
 }
 
 async function loadMapData(num) {
@@ -1960,6 +1994,7 @@ function buildVectorChartMetasSVG(indicatorsList) {
         if (displayName.includes("AEROPUERTOS")) displayName = "Aeropuertos";
         else if (displayName.includes("MUELLES")) displayName = "Muelles";
         else if (displayName.includes("EQUIPAMIENTOS")) displayName = "Equipamientos";
+        else if (displayName.includes("MANTEN")) displayName = "Vías Mantenidas";
         else if (displayName.includes("TERCIARIAS")) displayName = "Vías Terciarias";
         else if (displayName.includes("ESPACIO")) displayName = "Espacio Público";
         else if (displayName.includes("CABLES")) displayName = "Cables Aéreos";
@@ -2166,6 +2201,7 @@ async function generatePlanPDF() {
             if (shortName.includes("AEROPUERTOS")) shortName = "Aeropuertos/Aeródromos";
             else if (shortName.includes("MUELLES")) shortName = "Muelles/Embarcaderos";
             else if (shortName.includes("EQUIPAMIENTOS")) shortName = "Equipamientos Constr.";
+            else if (shortName.includes("MANTEN")) shortName = "Vías Terc. Mantenidas";
             else if (shortName.includes("TERCIARIAS")) shortName = "Vías Terciarias (RVT)";
             else if (shortName.includes("ESPACIO")) shortName = "Espacio Público";
             else if (shortName.includes("CABLES")) shortName = "Cables Aéreos";
@@ -2427,9 +2463,15 @@ async function generatePlanPDF() {
                             ...indicatorsList.map((item) => {
                                 const isNP = item.isNP;
                                 const fmtVal = (val) => {
-                                    if (item.unit === 'km') return val.toFixed(1) + ' km';
-                                    if (item.unit === 'm²') return val.toLocaleString('es-CO') + ' m²';
-                                    return Math.round(val) + ' und';
+                                    const num = Number(val) || 0;
+                                    if (item.unit === 'km') {
+                                        return new Intl.NumberFormat('es-CO', {
+                                            minimumFractionDigits: Number.isInteger(num) ? 0 : 2,
+                                            maximumFractionDigits: 2
+                                        }).format(num) + ' km';
+                                    }
+                                    if (item.unit === 'm²') return new Intl.NumberFormat('es-CO').format(Math.round(num)) + ' m²';
+                                    return new Intl.NumberFormat('es-CO').format(Math.round(num)) + ' und';
                                 };
 
                                 const metaText = isNP ? 'NP' : fmtVal(item.meta);
@@ -3775,18 +3817,10 @@ function processExcelData(data) {
     const mainContent = document.getElementById('main-content');
     if (mainContent) mainContent.style.display = 'block';
 
-    // Asignar subregión por defecto si está vacía
+    // Asignar subregión canónica solo si pertenece a una de las 9 subregiones oficiales
     rawData.forEach(r => {
-        if (!r['SUBREGION']) {
-            const m = String(r['MUNICIPIO']).toUpperCase().trim();
-            for (const [sub, munis] of Object.entries(antioquiaSubregiones)) {
-                if (munis.includes(m)) {
-                    r['SUBREGION'] = sub;
-                    break;
-                }
-            }
-            if (!r['SUBREGION']) r['SUBREGION'] = 'OTRAS / NO DEFINIDA';
-        }
+        const canonical = getCanonicalOfficialSubregion(r['SUBREGION'], r['MUNICIPIO']);
+        r['SUBREGION'] = canonical || '';
     });
 
     applyFilters();
@@ -4239,11 +4273,19 @@ function updateKPIs() {
     document.getElementById('kpi-por-liquidar').textContent = porLiquidar;
 
     // Municipios y Subregiones Impactadas
-    const impactedMunis = new Set(filteredData.map(r => String(r['MUNICIPIO'] || '').trim().toUpperCase()).filter(Boolean));
+    const impactedMunis = new Set(
+        filteredData
+            .map(r => String(r['MUNICIPIO'] || '').trim().toUpperCase())
+            .filter(m => !isInvalidMuni(m))
+    );
     const elMunis = document.getElementById('kpi-municipios');
     if (elMunis) elMunis.textContent = impactedMunis.size;
 
-    const impactedSubs = new Set(filteredData.map(r => String(r['SUBREGION'] || r['SUBREGIÓN'] || '').trim().toUpperCase()).filter(Boolean));
+    const impactedSubs = new Set(
+        filteredData
+            .map(r => getCanonicalOfficialSubregion(r['SUBREGION'], r['MUNICIPIO']))
+            .filter(Boolean)
+    );
     const elSubs = document.getElementById('kpi-subregiones');
     if (elSubs) elSubs.textContent = impactedSubs.size;
 
@@ -4822,8 +4864,8 @@ function updateTerritorialCharts() {
 
     // Filas base para municipios (si hay subregión activa, limitan a la subregión activa; si no, usan subregionBaseRows)
     const municipioBaseRows = subregionBaseRows.filter(row => {
-        const sub = String(row['SUBREGION'] || getSubregion(row['MUNICIPIO']) || '').trim().toUpperCase();
-        return activeSubregions.length === 0 || activeSubregions.some(s => s.toUpperCase() === sub);
+        const sub = getCanonicalOfficialSubregion(row['SUBREGION'], row['MUNICIPIO']) || '';
+        return activeSubregions.length === 0 || activeSubregions.some(s => s.toUpperCase() === sub.toUpperCase());
     });
 
     // ── Acumular datos de Subregiones ──────────────────────────────────────────
@@ -4832,8 +4874,9 @@ function updateTerritorialCharts() {
     const subregCount = {};
 
     subregionBaseRows.forEach(r => {
-        const muni = String(r['MUNICIPIO'] || 'S/D').trim();
-        const sub = String(r['SUBREGION'] || getSubregion(muni) || 'OTRAS').trim().toUpperCase();
+        const sub = getCanonicalOfficialSubregion(r['SUBREGION'], r['MUNICIPIO']);
+        if (!sub) return; // NO MOSTRAR NI SUMAR EN SUBREGIONES SI NO TIENE SUBREGIÓN OFICIAL
+
         const longM = getRowLongitudContratada(r) || 0;
         const inv = (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
 
@@ -4846,11 +4889,6 @@ function updateTerritorialCharts() {
     const muniLong = {};
     const muniInv = {};
     const muniCount = {};
-
-    const isInvalidMuni = (m) => {
-        const s = String(m || '').trim().toUpperCase();
-        return !s || s === 'S/D' || s === 'SD' || s === 'SIN DATO' || s === 'N/A' || s === 'NO DEFINIDO' || s === 'S / D' || s === 'SIN DEFINIR';
-    };
 
     municipioBaseRows.forEach(r => {
         const muni = String(r['MUNICIPIO'] || '').trim().toUpperCase();
@@ -7537,8 +7575,16 @@ function updateMapFilterSelects(cSearch, cVig, cMun, cSup, cClas, cSub, cEst, cC
 }
 
 function updateMapKPIs() {
-    const numMun = new Set(currentMapData.map(r => String(r['MUNICIPIO']).trim())).size;
-    const numSub = new Set(currentMapData.map(r => String(r['SUBREGION']).trim())).size;
+    const numMun = new Set(
+        currentMapData
+            .map(r => String(r['MUNICIPIO'] || '').trim().toUpperCase())
+            .filter(m => !isInvalidMuni(m))
+    ).size;
+    const numSub = new Set(
+        currentMapData
+            .map(r => getCanonicalOfficialSubregion(r['SUBREGION'], r['MUNICIPIO']))
+            .filter(Boolean)
+    ).size;
     let act = 0, kmEjecutados = 0, kmContratados = 0, areaEjecutada = 0, areaContratada = 0, inv = 0;
     currentMapData.forEach(r => {
         const est = String(r['ESTADO CONVENIO'] || '').toUpperCase();
@@ -7569,14 +7615,18 @@ function updateMapKPIs() {
 function updateMapCharts() {
     const subL = {}, subI = {}, munL = {}, munI = {};
     currentMapData.forEach(r => {
-        const s = r['SUBREGION'] || 'OTRAS';
-        const m = r['MUNICIPIO'] || 'N/A';
+        const s = getCanonicalOfficialSubregion(r['SUBREGION'], r['MUNICIPIO']);
+        const m = String(r['MUNICIPIO'] || '').trim().toUpperCase();
         const l = mapMetric === 'contratado' ? getRowLongitudContratada(r) : getRowLongitudEjecutada(r);
         const i = (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0);
-        subL[s] = (subL[s] || 0) + l;
-        subI[s] = (subI[s] || 0) + i;
-        munL[m] = (munL[m] || 0) + l;
-        munI[m] = (munI[m] || 0) + i;
+        if (s) {
+            subL[s] = (subL[s] || 0) + l;
+            subI[s] = (subI[s] || 0) + i;
+        }
+        if (!isInvalidMuni(m)) {
+            munL[m] = (munL[m] || 0) + l;
+            munI[m] = (munI[m] || 0) + i;
+        }
     });
 
     const sL = Object.entries(subL).sort((a, b) => b[1] - a[1]);
@@ -7677,9 +7727,14 @@ const indicadoresEstrategicos = {
         tipo: "und"
     },
     "EQUIPAMIENTOS CONSTRUIDOS": {
-        metas: { todos: 5, "2024": 0, "2025": 1, "2026": 2, "2027": 2 },
+        metas: { todos: 5, "2024": 4, "2025": 0, "2026": 1, "2027": 0 },
         unit: "und",
         tipo: "und"
+    },
+    "VÍAS TERCIARIAS MANTENIDAS": {
+        metas: { todos: 10000, "2024": 1000, "2025": 3000, "2026": 3000, "2027": 3000 },
+        unit: "km",
+        tipo: "km"
     },
     "VÍAS TERCIARIAS MEJORADAS. (RVT)": {
         metas: { todos: 500, "2024": 50, "2025": 150, "2026": 100, "2027": 200 },
@@ -7722,8 +7777,10 @@ function normalizarIndicador(ind) {
     if (i.includes("MUELLE") || i.includes("EMBARCADERO")) return "MUELLES O EMBARCADEROS MEJORADOS";
     // Equipamientos
     if (i.includes("EQUIPAMIENT") || i.includes("EQUIP")) return "EQUIPAMIENTOS CONSTRUIDOS";
-    // Vías Terciarias (RVT) — cualquier combinación que mencione "TERCIARIA"
-    if (i.includes("TERCIARIA") || i.includes("RVT")) return "VÍAS TERCIARIAS MEJORADAS. (RVT)";
+    // Vías Terciarias Mantenidas vs Mejoradas (RVT)
+    if ((i.includes("TERCIARI") || i.includes("TERCIAR") || i.includes("RVT")) && (i.includes("MANTEN") || i.includes("MANT"))) return "VÍAS TERCIARIAS MANTENIDAS";
+    if (i.includes("MANTENIMIENTO") && (i.includes("VIAL") || i.includes("VIA") || i.includes("TERCIAR"))) return "VÍAS TERCIARIAS MANTENIDAS";
+    if (i.includes("TERCIARIA") || i.includes("TERCIARI") || i.includes("TERCIAR") || i.includes("RVT")) return "VÍAS TERCIARIAS MEJORADAS. (RVT)";
     // Espacio Público
     if (i.includes("ESPACIO") && i.includes("PUBLI")) return "ESPACIO PUBLICO";
     if (i.includes("ESPACIO PUBLICO")) return "ESPACIO PUBLICO";
@@ -7953,6 +8010,7 @@ function renderPlanTab() {
         if (ind.includes("AEROPUERTOS")) displayName = "Aeropuertos/Aeródromos";
         else if (ind.includes("MUELLES")) displayName = "Muelles/Embarcaderos";
         else if (ind.includes("EQUIPAMIENTOS")) displayName = "Equipamientos Constr.";
+        else if (ind.includes("MANTEN")) displayName = "Vías Terc. Mantenidas";
         else if (ind.includes("TERCIARIAS")) displayName = "Vías Terciarias (RVT)";
         else if (ind.includes("ESPACIO")) displayName = "Espacio Público";
         else if (ind.includes("CABLES")) displayName = "Cables Aéreos";
@@ -7991,9 +8049,15 @@ function renderPlanTab() {
         chartMetasColors.push(chartColor);
 
         const fmtVal = (v) => {
-            if (cfg.tipo === 'km') return v.toFixed(2) + ' km';
-            if (cfg.tipo === 'm2') return formatNumber(Math.round(v)) + ' m²';
-            return Math.round(v) + ' und';
+            const num = Number(v) || 0;
+            if (cfg.tipo === 'km') {
+                return new Intl.NumberFormat('es-CO', {
+                    minimumFractionDigits: Number.isInteger(num) ? 0 : 2,
+                    maximumFractionDigits: 2
+                }).format(num) + ' km';
+            }
+            if (cfg.tipo === 'm2') return formatNumber(Math.round(num)) + ' m²';
+            return formatNumber(Math.round(num)) + ' und';
         };
 
         const pctCls = isNP ? 'np' : (pct >= 80 ? 'cumplida' : pct >= 50 ? 'proceso' : 'riesgo');
@@ -8095,11 +8159,11 @@ function renderPlanTab() {
                             const index = context.dataIndex;
                             const info = chartMetasRawInfo[index];
                             if (info.isNP) {
-                                const rawAchieved = info.unit === 'm²' ? formatNumber(Math.round(info.achieved)) : info.achieved.toFixed(1);
+                                const rawAchieved = info.unit === 'm²' ? formatNumber(Math.round(info.achieved)) : (Number.isInteger(info.achieved) ? formatNumber(info.achieved) : new Intl.NumberFormat('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 2 }).format(info.achieved));
                                 return ` No Programado (Ejecutado: ${rawAchieved} ${info.unit})`;
                             }
-                            const rawAchieved = info.unit === 'm²' ? formatNumber(Math.round(info.achieved)) : info.achieved.toFixed(1);
-                            const rawTarget = info.unit === 'm²' ? formatNumber(Math.round(info.target)) : info.target;
+                            const rawAchieved = info.unit === 'm²' ? formatNumber(Math.round(info.achieved)) : (Number.isInteger(info.achieved) ? formatNumber(info.achieved) : new Intl.NumberFormat('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 2 }).format(info.achieved));
+                            const rawTarget = formatNumber(Math.round(info.target));
                             return ` ${context.raw}% de cumplimiento (${rawAchieved} ${info.unit} de ${rawTarget} ${info.unit})`;
                         }
                     }
@@ -10552,8 +10616,12 @@ const MPIO_SUBREGION_MAP = {
 };
 
 function normalizeSubregionName(name) {
+    if (!name) return null;
     const s = String(name || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z ]/g, '').replace(/\s+/g, ' ').trim();
-    if (s.includes('ABURRA')) return 'VALLE DE ABURRA';
+    if (!s || s === 'S/D' || s === 'SD' || s === 'SIN DATO' || s === 'SIN DEFINIR' || s === 'OTRAS' || s === 'OTRAS NO DEFINIDA' || s === 'NO DEFINIDA' || s === 'NO DEFINIDO' || s === 'VARIAS' || s === 'VARIOS' || s === 'DEPARTAMENTAL' || s === 'TODAS' || s === 'N/A' || s === 'NONE' || s === '0') {
+        return null;
+    }
+    if (s.includes('ABURRA')) return 'VALLE DE ABURRÁ';
     if (s.includes('BAJO CAUCA')) return 'BAJO CAUCA';
     if (s.includes('MAGDALENA')) return 'MAGDALENA MEDIO';
     if (s.includes('NORDESTE')) return 'NORDESTE';
@@ -10561,17 +10629,22 @@ function normalizeSubregionName(name) {
     if (s.includes('OCCIDENTE')) return 'OCCIDENTE';
     if (s.includes('ORIENTE')) return 'ORIENTE';
     if (s.includes('SUROESTE')) return 'SUROESTE';
-    if (s.includes('URABA')) return 'URABA';
-    return s || 'ORIENTE';
+    if (s.includes('URABA')) return 'URABÁ';
+    return null;
 }
 
 function getSubregionForMuni(muni) {
-    const m = normCanonicalMuni(muni);
+    if (!muni || isInvalidMuni(muni)) return null;
+    const m = typeof normCanonicalMuni === 'function' ? normCanonicalMuni(muni) : String(muni).trim().toUpperCase();
     if (MPIO_SUBREGION_MAP[m]) return MPIO_SUBREGION_MAP[m];
     for (const [k, v] of Object.entries(MPIO_SUBREGION_MAP)) {
-        if (normCanonicalMuni(k) === m || isSameMuni(k, m) || m.includes(normCanonicalMuni(k))) return v;
+        if (typeof normCanonicalMuni === 'function') {
+            if (normCanonicalMuni(k) === m || (typeof isSameMuni === 'function' && isSameMuni(k, m)) || m.includes(normCanonicalMuni(k))) return v;
+        } else if (k === m || m.includes(k)) {
+            return v;
+        }
     }
-    return 'ORIENTE';
+    return null;
 }
 
 async function initSyntheticMap() {
@@ -12123,20 +12196,23 @@ const DiatAI = {
 
         const welcomeHTML = `
             <p style="margin:0 0 6px;">
-                👋 <strong>¡Hola! Soy DIAT AI</strong>, tu asistente de inteligencia territorial y contractual de la <strong>Gobernación de Antioquia</strong>.
+                👋 <strong>¡Hola! Soy DIAT AI</strong>, tu asistente de inteligencia territorial, contractual e <strong>indicadores del Plan de Desarrollo</strong> de la <strong>Gobernación de Antioquia</strong>.
             </p>
             <p style="margin:0 0 6px; font-size:11.5px; color:#475569;">
-                Tengo indexados <strong>${totalConvs} convenios</strong> por un total de <strong>${formatCurrency(totalInv)}</strong> en los 125 municipios.
+                Tengo indexados <strong>${totalConvs} convenios</strong> por un total de <strong>${formatCurrency(totalInv)}</strong> en los 125 municipios y las metas oficiales de los <strong>7 Indicadores Estratégicos 2024–2027</strong>.
             </p>
             <p style="margin:0 0 8px; font-weight:700; font-size:11px; color:#0B5640;">
                 ¿Qué deseas consultar hoy?
             </p>
             <div class="diat-ai-suggestions">
-                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('¿Cuántos convenios hay en Andes?')">📌 Convenios en Andes</button>
-                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('¿Cuál es el avance del convenio 2773?')">🔍 Avance Convenio 2773</button>
-                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('¿Qué convenios tienen prórrogas de plazo?')">⏱️ Prórrogas de plazo</button>
-                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('Resumen de inversión en San Vicente')">📍 San Vicente Ferrer</button>
-                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('Métricas generales de Antioquia')">📊 Balance Global</button>
+                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('¿Cómo van los indicadores del plan?')">🎯 Metas del Plan de Desarrollo</button>
+                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('Meta de Equipamientos Construidos')">🏗️ Equipamientos Construidos</button>
+                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('Meta de Vías Terciarias')">🛣️ Vías Terciarias</button>
+                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('Meta de Aeropuertos')">✈️ Aeropuertos</button>
+                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('Metas 2024 de los indicadores')">📅 Metas 2024</button>
+                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('¿Cuántos convenios hay en Andes?')">📌 Andes</button>
+                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('¿Cuál es el avance del convenio 2773?')">🔍 Conv. 2773</button>
+                <button type="button" class="diat-suggestion-chip" onclick="DiatAI.sendPrompt('¿Cuál supervisor tiene más convenios?')">👤 Supervisores</button>
             </div>
         `;
         this.appendBotMessage(welcomeHTML);
@@ -12251,6 +12327,448 @@ const DiatAI = {
     },
 
     // =========================================================================
+    // MOTORES DE BÚSQUEDA Y PROCESAMIENTO DE INDICADORES ESTRATÉGICOS
+    // =========================================================================
+    findIndicatorInText(qUpper) {
+        if (!qUpper) return null;
+        // 1. Equipamientos
+        if (qUpper.includes('EQUIPAMIENT') || qUpper.includes('EQUIPAMIENTO') || qUpper.includes('EQUIPAMIENTOS') || (qUpper.includes('EQUIP') && (qUpper.includes('CONSTRU') || qUpper.includes('META') || qUpper.includes('INDICADOR')))) {
+            return 'EQUIPAMIENTOS CONSTRUIDOS';
+        }
+        // 2. Aeropuertos / Aeródromos
+        if (qUpper.includes('AEROPUERTO') || qUpper.includes('AEROPUERTOS') || qUpper.includes('AERODROMO') || qUpper.includes('AERODROMOS') || qUpper.includes('PISTA DE ATERRIZAJE')) {
+            return 'AEROPUERTOS O AERÓDROMOS MEJORADOS Y EN OPERACIÓN';
+        }
+        // 3. Muelles / Embarcaderos
+        if (qUpper.includes('MUELLE') || qUpper.includes('MUELLES') || qUpper.includes('EMBARCADERO') || qUpper.includes('EMBARCADEROS') || qUpper.includes('FLUVIAL')) {
+            return 'MUELLES O EMBARCADEROS MEJORADOS';
+        }
+        // 4. Vías Terciarias Mantenidas
+        if ((qUpper.includes('TERCIARI') || qUpper.includes('TERCIAR') || qUpper.includes('RVT') || qUpper.includes('VIA') || qUpper.includes('VIAS')) && (qUpper.includes('MANTEN') || qUpper.includes('MANT'))) {
+            return 'VÍAS TERCIARIAS MANTENIDAS';
+        }
+        // 5. Vías Terciarias (RVT)
+        if (qUpper.includes('TERCIARIA') || qUpper.includes('TERCIARIAS') || qUpper.includes('TERCIARA') || qUpper.includes('TERCIARAS') || qUpper.includes('RVT') || qUpper.includes('PLACA HUELLA') || qUpper.includes('PLACAS HUELLAS')) {
+            return 'VÍAS TERCIARIAS MEJORADAS. (RVT)';
+        }
+        // 5. Espacio Público
+        if ((qUpper.includes('ESPACIO') && (qUpper.includes('PUBLI') || qUpper.includes('PUBLICO') || qUpper.includes('PUBLICOS'))) || qUpper.includes('ESPACIO PUBLICO') || qUpper.includes('M2')) {
+            return 'ESPACIO PUBLICO';
+        }
+        // 6. Cables Aéreos
+        if (qUpper.includes('CABLE AEREO') || qUpper.includes('CABLES AEREOS') || qUpper.includes('METROCABLE') || qUpper.includes('TELEFERICO') || (qUpper.includes('CABLE') && (qUpper.includes('AEREO') || qUpper.includes('META') || qUpper.includes('INDICADOR')))) {
+            return 'CABLES AÉREOS SOSTENIBLES CONSTRUIDOS Y OPERANDO';
+        }
+        // 7. Vía Urbana (RVU)
+        if (qUpper.includes('VIA URBANA') || qUpper.includes('VIAS URBANAS') || qUpper.includes('RVU') || (qUpper.includes('URBANA') && (qUpper.includes('PAVIMENT') || qUpper.includes('META') || qUpper.includes('INDICADOR')))) {
+            return 'VÍA URBANA MEJORADA. (RVU)';
+        }
+        return null;
+    },
+
+    findYearInText(qUpper) {
+        if (!qUpper) return 'todos';
+        if (qUpper.includes('2024') && !qUpper.includes('2024-2027') && !qUpper.includes('2024 - 2027')) return '2024';
+        if (qUpper.includes('2025')) return '2025';
+        if (qUpper.includes('2026')) return '2026';
+        if (qUpper.includes('2027')) return '2027';
+        return 'todos';
+    },
+
+    isGeneralIndicatorQuery(qUpper) {
+        if (!qUpper) return false;
+        const indTerms = [
+            'INDICADOR', 'INDICADORES', 'PLAN DE DESARROLLO', 'METAS', 'META',
+            'CUATRIENIO', 'CUATRENIO', 'CUMPLIMIENTO', 'PORCENTAJE DE CUMPLIMIENTO',
+            'AVANCE FISICO', 'METAS POR ANO', 'METAS ANUALES', 'METAS POR ANIO',
+            'SEGUIMIENTO DE METAS', 'INDICADOR ESTRATEGICO', 'INDICADORES ESTRATEGICOS'
+        ];
+        return indTerms.some(t => qUpper.includes(t));
+    },
+
+    getIndicatorsData(yearFilter = 'todos', metricType = 'ejecutado') {
+        const data = rawData || [];
+        const indStats = {};
+
+        Object.keys(indicadoresEstrategicos).forEach(k => {
+            indStats[k] = {
+                name: k,
+                cfg: indicadoresEstrategicos[k],
+                totalEjecutado: 0,
+                ejecutadoByYear: { '2024': 0, '2025': 0, '2026': 0, '2027': 0 },
+                totalContratado: 0,
+                contratadoByYear: { '2024': 0, '2025': 0, '2026': 0, '2027': 0 },
+                conveniosCount: 0,
+                convenios: [],
+                munis: new Set(),
+                inversion: 0
+            };
+        });
+
+        data.forEach(row => {
+            const ind = normalizarIndicador(row['INDICADOR']);
+            if (!ind || !indStats[ind]) return;
+
+            const cfg = indicadoresEstrategicos[ind];
+            let cantEjecutada = 0;
+            let cantContratada = 0;
+
+            if (cfg.tipo === 'km') {
+                const metrosEje = typeof getRowLongitudEjecutadaPlan === 'function' ? getRowLongitudEjecutadaPlan(row) : (getRowLongitudEjecutada(row) || 0);
+                const metrosCon = typeof getRowLongitudContratadaPlan === 'function' ? getRowLongitudContratadaPlan(row) : (getRowLongitudContratada(row) || 0);
+                cantEjecutada = metrosEje / 1000;
+                cantContratada = metrosCon / 1000;
+            } else if (cfg.tipo === 'm2') {
+                cantEjecutada = typeof getRowAreaEjecutadaPlan === 'function' ? getRowAreaEjecutadaPlan(row) : (parseNum(row['AREA EJECUTADA']) || 0);
+                cantContratada = typeof getRowAreaContratadaPlan === 'function' ? getRowAreaContratadaPlan(row) : (parseNum(row['AREA CONTRATADA']) || 0);
+            } else {
+                cantContratada = (typeof isCuatrenioAnterior === 'function' && isCuatrenioAnterior(row)) ? 0 : 1;
+                const estado = String(row['ESTADO CONVENIO'] || '').toUpperCase();
+                const tieneEjecucion = estado.includes('EJECUCI') || estado.includes('EJECUT') ||
+                    estado.includes('OPERA') || estado.includes('MEJORAD') ||
+                    (typeof getRowLongitudEjecutadaPlan === 'function' ? getRowLongitudEjecutadaPlan(row) : 0) > 0 ||
+                    (typeof getRowAreaEjecutadaPlan === 'function' ? getRowAreaEjecutadaPlan(row) : 0) > 0 ||
+                    parseNum(row['FISICO_NORM']) > 0;
+                cantEjecutada = tieneEjecucion ? 1 : 0;
+            }
+
+            const compYear = typeof getRowCompletionYear === 'function' ? getRowCompletionYear(row) : null;
+            if (compYear && indStats[ind].ejecutadoByYear[compYear] !== undefined) {
+                indStats[ind].ejecutadoByYear[compYear] += cantEjecutada;
+                indStats[ind].contratadoByYear[compYear] += cantContratada;
+            }
+
+            indStats[ind].totalEjecutado += cantEjecutada;
+            indStats[ind].totalContratado += cantContratada;
+            indStats[ind].conveniosCount++;
+            indStats[ind].convenios.push(row);
+            if (row['MUNICIPIO']) indStats[ind].munis.add(String(row['MUNICIPIO']).trim());
+            indStats[ind].inversion += (parseNum(row['APORTE DEPARTAMENTO']) || 0) + (parseNum(row['ADICION DEPARTAMENTO']) || 0);
+        });
+
+        let sumCumplimiento = 0;
+        let countCumplimiento = 0;
+        let cumplidas = 0, proceso = 0, riesgo = 0;
+
+        const list = Object.keys(indicadoresEstrategicos).map(k => {
+            const item = indStats[k];
+            const cfg = item.cfg;
+            const meta = cfg.metas[yearFilter] !== undefined ? cfg.metas[yearFilter] : (cfg.metas.todos || 0);
+            const metaCuatrienio = cfg.metas.todos || 0;
+            const isNP = (meta === 0);
+
+            const cantAct = metricType === 'contratado' ?
+                (yearFilter === 'todos' ? item.totalContratado : (item.contratadoByYear[yearFilter] || 0)) :
+                (yearFilter === 'todos' ? item.totalEjecutado : (item.ejecutadoByYear[yearFilter] || 0));
+
+            let pct = 0;
+            let restante = 0;
+            if (isNP) {
+                pct = 0;
+                restante = 0;
+            } else {
+                pct = meta > 0 ? (cantAct / meta) * 100 : 0;
+                restante = Math.max(meta - cantAct, 0);
+            }
+
+            let pctCapped = Math.min(pct, 100);
+            if (!isNP) {
+                if (pct >= 80) cumplidas++;
+                else if (pct >= 50) proceso++;
+                else riesgo++;
+
+                sumCumplimiento += pctCapped;
+                countCumplimiento++;
+            }
+
+            let shortName = k;
+            let icon = 'fa-flag';
+            if (k.includes("AEROPUERTOS")) { shortName = "Aeropuertos y Aeródromos"; icon = "fa-plane-departure"; }
+            else if (k.includes("MUELLES")) { shortName = "Muelles y Embarcaderos"; icon = "fa-anchor"; }
+            else if (k.includes("EQUIPAMIENTOS")) { shortName = "Equipamientos Construidos"; icon = "fa-building"; }
+            else if (k.includes("MANTEN")) { shortName = "Vías Terciarias Mantenidas"; icon = "fa-road-circle-check"; }
+            else if (k.includes("TERCIARIAS")) { shortName = "Vías Terciarias (RVT)"; icon = "fa-road"; }
+            else if (k.includes("ESPACIO")) { shortName = "Espacio Público"; icon = "fa-tree-city"; }
+            else if (k.includes("CABLES")) { shortName = "Cables Aéreos"; icon = "fa-cable-car"; }
+            else if (k.includes("URBANA")) { shortName = "Vía Urbana (RVU)"; icon = "fa-city"; }
+
+            return {
+                key: k,
+                shortName,
+                icon,
+                unit: cfg.unit,
+                tipo: cfg.tipo,
+                meta,
+                metaCuatrienio,
+                metasByYear: cfg.metas,
+                ejecutado: cantAct,
+                ejecutadoByYear: metricType === 'contratado' ? item.contratadoByYear : item.ejecutadoByYear,
+                totalEjecutado: metricType === 'contratado' ? item.totalContratado : item.totalEjecutado,
+                restante,
+                pct,
+                pctCapped,
+                isNP,
+                conveniosCount: item.conveniosCount,
+                convenios: item.convenios,
+                munis: Array.from(item.munis),
+                inversion: item.inversion
+            };
+        });
+
+        const promedioGlobal = countCumplimiento > 0 ? (sumCumplimiento / countCumplimiento).toFixed(1) : '0.0';
+
+        return {
+            yearFilter,
+            metricType,
+            list,
+            promedioGlobal,
+            cumplidas,
+            proceso,
+            riesgo,
+            totalIndicadores: list.length
+        };
+    },
+
+    formatIndVal(val, unit, tipo) {
+        const num = Number(val) || 0;
+        if (tipo === 'km') {
+            return new Intl.NumberFormat('es-CO', {
+                minimumFractionDigits: Number.isInteger(num) ? 0 : 2,
+                maximumFractionDigits: 2
+            }).format(num) + ' km';
+        }
+        if (tipo === 'm2') return (typeof formatNumber === 'function' ? formatNumber(Math.round(num)) : Math.round(num)) + ' m²';
+        return (typeof formatNumber === 'function' ? formatNumber(Math.round(num)) : Math.round(num)) + ' und';
+    },
+
+    // ── Formateador de Indicador Estratégico Individual ───────────────────────
+    formatSingleIndicatorResponse(indKey, yearFilter = 'todos', metricType = 'ejecutado', qUpper = '') {
+        const indData = this.getIndicatorsData(yearFilter, metricType);
+        const item = indData.list.find(i => i.key === indKey);
+        if (!item) {
+            return `<p>⚠️ No se encontró la información del indicador <strong>${indKey}</strong>.</p>`;
+        }
+
+        const isNP = item.isNP;
+        const pctCls = isNP ? 'np' : (item.pct >= 80 ? 'cumplida' : item.pct >= 50 ? 'proceso' : 'riesgo');
+        const statusText = isNP ? 'No Programado' : (item.pct >= 80 ? 'Meta Cumplida (≥80%)' : item.pct >= 50 ? 'En Proceso (50–80%)' : 'En Riesgo (<50%)');
+        const badgeText = isNP ? 'NP' : `${item.pct.toFixed(1)}%`;
+        const periodTitle = yearFilter === 'todos' ? 'Cuatrienio 2024–2027' : `Vigencia ${yearFilter}`;
+
+        const fmtMeta = isNP ? 'NP (No Prog.)' : this.formatIndVal(item.meta, item.unit, item.tipo);
+        const fmtEje = this.formatIndVal(item.ejecutado, item.unit, item.tipo);
+        const fmtRes = isNP ? '0 ' + item.unit : this.formatIndVal(item.restante, item.unit, item.tipo);
+
+        // Generar filas de la tabla por año
+        const yearsList = ['todos', '2024', '2025', '2026', '2027'];
+        const tableRows = yearsList.map(y => {
+            const yMeta = item.metasByYear[y] !== undefined ? item.metasByYear[y] : 0;
+            const yEje = y === 'todos' ? item.totalEjecutado : (item.ejecutadoByYear[y] || 0);
+            const isYNP = (yMeta === 0);
+            const yPct = isYNP ? 0 : (yMeta > 0 ? (yEje / yMeta) * 100 : 0);
+            const yPctBadge = isYNP ? '<span class="diat-ai-ind-badge np">NP</span>' :
+                `<span class="diat-ai-ind-badge ${yPct >= 80 ? 'cumplida' : yPct >= 50 ? 'proceso' : 'riesgo'}">${yPct.toFixed(1)}%</span>`;
+
+            const isSelectedYear = (yearFilter === y);
+            const labelPeriod = y === 'todos' ? '🏆 Cuatrienio 2024–2027' : `📅 Año ${y}`;
+
+            return `
+                <tr class="${isSelectedYear ? 'highlight-row' : ''}">
+                    <td style="font-weight:${isSelectedYear ? '800' : '600'};">${labelPeriod}</td>
+                    <td style="text-align:right; font-weight:700;">${isYNP ? '<span style="color:#94A3B8;">0 ' + item.unit + '</span>' : this.formatIndVal(yMeta, item.unit, item.tipo)}</td>
+                    <td style="text-align:right; font-weight:700; color:#0B5640;">${this.formatIndVal(yEje, item.unit, item.tipo)}</td>
+                    <td style="text-align:right;">${yPctBadge}</td>
+                </tr>
+            `;
+        }).join('');
+
+        return `
+            <div style="margin-bottom:8px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:5px;border-bottom:1px solid #E2E8F0;">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <i class="fa-solid ${item.icon}" style="color:#0B5640;font-size:14px;"></i>
+                        <strong style="font-size:12.5px;color:#0F172A;">${item.key}</strong>
+                    </div>
+                    <span class="diat-ai-ind-badge ${pctCls}">${badgeText}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:4px;font-size:10.5px;color:#64748B;">
+                    <span>📌 ${periodTitle}</span> · 
+                    <span style="font-weight:700;color:${pctCls === 'cumplida' ? '#065F46' : pctCls === 'proceso' ? '#B45309' : pctCls === 'riesgo' ? '#991B1B' : '#64748B'};">${statusText}</span>
+                </div>
+            </div>
+
+            <!-- Progreso Visual Principal -->
+            <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:9px 12px;margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+                    <span style="font-size:10.5px;font-weight:700;color:#334155;">Avance frente a la Meta (${periodTitle})</span>
+                    <strong style="font-size:13px;color:#0B5640;">${badgeText}</strong>
+                </div>
+                <div class="diat-ai-progress-track" style="height:8px;margin-bottom:8px;">
+                    <div class="diat-ai-progress-bar" style="width:${isNP ? 0 : Math.min(item.pct, 100)}%; background:${pctCls === 'cumplida' ? '#10B981' : pctCls === 'proceso' ? '#F59E0B' : pctCls === 'riesgo' ? '#EF4444' : '#94A3B8'};"></div>
+                </div>
+
+                <!-- Mini KPIs -->
+                <div class="diat-ai-kpi-grid">
+                    <div class="diat-ai-kpi-item">
+                        <span style="font-size:8.5px;color:#64748B;display:block;">Meta Programada</span>
+                        <strong style="font-size:11px;color:#0F172A;">${fmtMeta}</strong>
+                    </div>
+                    <div class="diat-ai-kpi-item">
+                        <span style="font-size:8.5px;color:#64748B;display:block;">${metricType === 'contratado' ? 'Contratado' : 'Ejecutado'}</span>
+                        <strong style="font-size:11px;color:#0B5640;">${fmtEje}</strong>
+                    </div>
+                    <div class="diat-ai-kpi-item">
+                        <span style="font-size:8.5px;color:#64748B;display:block;">Restante</span>
+                        <strong style="font-size:11px;color:${item.restante > 0 ? '#DC2626' : '#0B5640'};">${fmtRes}</strong>
+                    </div>
+                    <div class="diat-ai-kpi-item">
+                        <span style="font-size:8.5px;color:#64748B;display:block;">Convenios / Inv.</span>
+                        <strong style="font-size:10.5px;color:#2563EB;">${item.conveniosCount} conv. (${formatCurrency(item.inversion)})</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Metas y Ejecución por Año -->
+            <div style="margin-bottom:8px;">
+                <p style="margin:0 0 3px;font-size:10.5px;font-weight:700;color:#0F172A;display:flex;align-items:center;gap:4px;">
+                    <i class="fa-solid fa-calendar-days" style="color:#0B5640;"></i> Distribución de Metas y Ejecución por Año:
+                </p>
+                <div style="overflow-x:auto;">
+                    <table class="diat-ai-table">
+                        <thead>
+                            <tr>
+                                <th>Período / Vigencia</th>
+                                <th style="text-align:right;">Meta Programada</th>
+                                <th style="text-align:right;">Ejecutado</th>
+                                <th style="text-align:right;">Cumplimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="diat-action-btn-group">
+                <button type="button" class="diat-action-btn" onclick="window.goToIndicadoresTab('${yearFilter}')">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Ver en Pestaña Indicadores
+                </button>
+                <button type="button" class="diat-action-btn" onclick="DiatAI.sendPrompt('¿Cómo van todos los indicadores del plan?')">
+                    <i class="fa-solid fa-list-check"></i> Ver todos los indicadores
+                </button>
+            </div>
+        `;
+    },
+
+    // ── Formateador de Todos los Indicadores / Plan de Desarrollo ─────────────
+    formatAllIndicatorsResponse(yearFilter = 'todos', metricType = 'ejecutado', statusFilter = null, qUpper = '') {
+        const indData = this.getIndicatorsData(yearFilter, metricType);
+        let items = indData.list;
+
+        if (statusFilter === 'cumplidas') {
+            items = items.filter(i => !i.isNP && i.pct >= 80);
+        } else if (statusFilter === 'proceso') {
+            items = items.filter(i => !i.isNP && i.pct >= 50 && i.pct < 80);
+        } else if (statusFilter === 'riesgo') {
+            items = items.filter(i => !i.isNP && i.pct < 50);
+        }
+
+        const periodTitle = yearFilter === 'todos' ? 'Cuatrienio 2024–2027' : `Meta ${yearFilter}`;
+
+        const cardsHTML = items.map(item => {
+            const isNP = item.isNP;
+            const pctCls = isNP ? 'np' : (item.pct >= 80 ? 'cumplida' : item.pct >= 50 ? 'proceso' : 'riesgo');
+            const badgeText = isNP ? 'NP' : `${item.pct.toFixed(1)}%`;
+            const fmtMeta = isNP ? 'NP' : this.formatIndVal(item.meta, item.unit, item.tipo);
+            const fmtEje = this.formatIndVal(item.ejecutado, item.unit, item.tipo);
+
+            return `
+                <div class="diat-ai-ind-card" onclick="DiatAI.sendPrompt('Detalles del indicador ${item.shortName}')" style="cursor:pointer;" title="Clic para ver detalle de metas anuales">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                        <div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0;padding-right:6px;">
+                            <i class="fa-solid ${item.icon}" style="color:#0B5640;font-size:12px;"></i>
+                            <strong style="font-size:11px;color:#0F172A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.shortName}</strong>
+                        </div>
+                        <span class="diat-ai-ind-badge ${pctCls}">${badgeText}</span>
+                    </div>
+                    <div class="diat-ai-progress-track" style="height:5px;margin-bottom:5px;">
+                        <div class="diat-ai-progress-bar" style="width:${isNP ? 0 : Math.min(item.pct, 100)}%; background:${pctCls === 'cumplida' ? '#10B981' : pctCls === 'proceso' ? '#F59E0B' : pctCls === 'riesgo' ? '#EF4444' : '#94A3B8'};"></div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:9.5px;color:#64748B;">
+                        <span>Meta: <strong style="color:#0F172A;">${fmtMeta}</strong></span>
+                        <span>Ejecutado: <strong style="color:#0B5640;">${fmtEje}</strong></span>
+                        <span><strong style="color:#2563EB;">${item.conveniosCount} conv.</strong></span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div style="margin-bottom:8px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:4px;border-bottom:1px solid #E2E8F0;">
+                    <strong style="font-size:13px;color:#0B5640;">🎯 Plan de Desarrollo Antioquia Firme</strong>
+                    <span style="font-size:10px;font-weight:700;color:#64748B;background:#F1F5F9;padding:2px 6px;border-radius:6px;">${periodTitle}</span>
+                </div>
+                <p style="margin:4px 0 6px;font-size:11px;color:#475569;">
+                    Avance Promedio Global: <strong style="font-size:12.5px;color:#0B5640;">${indData.promedioGlobal}%</strong> de cumplimiento frente a las metas programadas.
+                </p>
+            </div>
+
+            <!-- Resumen de Estados de Metas -->
+            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:4px;margin-bottom:8px;">
+                <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:6px;padding:4px 6px;text-align:center;cursor:pointer;" onclick="DiatAI.sendPrompt('¿Cuáles indicadores están cumplidos?')">
+                    <span style="font-size:8px;font-weight:700;color:#065F46;text-transform:uppercase;display:block;">Cumplidas (&gt;80%)</span>
+                    <strong style="font-size:13px;color:#047857;">${indData.cumplidas}</strong>
+                </div>
+                <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:4px 6px;text-align:center;cursor:pointer;" onclick="DiatAI.sendPrompt('¿Cuáles indicadores están en proceso?')">
+                    <span style="font-size:8px;font-weight:700;color:#B45309;text-transform:uppercase;display:block;">En Proceso</span>
+                    <strong style="font-size:13px;color:#B45309;">${indData.proceso}</strong>
+                </div>
+                <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:4px 6px;text-align:center;cursor:pointer;" onclick="DiatAI.sendPrompt('¿Cuáles indicadores están en riesgo?')">
+                    <span style="font-size:8px;font-weight:700;color:#991B1B;text-transform:uppercase;display:block;">En Riesgo (&lt;50%)</span>
+                    <strong style="font-size:13px;color:#DC2626;">${indData.riesgo}</strong>
+                </div>
+            </div>
+
+            <!-- Filtros de Años Rápidos -->
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:7px;overflow-x:auto;padding-bottom:2px;">
+                <span style="font-size:9.5px;font-weight:700;color:#64748B;">Filtrar año:</span>
+                <button type="button" class="diat-suggestion-chip" style="font-size:9.5px;padding:2px 7px;${yearFilter === 'todos' ? 'background:#0B5640;color:#FFF;' : ''}" onclick="DiatAI.sendPrompt('Metas Cuatrienio 2024-2027')">Cuatrienio</button>
+                <button type="button" class="diat-suggestion-chip" style="font-size:9.5px;padding:2px 7px;${yearFilter === '2024' ? 'background:#0B5640;color:#FFF;' : ''}" onclick="DiatAI.sendPrompt('Metas 2024')">2024</button>
+                <button type="button" class="diat-suggestion-chip" style="font-size:9.5px;padding:2px 7px;${yearFilter === '2025' ? 'background:#0B5640;color:#FFF;' : ''}" onclick="DiatAI.sendPrompt('Metas 2025')">2025</button>
+                <button type="button" class="diat-suggestion-chip" style="font-size:9.5px;padding:2px 7px;${yearFilter === '2026' ? 'background:#0B5640;color:#FFF;' : ''}" onclick="DiatAI.sendPrompt('Metas 2026')">2026</button>
+                <button type="button" class="diat-suggestion-chip" style="font-size:9.5px;padding:2px 7px;${yearFilter === '2027' ? 'background:#0B5640;color:#FFF;' : ''}" onclick="DiatAI.sendPrompt('Metas 2027')">2027</button>
+            </div>
+
+            <!-- Lista de Indicadores -->
+            <div style="max-height:240px;overflow-y:auto;margin-bottom:8px;padding-right:2px;">
+                ${cardsHTML}
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="diat-action-btn-group">
+                <button type="button" class="diat-action-btn" onclick="window.goToIndicadoresTab('${yearFilter}')">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Ver Pestaña Indicadores
+                </button>
+                <button type="button" class="diat-action-btn" onclick="DiatAI.sendPrompt('Meta de Equipamientos Construidos')">
+                    <i class="fa-solid fa-building"></i> Equipamientos
+                </button>
+                <button type="button" class="diat-action-btn" onclick="DiatAI.sendPrompt('Meta de Vías Terciarias Mantenidas')">
+                    <i class="fa-solid fa-road-circle-check"></i> Vías Mantenidas
+                </button>
+                <button type="button" class="diat-action-btn" onclick="DiatAI.sendPrompt('Meta de Vías Terciarias')">
+                    <i class="fa-solid fa-road"></i> Vías Terciarias
+                </button>
+                <button type="button" class="diat-action-btn" onclick="DiatAI.sendPrompt('Meta de Aeropuertos')">
+                    <i class="fa-solid fa-plane"></i> Aeropuertos
+                </button>
+            </div>
+        `;
+    },
+
+    // =========================================================================
     // NATURAL LANGUAGE QUERY ENGINE
     // =========================================================================
     processQuery(query) {
@@ -12268,7 +12786,26 @@ const DiatAI = {
             return this.formatConvenioResponse(convMatch, qUpper);
         }
 
-        // 2. CONSULTAS DE RANKING O COMPARATIVAS DE SUPERVISORES (ej: "¿Cuál supervisor tiene más convenios?", "Supervisores")
+        // 2. CONSULTAS DE INDICADORES ESTRATÉGICOS / METAS / PLAN DE DESARROLLO
+        const matchedInd = this.findIndicatorInText(qUpper);
+        const yearFilter = this.findYearInText(qUpper);
+        const isGeneralInd = this.isGeneralIndicatorQuery(qUpper);
+        const metricType = (qUpper.includes('CONTRATAD') && !qUpper.includes('EJECUTAD')) ? 'contratado' : 'ejecutado';
+
+        if (matchedInd) {
+            return this.formatSingleIndicatorResponse(matchedInd, yearFilter, metricType, qUpper);
+        }
+
+        if (isGeneralInd) {
+            let statusFilter = null;
+            if (qUpper.includes('CUMPLID') || qUpper.includes('LOGRAD') || qUpper.includes('100%')) statusFilter = 'cumplidas';
+            else if (qUpper.includes('RIESGO') || qUpper.includes('ATENCION') || qUpper.includes('CRITIC') || qUpper.includes('ATRASAD')) statusFilter = 'riesgo';
+            else if (qUpper.includes('PROCESO') || qUpper.includes('PROGRESO') || qUpper.includes('MEDIO')) statusFilter = 'proceso';
+
+            return this.formatAllIndicatorsResponse(yearFilter, metricType, statusFilter, qUpper);
+        }
+
+        // 3. CONSULTAS DE RANKING O COMPARATIVAS DE SUPERVISORES (ej: "¿Cuál supervisor tiene más convenios?", "Supervisores")
         const isSupRankingQuery = (
             qUpper.includes('SUPERVISOR') || qUpper.includes('SUPERVISORES') || qUpper.includes('SUPERVISION')
         ) && (
@@ -12282,14 +12819,14 @@ const DiatAI = {
             return this.formatSupervisoresRankingResponse(data);
         }
 
-        // 3. BÚSQUEDA POR SUPERVISOR ESPECÍFICO (ej: "Jonathan Marín", "Jaime Arturo")
+        // 4. BÚSQUEDA POR SUPERVISOR ESPECÍFICO (ej: "Jonathan Marín", "Jaime Arturo")
         const matchedSup = this.findSupervisorInText(qUpper, data);
         if (matchedSup) {
             const supConvs = data.filter(r => String(r['SUPERVISOR'] || '').toUpperCase().includes(matchedSup));
             return this.formatSupervisorResponse(matchedSup, supConvs);
         }
 
-        // 4. CONSULTA DE MUNICIPIOS SIN CONVENIO (ej: "¿Cuáles municipios no tienen convenios?", "municipios sin convenio")
+        // 5. CONSULTA DE MUNICIPIOS SIN CONVENIO (ej: "¿Cuáles municipios no tienen convenios?", "municipios sin convenio")
         const isSinConvenioQuery = (
             (qUpper.includes('MUNICIPIO') || qUpper.includes('MUNICIPIOS') || qUpper.includes('PUEBLO') || qUpper.includes('PUEBLOS')) &&
             (qUpper.includes('NO TIENEN') || qUpper.includes('NO TIENE') || qUpper.includes('SIN CONVENIO') || qUpper.includes('NO INTERVENIDO') || qUpper.includes('SIN CONVENIOS') || qUpper.includes('CERO KM') || qUpper.includes('0 KM') || qUpper.includes('FALTAN') || qUpper.includes('NO CUENTAN') || qUpper.includes('SIN OBRAS'))
@@ -12299,30 +12836,30 @@ const DiatAI = {
             return this.formatMunicipiosSinConvenioResponse(data);
         }
 
-        // 5. BÚSQUEDA POR MUNICIPIO ESPECÍFICO
+        // 6. BÚSQUEDA POR MUNICIPIO ESPECÍFICO
         const matchedMuni = this.findMunicipioInText(qUpper);
         if (matchedMuni) {
             const muniConvs = data.filter(r => isSameMuni(r['MUNICIPIO'], matchedMuni));
             return this.formatMunicipioResponse(matchedMuni, muniConvs, qUpper);
         }
 
-        // 5. BÚSQUEDA POR SUBREGIÓN
+        // 7. BÚSQUEDA POR SUBREGIÓN
         const matchedSubreg = this.findSubregionInText(qUpper);
         if (matchedSubreg) {
             const subConvs = data.filter(r => {
-                const s = normalizeSubregionName(r['SUBREGION'] || r['SUBREGIÓN'] || getSubregionForMuni(r['MUNICIPIO']));
+                const s = getCanonicalOfficialSubregion(r['SUBREGION'], r['MUNICIPIO']);
                 return s === matchedSubreg;
             });
             return this.formatSubregionResponse(matchedSubreg, subConvs);
         }
 
-        // 6. CONSULTA DE PRÓRROGAS
+        // 8. CONSULTA DE PRÓRROGAS
         if (qUpper.includes('PRORROGA') || qUpper.includes('PRORROGAS') || qUpper.includes('ADICION DE TIEMPO') || qUpper.includes('AMPLIACION DE PLAZO')) {
             const conProrrogas = data.filter(r => (parseNum(r['PRORROGAS (MESES)']) || parseNum(r['PRÓRROGA DE PLAZO (MESES)']) || parseNum(r['PRORROGA (MESES)'])) > 0);
             return this.formatProrrogasListResponse(conProrrogas);
         }
 
-        // 7. CONSULTA DE SUSPENSIONES
+        // 9. CONSULTA DE SUSPENSIONES
         if (qUpper.includes('SUSPENSION') || qUpper.includes('SUSPENSIONES') || qUpper.includes('SUSPENDIDO') || qUpper.includes('CONGELADO')) {
             const conSusp = data.filter(r => {
                 const sState = String(r['ESTADO CONVENIO'] || '').toUpperCase();
@@ -12332,7 +12869,7 @@ const DiatAI = {
             return this.formatSuspensionesListResponse(conSusp);
         }
 
-        // 8. CONSULTA DE ESTADO (LIQUIDADOS, EJECUCIÓN, TERMINADOS)
+        // 10. CONSULTA DE ESTADO (LIQUIDADOS, EJECUCIÓN, TERMINADOS)
         if (qUpper.includes('LIQUIDAD') || qUpper.includes('EJECUCION') || qUpper.includes('TERMINAD') || qUpper.includes('SIN INICIAR') || qUpper.includes('POR INICIAR')) {
             let targetState = '';
             if (qUpper.includes('LIQUIDAD')) targetState = 'LIQUIDADO';
@@ -12347,7 +12884,7 @@ const DiatAI = {
             return this.formatStateListResponse(targetState, filteredByState);
         }
 
-        // 9. CONSULTA DE TOP / RANKINGS GENERALES
+        // 11. CONSULTA DE TOP / RANKINGS GENERALES
         if (qUpper.includes('TOP') || qUpper.includes('MAYOR') || qUpper.includes('MAS CONVENIOS') || qUpper.includes('MAS INVERSION') || qUpper.includes('RANKING')) {
             if (qUpper.includes('SUPERVISOR') || qUpper.includes('SUPERVISORES')) {
                 return this.formatSupervisoresRankingResponse(data);
@@ -12358,16 +12895,17 @@ const DiatAI = {
             return this.formatTopRankingsResponse(data);
         }
 
-        // 10. MÉTRICAS GLOBALES / BALANCE
+        // 12. MÉTRICAS GLOBALES / BALANCE
         if (qUpper.includes('TOTAL') || qUpper.includes('BALANCE') || qUpper.includes('GLOBAL') || qUpper.includes('INVERSION') || qUpper.includes('CUANTOS CONVENIOS') || qUpper.includes('RESUMEN')) {
             return this.formatGlobalMetricsResponse(data);
         }
 
-        // 11. RESPUESTA POR DEFECTO
+        // 13. RESPUESTA POR DEFECTO
         return `
             <p style="margin:0 0 6px;">🤔 No logré identificar con precisión el parámetro de tu consulta: <em>"${this.escapeHTML(query)}"</em>.</p>
-            <p style="margin:0 0 6px; font-size:11px; color:#475569;">Puedes probar preguntándome de estas formas:</p>
+            <p style="margin:0 0 6px; font-size:11px; color:#475569;">Puedes probar consultándome sobre:</p>
             <ul style="margin:0 0 8px; padding-left:18px; font-size:11px; color:#334155; line-height:1.5;">
+                <li><strong>Indicadores y Metas:</strong> <em>"¿Cómo van los indicadores del Plan?"</em>, <em>"Meta de Equipamientos Construidos"</em>, <em>"Metas 2024"</em> o <em>"¿Cuáles indicadores están en riesgo?"</em></li>
                 <li><strong>Supervisores:</strong> <em>"¿Cuál supervisor tiene más convenios?"</em> o <em>"Convenios de Jonathan Marín"</em></li>
                 <li><strong>Municipios:</strong> <em>"¿Cuántos convenios hay en Andes?"</em> o <em>"Convenios en San Vicente"</em></li>
                 <li><strong>Convenio específico:</strong> <em>"Estado del convenio 2773"</em> o <em>"Avance financiero 2801"</em></li>
@@ -13006,6 +13544,22 @@ const DiatAI = {
 };
 
 window.DiatAI = DiatAI;
+
+window.goToIndicadoresTab = function(yearFilter) {
+    const tabBtn = document.querySelector('.tab-btn[data-tab="plan"]');
+    if (tabBtn) tabBtn.click();
+    if (yearFilter && yearFilter !== 'todos' && typeof setPlanYearFilter === 'function') {
+        const sel = document.getElementById('select-plan-year');
+        if (sel) {
+            sel.value = yearFilter;
+            setPlanYearFilter(yearFilter);
+        }
+    }
+    const tabPlan = document.getElementById('tab-plan');
+    if (tabPlan) {
+        tabPlan.scrollIntoView({ behavior: 'smooth' });
+    }
+};
 
 // Auto-inicialización
 if (document.readyState === 'loading') {
