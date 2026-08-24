@@ -941,9 +941,17 @@
                                                 <p class="chart-subtitle text-[11px] text-slate-500">Gestión proactiva
                                                     de riesgos detectados</p>
                                             </div>
-                                            <div
-                                                class="text-[11px] font-extrabold text-slate-700 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
-                                                <span id="alerts-count" class="text-red-600 font-black">0</span> Alertas
+                                            <div class="flex items-center gap-2">
+                                                <button id="btn-export-alerts-pdf"
+                                                    class="btn-pdf text-[10.5px] px-2.5 py-1 flex items-center gap-1.5 font-bold shadow-xs hover:shadow transition"
+                                                    title="Exportar Alertas a PDF según la alerta seleccionada">
+                                                    <i class="fa-solid fa-file-pdf text-red-500"></i>
+                                                    <span>Exportar PDF</span>
+                                                </button>
+                                                <div
+                                                    class="text-[11px] font-extrabold text-slate-700 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+                                                    <span id="alerts-count" class="text-red-600 font-black">0</span> Alertas
+                                                </div>
                                             </div>
                                         </div>
 

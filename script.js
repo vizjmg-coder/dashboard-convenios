@@ -2545,7 +2545,7 @@ async function generatePlanPDF() {
                 { text: 'PROYECCIÓN DE AVANCE POR INDICADOR ESTRATÉGICO (7 INDICADORES)', fontSize: 8, bold: true, color: '#1A6B3C', letterSpacing: 0.5, margin: [0, 10, 0, 6], pageBreak: 'before' },
                 ...chartPairs,
                 {
-                    text: 'Este reporte refleja la información oficial consolidada de convenios de infraestructura de la Dirección de Apoyo Territorial DIAT. Gobernación de Antioquia Firme.',
+                    text: 'Este reporte refleja la información oficial consolidada de convenios de infraestructura de la Dirección de Infraestructura y Apoyo Territorial (DIAT). Gobernación de Antioquia Firme.',
                     fontSize: 6.5,
                     color: '#94A3B8',
                     alignment: 'center',
@@ -3303,7 +3303,7 @@ async function generateResumenPDF() {
                 },
                 // Footer
                 {
-                    text: 'Este reporte refleja la información oficial consolidada de convenios de infraestructura de la Dirección de Apoyo Territorial DIAT. Gobernación de Antioquia Firme.',
+                    text: 'Este reporte refleja la información oficial consolidada de convenios de infraestructura de la Dirección de Infraestructura y Apoyo Territorial (DIAT). Gobernación de Antioquia Firme.',
                     fontSize: 6.5,
                     color: '#94A3B8',
                     alignment: 'center',
@@ -3334,6 +3334,561 @@ async function generateResumenPDF() {
         alert('Ocurrió un error al generar el PDF de resumen. Revisa la consola para más detalles.');
         btnPdf.innerHTML = originalText;
         btnPdf.disabled = false;
+    }
+}
+
+// =========================================================================
+// GENERADOR DE INFORME PDF INSTITUCIONAL DEL CENTRO DE ALERTAS
+// =========================================================================
+async function generateAlertsPDF() {
+    const btnPdf = document.getElementById('btn-export-alerts-pdf');
+    const originalText = btnPdf ? btnPdf.innerHTML : 'Exportar PDF';
+
+    if (btnPdf) {
+        btnPdf.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Generando PDF...';
+        btnPdf.disabled = true;
+    }
+
+    try {
+        // 1. Configurar fuentes para pdfMake
+        pdfMake.fonts = {
+            Poppins: {
+                normal: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-400-normal.ttf',
+                bold: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-700-normal.ttf',
+                italics: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-400-italic.ttf',
+                bolditalics: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-700-italic.ttf'
+            },
+            FontAwesome: {
+                normal: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.ttf'
+            }
+        };
+
+        // 2. Obtener todas las alertas del dataset filtrado actual
+        const allAlerts = collectAlerts(filteredData);
+        const filter = currentAlertFilter || 'all';
+        const alertsToExport = filter === 'all' ? allAlerts : allAlerts.filter(a => a.type === filter);
+
+        const filterLabels = {
+            all: {
+                title: 'INFORME CONSOLIDADO DE ALERTAS Y GESTIÓN DEL RIESGO',
+                subtitle: 'Monitoreo preventivo y seguimiento contractual integral de convenios',
+                badge: 'TODAS LAS ALERTAS',
+                themeColor: '#0B5640',
+                accentBg: '#E6F4EA',
+                filePrefix: 'Reporte_Consolidado_Alertas'
+            },
+            competencia: {
+                title: 'INFORME DE RIESGO: PÉRDIDA DE COMPETENCIA LEGAL',
+                subtitle: 'Convenios que superaron el límite de liquidación (30 meses) o están en riesgo inminente de perder competencia',
+                badge: 'PÉRDIDA DE COMPETENCIA',
+                themeColor: '#991B1B',
+                accentBg: '#FEE2E2',
+                filePrefix: 'Reporte_Alertas_Perdida_Competencia'
+            },
+            suspension: {
+                title: 'INFORME DE SEGUIMIENTO: CONVENIOS CON SUSPENSIÓN PROLONGADA',
+                subtitle: 'Convenios con suspensiones contractuales acumuladas iguales o superiores a 3 meses',
+                badge: 'SUSPENSIÓN PROLONGADA',
+                themeColor: '#D97706',
+                accentBg: '#FEF3C7',
+                filePrefix: 'Reporte_Alertas_Suspension_Prolongada'
+            },
+            proximos: {
+                title: 'INFORME PREVENTIVO: CONVENIOS PRÓXIMOS A TERMINAR',
+                subtitle: 'Convenios con plazo de terminación contractual menor o igual a 30 días',
+                badge: 'PRÓXIMOS A TERMINAR',
+                themeColor: '#EA580C',
+                accentBg: '#FFEDD5',
+                filePrefix: 'Reporte_Alertas_Proximos_Terminar'
+            },
+            vencido: {
+                title: 'INFORME DE CONTROL: CONVENIOS VENCIDOS SIN LIQUIDAR',
+                subtitle: 'Convenios con fecha de terminación cumplida pendientes de trámite de liquidación o evidencia',
+                badge: 'VENCIDOS SIN LIQUIDAR',
+                themeColor: '#B91C1C',
+                accentBg: '#FEE2E2',
+                filePrefix: 'Reporte_Alertas_Vencidos_Sin_Liquidar'
+            },
+            desfase: {
+                title: 'INFORME FINANCIERO: DESFASES CRÍTICOS Y DESEMBOLSOS',
+                subtitle: 'Convenios con desfase físico vs financiero significativo o sin pagos en ejecución',
+                badge: 'DESFASE FINANCIERO',
+                themeColor: '#2563EB',
+                accentBg: '#DBEAFE',
+                filePrefix: 'Reporte_Alertas_Desfase'
+            }
+        };
+
+        const currentMeta = filterLabels[filter] || filterLabels['all'];
+
+        if (!alertsToExport || alertsToExport.length === 0) {
+            alert(`No hay convenios con la alerta "${currentMeta.badge}" en la selección actual para exportar.`);
+            if (btnPdf) {
+                btnPdf.innerHTML = originalText;
+                btnPdf.disabled = false;
+            }
+            return;
+        }
+
+        // 3. Cargar el logo institucional
+        const logoBase64 = await getBase64ImageFromURL('./assets/escudo_antioquia.png').catch(() => null);
+
+        // 4. Cálculos de agregados y KPIs
+        const totalConvsAlertados = alertsToExport.length;
+        let sumAporteDepto = 0;
+        let sumTotalCompromiso = 0;
+        const distinctMunis = new Set();
+        const distinctSupervisores = new Set();
+
+        alertsToExport.forEach(a => {
+            const r = a.row || {};
+            const apDepto = (parseFloat(r['APORTE DEPARTAMENTO']) || 0) + (parseFloat(r['ADICION DEPARTAMENTO']) || 0);
+            const apMun = (parseFloat(r['APORTE MUNICIPIO']) || 0) + (parseFloat(r['ADICION MUNICIPIO']) || 0);
+            sumAporteDepto += apDepto;
+            sumTotalCompromiso += (apDepto + apMun);
+            if (a.mun && a.mun !== 'N/A') distinctMunis.add(a.mun);
+            const sup = r['SUPERVISOR'] || r['NOMBRE SUPERVISOR'];
+            if (sup && sup !== '-') distinctSupervisores.add(sup);
+        });
+
+        // Métricas específicas según filtro
+        let kpi3Title = 'SUPERVISORES ASIGNADOS';
+        let kpi3Value = `${distinctSupervisores.size} Supervisores`;
+        let kpi3Sub = 'A cargo del seguimiento';
+
+        if (filter === 'competencia') {
+            const countSuperados = alertsToExport.filter(a => (a._sortVal ?? 0) <= 0).length;
+            const countEnRiesgo = alertsToExport.filter(a => (a._sortVal ?? 0) > 0).length;
+            kpi3Title = 'NIVEL DE CRITICIDAD';
+            kpi3Value = `${countSuperados} Perdidos / ${countEnRiesgo} En Riesgo`;
+            kpi3Sub = `${countSuperados} con límite >30m superado`;
+        } else if (filter === 'suspension') {
+            const avgSusp = (alertsToExport.reduce((acc, a) => acc + (a.suspMeses || 0), 0) / (alertsToExport.length || 1)).toFixed(1);
+            kpi3Title = 'PROMEDIO SUSPENSIÓN';
+            kpi3Value = `${avgSusp} Meses`;
+            kpi3Sub = 'Tiempo promedio en pausa';
+        } else if (filter === 'proximos') {
+            const urgentes10 = alertsToExport.filter(a => (a.daysLeft ?? 999) <= 10).length;
+            kpi3Title = 'MÁXIMA URGENCIA (≤10 DÍAS)';
+            kpi3Value = `${urgentes10} Convenios`;
+            kpi3Sub = 'Vencimiento muy próximo';
+        } else if (filter === 'vencido') {
+            const avgVenc = (alertsToExport.reduce((acc, a) => acc + (a.monthsPassed || 0), 0) / (alertsToExport.length || 1)).toFixed(1);
+            kpi3Title = 'PROMEDIO VENCIDO';
+            kpi3Value = `${avgVenc} Meses`;
+            kpi3Sub = 'Tiempo promedio post-terminación';
+        } else if (filter === 'all') {
+            const countComp = alertsToExport.filter(a => a.type === 'competencia').length;
+            const countSusp = alertsToExport.filter(a => a.type === 'suspension').length;
+            const countProx = alertsToExport.filter(a => a.type === 'proximos').length;
+            const countVenc = alertsToExport.filter(a => a.type === 'vencido').length;
+            kpi3Title = 'DESGLOSE DE RIESGOS';
+            kpi3Value = `${countComp} Comp · ${countSusp} Susp · ${countProx} Próx · ${countVenc} Venc`;
+            kpi3Sub = 'Distribución por tipología';
+        }
+
+        // 5. Construir tabla detallada de convenios
+        const tableHeader = [
+            { text: '# / CONVENIO', fontSize: 7, bold: true, color: '#FFFFFF', fillColor: currentMeta.themeColor, alignment: 'center' },
+            { text: 'MUNICIPIO / SUBREGIÓN', fontSize: 7, bold: true, color: '#FFFFFF', fillColor: currentMeta.themeColor },
+            { text: 'INDICADOR ESTRATÉGICO', fontSize: 7, bold: true, color: '#FFFFFF', fillColor: currentMeta.themeColor },
+            { text: 'SUPERVISOR / ESTADO', fontSize: 7, bold: true, color: '#FFFFFF', fillColor: currentMeta.themeColor },
+            { text: 'FECHAS CLAVE & LÍMITES', fontSize: 7, bold: true, color: '#FFFFFF', fillColor: currentMeta.themeColor },
+            { text: 'DIAGNÓSTICO DE LA ALERTA', fontSize: 7, bold: true, color: '#FFFFFF', fillColor: currentMeta.themeColor }
+        ];
+
+        const tableBody = [tableHeader];
+
+        alertsToExport.forEach((a, idx) => {
+            const r = a.row || {};
+            const conv = String(a.conv || r['CONVENIO'] || 'S/N');
+            const mun = String(a.mun || r['MUNICIPIO'] || 'N/A');
+            const subreg = String(r['SUBREGION'] || r['SUBREGIÓN'] || '');
+            const indicador = String(r['INDICADOR'] || r['OBJETO'] || '-');
+            const clasif = String(r['CLASIFICACIÓN'] || r['CLASIFICACION'] || r['CLASIFICACI"N'] || '');
+            const supervisor = String(r['SUPERVISOR'] || r['NOMBRE SUPERVISOR'] || 'Sin Asignar');
+            const estadoConv = String(r['ESTADO CONVENIO'] || '-');
+
+            // Fechas clave
+            let termStr = a.termStr || r['NUEVA FECHA DE TERMINACION'] || r['FECHA DE TERMINACION'] || '-';
+            let fechasStack = [{ text: `Terminación: ${termStr}`, fontSize: 6.5, bold: true, color: '#1E293B' }];
+
+            if (a.type === 'competencia' && a.limitStr) {
+                fechasStack.push({ text: `Límite 30m: ${a.limitStr}`, fontSize: 6.2, color: '#991B1B', bold: true, margin: [0, 1, 0, 0] });
+            }
+
+            // Diagnóstico visual (sin caracteres emoji que generen glifos rotos en pdfmake)
+            let diagStack = [];
+            if (a.type === 'competencia') {
+                const monthsLeft = a._sortVal ?? 0;
+                if (monthsLeft <= 0) {
+                    diagStack.push({
+                        text: 'COMPETENCIA PERDIDA',
+                        fontSize: 6.8,
+                        bold: true,
+                        color: '#7F1D1D'
+                    });
+                    diagStack.push({
+                        text: `Límite superado por ${Math.abs(monthsLeft).toFixed(1)} meses (${(a.monthsPassed || 0).toFixed(1)} m vencido)`,
+                        fontSize: 6,
+                        color: '#991B1B',
+                        margin: [0, 1, 0, 0]
+                    });
+                } else {
+                    diagStack.push({
+                        text: 'RIESGO: PÉRDIDA DE COMPETENCIA',
+                        fontSize: 6.8,
+                        bold: true,
+                        color: '#991B1B'
+                    });
+                    diagStack.push({
+                        text: `¡Faltan ${monthsLeft.toFixed(1)} meses para cumplir los 30 meses de límite legal!`,
+                        fontSize: 6,
+                        color: '#B45309',
+                        bold: true,
+                        margin: [0, 1, 0, 0]
+                    });
+                }
+            } else if (a.type === 'suspension') {
+                diagStack.push({
+                    text: `SUSPENDIDO (${a.suspMeses || 0} MESES)`,
+                    fontSize: 6.8,
+                    bold: true,
+                    color: '#92400E'
+                });
+                diagStack.push({
+                    text: a.desc || 'Suspensión acumulada crítica',
+                    fontSize: 6,
+                    color: '#64748B',
+                    margin: [0, 1, 0, 0]
+                });
+            } else if (a.type === 'proximos') {
+                diagStack.push({
+                    text: `PRÓXIMO A VENCER (${a.daysLeft || 0} DÍAS)`,
+                    fontSize: 6.8,
+                    bold: true,
+                    color: (a.daysLeft || 0) <= 10 ? '#DC2626' : '#D97706'
+                });
+                diagStack.push({
+                    text: a.desc || 'Fecha de terminación cercana',
+                    fontSize: 6,
+                    color: '#64748B',
+                    margin: [0, 1, 0, 0]
+                });
+            } else if (a.type === 'vencido') {
+                diagStack.push({
+                    text: 'VENCIDO SIN LIQUIDAR',
+                    fontSize: 6.8,
+                    bold: true,
+                    color: '#991B1B'
+                });
+                diagStack.push({
+                    text: a.desc || 'Plazo finalizado sin acta de liquidación',
+                    fontSize: 6,
+                    color: '#64748B',
+                    margin: [0, 1, 0, 0]
+                });
+            } else {
+                diagStack.push({
+                    text: String(a.title || 'Alerta Contractual').replace(/[🔴⚠️⏸⏳📅]/g, '').trim(),
+                    fontSize: 6.8,
+                    bold: true,
+                    color: '#1E293B'
+                });
+                diagStack.push({
+                    text: a.desc || '',
+                    fontSize: 6,
+                    color: '#64748B',
+                    margin: [0, 1, 0, 0]
+                });
+            }
+
+            const rowBg = idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC';
+
+            tableBody.push([
+                {
+                    stack: [
+                        { text: `#${idx + 1}`, fontSize: 6, color: '#94A3B8' },
+                        { text: conv, fontSize: 8, bold: true, color: currentMeta.themeColor }
+                    ],
+                    fillColor: rowBg,
+                    alignment: 'center'
+                },
+                {
+                    stack: [
+                        { text: mun, fontSize: 7.5, bold: true, color: '#0F172A' },
+                        subreg ? { text: subreg, fontSize: 6, color: '#64748B', italics: true } : { text: '' }
+                    ],
+                    fillColor: rowBg
+                },
+                {
+                    stack: [
+                        { text: indicador, fontSize: 6.8, bold: true, color: '#1E293B' },
+                        clasif ? { text: clasif, fontSize: 5.8, color: '#64748B', margin: [0, 1, 0, 0] } : { text: '' }
+                    ],
+                    fillColor: rowBg
+                },
+                {
+                    stack: [
+                        { text: supervisor, fontSize: 6.8, bold: true, color: '#334155' },
+                        { text: estadoConv, fontSize: 6, color: '#64748B', margin: [0, 1, 0, 0] }
+                    ],
+                    fillColor: rowBg
+                },
+                {
+                    stack: fechasStack,
+                    fillColor: rowBg
+                },
+                {
+                    stack: diagStack,
+                    fillColor: rowBg
+                }
+            ]);
+        });
+
+        // 6. Construir definición completa del documento PDF
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+
+        const docDefinition = {
+            pageSize: 'LETTER',
+            pageOrientation: 'landscape',
+            pageMargins: [32, 28, 32, 28],
+            defaultStyle: {
+                font: 'Poppins',
+                fontSize: 8,
+                color: '#1E293B'
+            },
+            header: (currentPage, pageCount) => {
+                return {
+                    columns: [
+                        { text: `DIAT — Sistema de Monitoreo Territorial | ${currentMeta.badge}`, fontSize: 6.5, color: '#94A3B8', margin: [32, 12, 0, 0] },
+                        { text: `Página ${currentPage} de ${pageCount}`, fontSize: 6.5, color: '#94A3B8', alignment: 'right', margin: [0, 12, 32, 0] }
+                    ]
+                };
+            },
+            content: [
+                // Header Institucional
+                {
+                    columns: [
+                        logoBase64 ? {
+                            image: logoBase64,
+                            width: 38,
+                            alignment: 'left'
+                        } : { text: '' },
+                        {
+                            stack: [
+                                { text: 'GOBERNACIÓN DE ANTIOQUIA', fontSize: 11, bold: true, color: '#0B5640', letterSpacing: 0.5 },
+                                { text: 'SECRETARÍA DE INFRAESTRUCTURA FÍSICA — DIRECCIÓN DE INFRAESTRUCTURA Y APOYO TERRITORIAL (DIAT)', fontSize: 7.5, bold: true, color: '#475569' },
+                                { text: currentMeta.title, fontSize: 9.5, bold: true, color: currentMeta.themeColor, margin: [0, 3, 0, 0] },
+                                { text: currentMeta.subtitle, fontSize: 7, color: '#64748B', italics: true }
+                            ],
+                            margin: [10, 0, 0, 0],
+                            width: '*'
+                        },
+                        {
+                            stack: [
+                                {
+                                    table: {
+                                        body: [
+                                            [
+                                                {
+                                                    text: currentMeta.badge,
+                                                    fontSize: 7.5,
+                                                    bold: true,
+                                                    color: currentMeta.themeColor,
+                                                    fillColor: currentMeta.accentBg,
+                                                    alignment: 'center'
+                                                }
+                                            ]
+                                        ]
+                                    },
+                                    layout: {
+                                        hLineWidth: () => 1,
+                                        vLineWidth: () => 1,
+                                        hLineColor: () => currentMeta.themeColor,
+                                        vLineColor: () => currentMeta.themeColor,
+                                        paddingLeft: () => 6,
+                                        paddingRight: () => 6,
+                                        paddingTop: () => 2,
+                                        paddingBottom: () => 2
+                                    },
+                                    alignment: 'right',
+                                    margin: [0, 0, 0, 3]
+                                },
+                                { text: `Emisión: ${dateStr} ${timeStr}`, fontSize: 6.8, color: '#64748B', alignment: 'right' },
+                                { text: `Total Alertas: ${totalConvsAlertados}`, fontSize: 7, bold: true, color: '#0F172A', alignment: 'right' }
+                            ],
+                            width: 'auto'
+                        }
+                    ],
+                    margin: [0, 0, 0, 8]
+                },
+                // Línea divisoria
+                {
+                    canvas: [{ type: 'line', x1: 0, y1: 0, x2: 728, y2: 0, lineWidth: 1.5, lineColor: currentMeta.themeColor }],
+                    margin: [0, 0, 0, 8]
+                },
+                // Banner de KPIs Ejecutivos (4 Cards en fila)
+                {
+                    columns: [
+                        // Card 1: Total Convenios Alertados
+                        {
+                            table: {
+                                widths: ['*'],
+                                body: [
+                                    [
+                                        {
+                                            stack: [
+                                                { text: 'CONVENIOS ALERTADOS', fontSize: 6.5, bold: true, color: '#64748B' },
+                                                { text: String(totalConvsAlertados), fontSize: 13, bold: true, color: currentMeta.themeColor, margin: [0, 1, 0, 0] },
+                                                { text: 'Requieren atención y gestión', fontSize: 5.8, color: '#94A3B8' }
+                                            ],
+                                            fillColor: '#F8FAFC'
+                                        }
+                                    ]
+                                ]
+                            },
+                            layout: {
+                                hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#E2E8F0', vLineColor: () => '#E2E8F0',
+                                paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                            },
+                            margin: [0, 0, 2, 0]
+                        },
+                        // Card 2: Aporte Depto Comprometido
+                        {
+                            table: {
+                                widths: ['*'],
+                                body: [
+                                    [
+                                        {
+                                            stack: [
+                                                { text: 'COMPROMISO DEPTO (APORTE)', fontSize: 6.5, bold: true, color: '#64748B' },
+                                                { text: formatCurrency(sumAporteDepto), fontSize: 11, bold: true, color: '#0B5640', margin: [0, 1, 0, 0] },
+                                                { text: `Total Convenios: ${formatCurrency(sumTotalCompromiso)}`, fontSize: 5.8, color: '#94A3B8' }
+                                            ],
+                                            fillColor: '#F8FAFC'
+                                        }
+                                    ]
+                                ]
+                            },
+                            layout: {
+                                hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#E2E8F0', vLineColor: () => '#E2E8F0',
+                                paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                            },
+                            margin: [2, 0, 2, 0]
+                        },
+                        // Card 3: Métrica Específica de Riesgo
+                        {
+                            table: {
+                                widths: ['*'],
+                                body: [
+                                    [
+                                        {
+                                            stack: [
+                                                { text: kpi3Title, fontSize: 6.5, bold: true, color: '#64748B' },
+                                                { text: kpi3Value, fontSize: 10.5, bold: true, color: currentMeta.themeColor, margin: [0, 1, 0, 0] },
+                                                { text: kpi3Sub, fontSize: 5.8, color: '#94A3B8' }
+                                            ],
+                                            fillColor: '#F8FAFC'
+                                        }
+                                    ]
+                                ]
+                            },
+                            layout: {
+                                hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#E2E8F0', vLineColor: () => '#E2E8F0',
+                                paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                            },
+                            margin: [2, 0, 2, 0]
+                        },
+                        // Card 4: Municipios Impactados
+                        {
+                            table: {
+                                widths: ['*'],
+                                body: [
+                                    [
+                                        {
+                                            stack: [
+                                                { text: 'COBERTURA TERRITORIAL', fontSize: 6.5, bold: true, color: '#64748B' },
+                                                { text: `${distinctMunis.size} Municipios`, fontSize: 12, bold: true, color: '#0F172A', margin: [0, 1, 0, 0] },
+                                                { text: 'Territorios con alertas activas', fontSize: 5.8, color: '#94A3B8' }
+                                            ],
+                                            fillColor: '#F8FAFC'
+                                        }
+                                    ]
+                                ]
+                            },
+                            layout: {
+                                hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#E2E8F0', vLineColor: () => '#E2E8F0',
+                                paddingLeft: () => 8, paddingRight: () => 8, paddingTop: () => 4, paddingBottom: () => 4
+                            },
+                            margin: [2, 0, 0, 0]
+                        }
+                    ],
+                    margin: [0, 0, 0, 10]
+                },
+                // Encabezado de la Tabla
+                {
+                    text: `LISTADO PRIORIZADO DE CONVENIOS CON ALERTA (${totalConvsAlertados})`,
+                    fontSize: 7.5,
+                    bold: true,
+                    color: '#334155',
+                    letterSpacing: 0.5,
+                    margin: [0, 0, 0, 4]
+                },
+                // Tabla Principal de Alertas
+                {
+                    table: {
+                        headerRows: 1,
+                        widths: [62, 98, 85, 118, 125, 188],
+                        body: tableBody
+                    },
+                    layout: {
+                        hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 1 : 0.5,
+                        vLineWidth: () => 0.5,
+                        hLineColor: (i) => i === 0 ? currentMeta.themeColor : '#E2E8F0',
+                        vLineColor: () => '#E2E8F0',
+                        paddingLeft: () => 4,
+                        paddingRight: () => 4,
+                        paddingTop: () => 3.5,
+                        paddingBottom: () => 3.5
+                    }
+                },
+                // Nota Legal de Cierre
+                {
+                    text: 'Este informe es generado automáticamente por la Dirección de Infraestructura y Apoyo Territorial (DIAT) de la Secretaría de Infraestructura Física de Antioquia. Su propósito es servir de instrumento preventivo para la mitigación oportuna de contingencias legales, financieras y operativas en los convenios interadministrativos.',
+                    fontSize: 6,
+                    color: '#94A3B8',
+                    alignment: 'center',
+                    margin: [0, 12, 0, 0],
+                    unbreakable: true
+                }
+            ]
+        };
+
+        // 7. Descargar PDF con nombre dinámico y notificar al usuario
+        const fileName = `${currentMeta.filePrefix}_${new Date().toISOString().slice(0, 10)}.pdf`;
+        pdfMake.createPdf(docDefinition).download(fileName);
+
+        if (btnPdf) {
+            btnPdf.innerHTML = originalText;
+            btnPdf.disabled = false;
+        }
+
+        const toast = document.getElementById('toast-notification');
+        if (toast) {
+            toast.classList.remove('opacity-0', 'translate-y-20');
+            setTimeout(() => toast.classList.add('opacity-0', 'translate-y-20'), 3500);
+        }
+
+    } catch (err) {
+        console.error('Error generando PDF de Alertas:', err);
+        alert('Ocurrió un error al generar el PDF de alertas. Revisa la consola para más detalles.');
+        if (btnPdf) {
+            btnPdf.innerHTML = originalText;
+            btnPdf.disabled = false;
+        }
     }
 }
 
@@ -3439,6 +3994,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btnExportResumenPdf) {
             btnExportResumenPdf.addEventListener('click', () => {
                 generateResumenPDF();
+            });
+        }
+
+        const btnExportAlertsPdf = document.getElementById('btn-export-alerts-pdf');
+        if (btnExportAlertsPdf) {
+            btnExportAlertsPdf.addEventListener('click', () => {
+                generateAlertsPDF();
             });
         }
 
@@ -4455,15 +5017,11 @@ function parseCOPDate(dateStr) {
     return new Date(parts[2], parts[1] - 1, parts[0]);
 }
 
-function renderAlerts() {
-    const feed = document.getElementById('alert-feed');
-    const countSpan = document.getElementById('alerts-count');
-    if (!feed || !countSpan) return;
-
+function collectAlerts(data = filteredData) {
     let alerts = [];
     const today = new Date();
 
-    filteredData.forEach(row => {
+    (data || []).forEach(row => {
         const est = String(row['ESTADO CONVENIO'] || '').trim();
         if (est.toLowerCase().includes('liquidado') || est.toLowerCase().includes('resciliado')) return;
 
@@ -4472,10 +5030,10 @@ function renderAlerts() {
         const fisico = row['FISICO_NORM'] || 0;
         const financiero = row['FINANCIERO_NORM'] || 0;
         const desembolsado = row['VALOR TOTAL DESEMBOLSADO'] || 0;
-        const suspMeses = row['SUSPENSION(MESES)'] || row['SUSPENSI�N(MESES)'] || 0;
+        const suspMeses = row['SUSPENSION(MESES)'] || row['SUSPENSIÓN(MESES)'] || row['SUSPENSIN(MESES)'] || 0;
         const tieneFotos = String(row['TIENE_FOTOS'] || 'SI').toUpperCase();
 
-        let termStr = row['NUEVA FECHA DE TERMINACION'] || row['NUEVA FECHA DE TERMINACI�N'] || row['FECHA DE TERMINACION'] || row['FECHA DE TERMINACI�N'];
+        let termStr = row['NUEVA FECHA DE TERMINACION'] || row['NUEVA FECHA DE TERMINACIÓN'] || row['NUEVA FECHA DE TERMINACIN'] || row['FECHA DE TERMINACION'] || row['FECHA DE TERMINACIÓN'] || row['FECHA DE TERMINACIN'];
         let termDate = parseCOPDate(termStr);
 
         // 0. Próximos a terminar (<= 30 días)
@@ -4485,10 +5043,15 @@ function renderAlerts() {
 
             if (daysLeft <= 30) {
                 alerts.push({
-                    type: 'proximos', icon: 'fa-hourglass-half',
+                    type: 'proximos',
+                    icon: 'fa-hourglass-half',
                     title: 'Próximo a Terminar',
                     desc: `Faltan ${daysLeft} ${daysLeft === 1 ? 'día' : 'días'} para su fecha de terminación (${termStr}).`,
                     conv, mun,
+                    daysLeft,
+                    termStr,
+                    termDate,
+                    row,
                     _sortVal: daysLeft  // menor = más urgente
                 });
             }
@@ -4511,18 +5074,33 @@ function renderAlerts() {
                     ? `<strong style="color:#991B1B;">¡Faltan ${monthsLeftFixed} meses para perder competencia!</strong>`
                     : `<strong style="color:#7F1D1D;">⚠ Límite superado por ${Math.abs(monthsLeftFixed)} meses</strong>`;
                 alerts.push({
-                    type: 'competencia', icon: 'fa-gavel fa-beat-fade',
+                    type: 'competencia',
+                    icon: 'fa-gavel fa-beat-fade',
                     title: superado ? '🔴 Competencia Perdida' : 'Riesgo: Pérdida de Competencia',
                     desc: `Finalizó el ${termStr}. Límite legal: 30 meses (${limitStr}). ${faltanTxt}`,
                     conv, mun,
+                    termStr,
+                    termDate,
+                    limitStr,
+                    limitDate,
+                    monthsPassed,
+                    monthsLeft,
+                    superado,
+                    row,
                     _sortVal: monthsLeft  // negativo = ya superó límite (máxima urgencia), positivo = faltan X meses
                 });
             } else {
                 alerts.push({
-                    type: 'vencido', icon: 'fa-calendar-xmark',
+                    type: 'vencido',
+                    icon: 'fa-calendar-xmark',
                     title: 'Vencido sin liquidar',
                     desc: `Finalizó el ${termStr} y sigue en ${est}. (${monthsPassed.toFixed(1)} meses vencido)`,
                     conv, mun,
+                    termStr,
+                    termDate,
+                    monthsPassed,
+                    daysPassed,
+                    row,
                     _sortVal: daysPassed  // mayor = vencido hace más tiempo
                 });
             }
@@ -4531,30 +5109,38 @@ function renderAlerts() {
         // 2. Pagos adelantados (Desfase > 15%)
         if (financiero > fisico + 15) {
             alerts.push({
-                type: 'desfase', icon: 'fa-money-bill-trend-up',
+                type: 'desfase',
+                icon: 'fa-money-bill-trend-up',
                 title: 'Desfase Financiero Crítico',
                 desc: `Financiero (${financiero.toFixed(1)}%) supera al físico (${fisico.toFixed(1)}%) por >15%.`,
-                conv, mun
+                conv, mun,
+                row
             });
         }
 
         // 3. Sin evidencia
         if (tieneFotos === 'NO') {
             alerts.push({
-                type: 'vencido', icon: 'fa-camera-slash',
+                type: 'vencido',
+                icon: 'fa-camera-slash',
                 title: 'Sin Evidencia Fotográfica',
                 desc: `No hay registro fotográfico cargado en el sistema.`,
-                conv, mun
+                conv, mun,
+                row
             });
         }
 
         // 4. Suspensión crítica (>= 3 meses)
         if (est.toLowerCase().includes('suspendido') && suspMeses >= 3) {
             alerts.push({
-                type: 'suspension', icon: 'fa-pause',
+                type: 'suspension',
+                icon: 'fa-pause',
                 title: 'Suspensión Prolongada',
                 desc: `Acumula ${suspMeses} meses de suspensión.`,
                 conv, mun,
+                suspMeses,
+                termStr,
+                row,
                 _sortVal: suspMeses
             });
         }
@@ -4562,47 +5148,37 @@ function renderAlerts() {
         // 5. Sin desembolsar estando en ejecución
         if (est.toLowerCase().includes('ejecución') && desembolsado === 0) {
             alerts.push({
-                type: 'desfase', icon: 'fa-triangle-exclamation',
+                type: 'desfase',
+                icon: 'fa-triangle-exclamation',
                 title: 'Cero Desembolsos en Ejecución',
                 desc: `En ejecución pero no hay pagos registrados ($0).`,
-                conv, mun
+                conv, mun,
+                row
             });
         }
     });
 
     // ── ORDENAMIENTO POR URGENCIA ─────────────────────────────────────────
-    // Prioridad de tipo:
-    //   1 = competencia (pérdida de competencia — MÁXIMA PRIORIDAD)
-    //   2 = suspension  (suspensiones prolongadas)
-    //   3 = proximos    (próximos a terminar)
-    //   4 = vencido     (vencidos sin liquidar)
-    //   5 = desfase / otros
     const typePriority = { competencia: 1, suspension: 2, proximos: 3, vencido: 4, desfase: 5 };
 
     alerts.sort((a, b) => {
         const pa = typePriority[a.type] ?? 9;
         const pb = typePriority[b.type] ?? 9;
 
-        // Primero ordenar por tipo de prioridad
         if (pa !== pb) return pa - pb;
 
-        // Dentro de "competencia": los que ya superaron el límite van primero (sortVal negativo = superado)
-        // luego los que están más cerca de superarlo (menor sortVal primero)
         if (a.type === 'competencia' && b.type === 'competencia') {
             return (a._sortVal ?? 0) - (b._sortVal ?? 0);
         }
 
-        // Dentro de "suspension": mayor tiempo suspendido primero
         if (a.type === 'suspension' && b.type === 'suspension') {
             return (b._sortVal ?? 0) - (a._sortVal ?? 0);
         }
 
-        // Dentro de "proximos": los que tienen menos días restantes van primero
         if (a.type === 'proximos' && b.type === 'proximos') {
             return (a._sortVal ?? 999) - (b._sortVal ?? 999);
         }
 
-        // Dentro de "vencido": los vencidos hace más tiempo van primero
         if (a.type === 'vencido' && b.type === 'vencido') {
             return (b._sortVal ?? 0) - (a._sortVal ?? 0);
         }
@@ -4610,6 +5186,15 @@ function renderAlerts() {
         return 0;
     });
 
+    return alerts;
+}
+
+function renderAlerts() {
+    const feed = document.getElementById('alert-feed');
+    const countSpan = document.getElementById('alerts-count');
+    if (!feed || !countSpan) return;
+
+    const alerts = collectAlerts(filteredData);
     const finalAlerts = currentAlertFilter === 'all' ? alerts : alerts.filter(a => a.type === currentAlertFilter);
     countSpan.textContent = finalAlerts.length;
 
@@ -4631,6 +5216,21 @@ function renderAlerts() {
     if (btnSuspension) btnSuspension.textContent = `Suspensión Prolongada (${countSuspension})`;
     if (btnProximos) btnProximos.textContent = `Próximos a Terminar (${countProximos})`;
     if (btnVencido) btnVencido.textContent = `Vencidos sin Liquidar (${countVencido})`;
+
+    // Actualizar tooltip del botón de PDF en el Centro de Alertas
+    const btnExportAlertsPdf = document.getElementById('btn-export-alerts-pdf');
+    if (btnExportAlertsPdf) {
+        const filterNames = {
+            all: 'Todas las Alertas',
+            competencia: 'Pérdida de Competencia',
+            suspension: 'Suspensión Prolongada',
+            proximos: 'Próximos a Terminar',
+            vencido: 'Vencidos sin Liquidar',
+            desfase: 'Desfases Financieros'
+        };
+        const currentName = filterNames[currentAlertFilter] || 'Alertas';
+        btnExportAlertsPdf.title = `Exportar reporte en PDF: ${currentName} (${finalAlerts.length} convenios)`;
+    }
 
     const navFeed = document.getElementById('nav-alerts-list');
     const navCountSpan = document.getElementById('nav-alerts-count');

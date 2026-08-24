@@ -934,6 +934,28 @@ button[id*="export"]:hover {
     color: var(--color-primary) !important;
 }
 
+/* Botón de exportación PDF en Centro de Alertas */
+#btn-export-alerts-pdf {
+    padding: 3.5px 10px !important;
+    font-size: 10px !important;
+    border-radius: 99px !important;
+    white-space: nowrap !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    box-shadow: 0 2px 8px rgba(11, 86, 64, 0.25) !important;
+    gap: 5px !important;
+    transition: all 180ms ease !important;
+}
+
+#btn-export-alerts-pdf:hover {
+    transform: translateY(-1px) scale(1.02) !important;
+    box-shadow: 0 4px 12px rgba(11, 86, 64, 0.35) !important;
+}
+
+#btn-export-alerts-pdf:active {
+    transform: translateY(0) scale(0.99) !important;
+}
+
 /* Filas de alerta */
 .alert-item {
     border-left: 3px solid transparent !important;
