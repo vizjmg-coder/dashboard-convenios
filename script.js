@@ -547,29 +547,40 @@ function getCanonicalOfficialSubregion(subName, muniName) {
     return null;
 }
 
+const globalRawMapDataCache = {};
+window.cachedAntioquiaMpio = null;
+
+async function getAntioquiaMpioData() {
+    if (window.cachedAntioquiaMpio && window.cachedAntioquiaMpio.features && window.cachedAntioquiaMpio.features.length > 0) {
+        return window.cachedAntioquiaMpio;
+    }
+    try {
+        const resp = await fetch('./mpio.json');
+        if (resp.ok) {
+            const raw = await resp.json();
+            const features = (raw.features || []).filter(f => {
+                const dpto = String(f.properties.DPTO || '').trim();
+                const nomDpt = String(f.properties.NOMBRE_DPT || f.properties.NOM_DEPART || '').trim().toUpperCase();
+                return dpto === '05' || dpto === '5' || nomDpt.includes('ANTIOQUIA');
+            });
+            window.cachedAntioquiaMpio = { type: 'FeatureCollection', features };
+            mlMpioData = window.cachedAntioquiaMpio;
+            return window.cachedAntioquiaMpio;
+        }
+    } catch (e) {
+        console.error("Error cargando Antioquia mpio.json:", e);
+    }
+    return null;
+}
+
 async function loadMapData(num) {
     if (!num) return null;
     const cleanNum = String(num).trim();
+    if (globalRawMapDataCache[cleanNum] !== undefined) {
+        return globalRawMapDataCache[cleanNum];
+    }
 
-    // 1. Intentar GeoJSON
-    try {
-        const geoResp = await fetch(`./assets/mapas/${cleanNum}.geojson`);
-        if (geoResp.ok) {
-            const data = await geoResp.json();
-            return { type: 'geojson', data };
-        }
-    } catch (e) { }
-
-    // 2. Intentar KML
-    try {
-        const kmlResp = await fetch(`./assets/mapas/${cleanNum}.kml`);
-        if (kmlResp.ok) {
-            const data = await kmlResp.text();
-            return { type: 'kml', data };
-        }
-    } catch (e) { }
-
-    // 3. Intentar KMZ (descomprimir en memoria usando JSZip)
+    // 1. Intentar KMZ primero (la gran mayoría en /assets/mapas/ son .kmz)
     if (typeof JSZip !== 'undefined') {
         try {
             const kmzResp = await fetch(`./assets/mapas/${cleanNum}.kmz`);
@@ -581,35 +592,43 @@ async function loadMapData(num) {
                 );
                 if (kmlFileName) {
                     const data = await zip.files[kmlFileName].async('string');
-                    return { type: 'kml', data };
+                    const res = { type: 'kml', data };
+                    globalRawMapDataCache[cleanNum] = res;
+                    return res;
                 }
             }
-        } catch (e) {
-            console.warn('Error leyendo KMZ:', e);
-        }
+        } catch (e) { }
     }
+
+    // 2. Intentar KML
+    try {
+        const kmlResp = await fetch(`./assets/mapas/${cleanNum}.kml`);
+        if (kmlResp.ok) {
+            const data = await kmlResp.text();
+            const res = { type: 'kml', data };
+            globalRawMapDataCache[cleanNum] = res;
+            return res;
+        }
+    } catch (e) { }
+
+    // 3. Intentar GeoJSON
+    try {
+        const geoResp = await fetch(`./assets/mapas/${cleanNum}.geojson`);
+        if (geoResp.ok) {
+            const data = await geoResp.json();
+            const res = { type: 'geojson', data };
+            globalRawMapDataCache[cleanNum] = res;
+            return res;
+        }
+    } catch (e) { }
+
+    globalRawMapDataCache[cleanNum] = null;
     return null;
 }
 
 // ====== PURE VECTOR SVG MAP GENERATOR: ANTIOQUIA DEPARTMENT ======
 async function generateAntioquiaSVG(municipalityName, row, width = 500, height = 380) {
-    let mpioData = mlMpioData;
-    if (!mpioData) {
-        try {
-            const resp = await fetch('./mpio.json');
-            if (resp.ok) {
-                mpioData = await resp.json();
-                mpioData.features = mpioData.features.filter(f => {
-                    const dpto = String(f.properties.DPTO || '').trim();
-                    const nomDpt = String(f.properties.NOMBRE_DPT || f.properties.NOM_DEPART || '').trim().toUpperCase();
-                    return dpto === '05' || dpto === '5' || nomDpt.includes('ANTIOQUIA');
-                });
-                mlMpioData = mpioData;
-            }
-        } catch (e) {
-            console.error("Error loading mpio for SVG:", e);
-        }
-    }
+    let mpioData = await getAntioquiaMpioData();
 
     if (!mpioData || !mpioData.features || mpioData.features.length === 0) {
         return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="#F8FAFC"/><text x="${width/2}" y="${height/2}" fill="#94A3B8" font-family="sans-serif" font-size="10" text-anchor="middle">Mapa no disponible</text></svg>`;
@@ -765,23 +784,7 @@ async function generateAntioquiaSVG(municipalityName, row, width = 500, height =
 
 // ====== PURE VECTOR SVG MAP GENERATOR: MUNICIPAL LEVEL & KMZ TRAMOS ======
 async function generateMunicipalSVG(municipalityName, row, width = 500, height = 380) {
-    let mpioData = mlMpioData;
-    if (!mpioData) {
-        try {
-            const resp = await fetch('./mpio.json');
-            if (resp.ok) {
-                mpioData = await resp.json();
-                mpioData.features = mpioData.features.filter(f => {
-                    const dpto = String(f.properties.DPTO || '').trim();
-                    const nomDpt = String(f.properties.NOMBRE_DPT || f.properties.NOM_DEPART || '').trim().toUpperCase();
-                    return dpto === '05' || dpto === '5' || nomDpt.includes('ANTIOQUIA');
-                });
-                mlMpioData = mpioData;
-            }
-        } catch (e) {
-            console.error("Error loading mpio for Municipal SVG:", e);
-        }
-    }
+    let mpioData = await getAntioquiaMpioData();
 
     const normMuniName = (s) => normCanonicalMuni(s);
     let targetFeature = null;
@@ -2579,20 +2582,7 @@ async function generatePlanPDF() {
 async function generateVectorMapAntioquiaSVG(filteredRows, svgWidth = 542, svgHeight = 220) {
     try {
         // 1. Cargar datos de municipios si no están en memoria
-        let mpioData = synMpioData;
-        if (!mpioData || !mpioData.features || mpioData.features.length === 0) {
-            const resp = await fetch('./mpio.json').catch(() => null);
-            if (resp && resp.ok) {
-                const data = await resp.json();
-                data.features = (data.features || []).filter(f => {
-                    const dpto = String(f.properties.DPTO || '').trim();
-                    const nomDpt = String(f.properties.NOMBRE_DPT || f.properties.NOM_DEPART || '').trim().toUpperCase();
-                    return dpto === '05' || dpto === '5' || nomDpt.includes('ANTIOQUIA');
-                });
-                synMpioData = data;
-                mpioData = data;
-            }
-        }
+        let mpioData = synMpioData || (await getAntioquiaMpioData());
 
         if (!mpioData || !mpioData.features || mpioData.features.length === 0) {
             return null;
@@ -11247,6 +11237,94 @@ function getSubregionForMuni(muni) {
     return null;
 }
 
+const synVialConfigs = {
+    primaria: { url: './data/Primaria.geojson', color: '#e53e3e', width: 2.2 },
+    secundaria: { url: './data/Secundaria.geojson', color: '#38a169', width: 1.8 },
+    terciaria: { url: './data/Terciaria.geojson', color: '#d69e2e', width: 1.2 }
+};
+const synVialLoading = { primaria: false, secundaria: false, terciaria: false };
+
+async function loadSynVialOnDemand(id) {
+    if (!synMap || !synMapReady) return;
+    if (synMap.getSource(`syn-vial-${id}-src`)) {
+        setSynLayerVis(`syn-vial-${id}`, true);
+        return;
+    }
+    if (synVialLoading[id]) return;
+    synVialLoading[id] = true;
+
+    const badge = document.getElementById('synthetic-map-loading-badge');
+    if (badge) badge.classList.remove('hidden');
+
+    try {
+        let data = synVialData[id];
+        if (!data) {
+            const cfg = synVialConfigs[id];
+            if (!cfg) return;
+            const resp = await fetch(cfg.url);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            data = await resp.json();
+            synVialData[id] = data;
+        }
+
+        if (!synMap.getSource(`syn-vial-${id}-src`)) {
+            synMap.addSource(`syn-vial-${id}-src`, { type: 'geojson', data });
+            const cfg = synVialConfigs[id];
+            synMap.addLayer({
+                id: `syn-vial-${id}`,
+                type: 'line',
+                source: `syn-vial-${id}-src`,
+                layout: { visibility: 'visible', 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-color': cfg.color,
+                    'line-width': [
+                        'interpolate', ['linear'], ['zoom'],
+                        7, cfg.width * 0.6,
+                        10, cfg.width,
+                        13, cfg.width * 1.5
+                    ],
+                    'line-opacity': 0.85
+                }
+            }, 'syn-tramos-casing');
+        } else {
+            setSynLayerVis(`syn-vial-${id}`, true);
+        }
+    } catch (e) {
+        console.warn(`Error cargando capa vial ${id} bajo demanda:`, e);
+    } finally {
+        synVialLoading[id] = false;
+        if (badge) badge.classList.add('hidden');
+    }
+}
+
+const SYN_ANTIOQUIA_CENTER = [-75.38, 7.00];
+const SYN_ANTIOQUIA_ZOOM = 6.7;
+
+const SYN_ANTIOQUIA_BBOX = [
+    [-77.15, 5.40], // Suroeste [lng, lat] (Vigía del Fuerte / Nariño)
+    [-73.85, 8.90]  // Noreste [lng, lat] (Arboletes / Yondó)
+];
+
+function fitSyntheticMapToAntioquia(animate = false) {
+    if (!synMap || !synMapReady) return;
+    try {
+        synMap.resize();
+        if (animate) {
+            synMap.flyTo({
+                center: SYN_ANTIOQUIA_CENTER,
+                zoom: SYN_ANTIOQUIA_ZOOM,
+                duration: 750,
+                essential: true
+            });
+        } else {
+            synMap.jumpTo({
+                center: SYN_ANTIOQUIA_CENTER,
+                zoom: SYN_ANTIOQUIA_ZOOM
+            });
+        }
+    } catch (e) { }
+}
+
 async function initSyntheticMap() {
     const container = document.getElementById('synthetic-map');
     if (!container || synMap) return;
@@ -11254,12 +11332,12 @@ async function initSyntheticMap() {
     try {
         synMap = new maplibregl.Map({
             container: 'synthetic-map',
-            center: [-75.55, 6.85],
-            zoom: 7.2,
+            center: SYN_ANTIOQUIA_CENTER,
+            zoom: SYN_ANTIOQUIA_ZOOM,
             pitch: 0,
             bearing: 0,
             maxZoom: 18,
-            minZoom: 5,
+            minZoom: 4,
             attributionControl: false
         });
 
@@ -11273,34 +11351,39 @@ async function initSyntheticMap() {
             const loadingBadge = document.getElementById('synthetic-map-loading-badge');
             if (loadingBadge) loadingBadge.classList.remove('hidden');
 
-            // 1. CARGAR Y PREPARAR MUNICIPIOS Y 9 SUBREGIONES DE ANTIOQUIA
+            // 0. CAPA GLOBAL DE ATENUACIÓN / OSCURECIMIENTO (Opacar todo fuera de Antioquia)
             try {
-                let mpioGeoData = null;
-                // Intento prioritario de cargar desde /data/Municipios.geojson
-                try {
-                    const respMpio = await fetch('./data/Municipios.geojson');
-                    if (respMpio.ok) {
-                        mpioGeoData = await respMpio.json();
+                const worldPoly = [[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]];
+                synMap.addSource('syn-world-dim-src', {
+                    type: 'geojson',
+                    data: {
+                        type: 'Feature',
+                        properties: {},
+                        geometry: { type: 'Polygon', coordinates: [worldPoly] }
                     }
-                } catch (e) {
-                    console.warn('Error cargando ./data/Municipios.geojson, usando fallback mpio.json:', e);
-                }
+                });
 
-                // Fallback a mpio.json
-                if (!mpioGeoData || !mpioGeoData.features || mpioGeoData.features.length === 0) {
-                    const resp = await fetch('./mpio.json');
-                    if (resp.ok) {
-                        mpioGeoData = await resp.json();
-                        mpioGeoData.features = mpioGeoData.features.filter(f => {
-                            const dpto = String(f.properties.DPTO || '').trim();
-                            const nomDpt = String(f.properties.NOMBRE_DPT || f.properties.NOM_DEPART || '').trim().toUpperCase();
-                            return dpto === '05' || dpto === '5' || nomDpt.includes('ANTIOQUIA');
-                        });
+                synMap.addLayer({
+                    id: 'syn-world-dim',
+                    type: 'fill',
+                    source: 'syn-world-dim-src',
+                    layout: { visibility: 'visible' },
+                    paint: {
+                        'fill-color': '#0F172A',
+                        'fill-opacity': 0.65
                     }
-                }
+                });
+            } catch (err) {
+                console.warn('Error configurando fondo atenuado:', err);
+            }
+
+            // 1. CARGAR Y PREPARAR MUNICIPIOS Y 9 SUBREGIONES DE ANTIOQUIA DESDE CACHÉ
+            try {
+                let mpioGeoData = await getAntioquiaMpioData();
 
                 if (mpioGeoData && mpioGeoData.features && mpioGeoData.features.length > 0) {
                     const subregGroups = {};
+                    const subregCenters = {};
 
                     mpioGeoData.features.forEach((f, idx) => {
                         f.id = idx + 1;
@@ -11317,70 +11400,78 @@ async function initSyntheticMap() {
                         f.properties.SUBREGION = subNorm;
                         f.properties._subregionColor = SUBREGION_COLORS[subNorm] || '#6366F1';
 
-                        if (!subregGroups[subNorm]) subregGroups[subNorm] = [];
+                        if (!subregGroups[subNorm]) {
+                            subregGroups[subNorm] = [];
+                            subregCenters[subNorm] = { sumLng: 0, sumLat: 0, count: 0 };
+                        }
                         subregGroups[subNorm].push(f);
+
+                        // Recopilar centroides por subregión
+                        if (f.geometry) {
+                            if (f.geometry.type === 'Polygon') {
+                                const ring = f.geometry.coordinates[0];
+                                if (ring && ring.length > 0) {
+                                    subregCenters[subNorm].sumLng += ring[0][0];
+                                    subregCenters[subNorm].sumLat += ring[0][1];
+                                    subregCenters[subNorm].count++;
+                                }
+                            } else if (f.geometry.type === 'MultiPolygon') {
+                                f.geometry.coordinates.forEach(poly => {
+                                    if (poly && poly.length > 0) {
+                                        subregCenters[subNorm].sumLng += poly[0][0][0];
+                                        subregCenters[subNorm].sumLat += poly[0][0][1];
+                                        subregCenters[subNorm].count++;
+                                    }
+                                });
+                            }
+                        }
                     });
 
                     synMpioData = mpioGeoData;
                     applyIntervenedStatusToMpio(synMpioData);
 
-                    // --- GENERAR CAPA VECTORIAL DE LAS 9 SUBREGIONES CON TURF.JS ---
+                    // --- GENERAR CAPA VECTORIAL DE LAS 9 SUBREGIONES ---
                     const subregionFeatures = [];
                     const subregionLabels = [];
                     let subIdx = 1;
 
                     for (const [subName, mFeatures] of Object.entries(subregGroups)) {
                         if (!subName || mFeatures.length === 0) continue;
-                        let dissolved = null;
-                        if (typeof turf !== 'undefined') {
-                            try {
-                                dissolved = JSON.parse(JSON.stringify(mFeatures[0]));
-                                for (let i = 1; i < mFeatures.length; i++) {
-                                    try {
-                                        dissolved = turf.union(dissolved, mFeatures[i]);
-                                    } catch (eU) { }
-                                }
-                            } catch (eDiss) { }
-                        }
-
-                        if (!dissolved) {
-                            dissolved = {
-                                type: 'Feature',
-                                geometry: {
-                                    type: 'GeometryCollection',
-                                    geometries: mFeatures.map(f => f.geometry)
-                                }
-                            };
-                        }
-
                         const color = SUBREGION_COLORS[subName] || '#6366F1';
-                        dissolved.id = subIdx++;
-                        dissolved.properties = {
-                            SUBREGION: subName,
-                            _color: color,
-                            _muniCount: mFeatures.length,
-                            _municipios: mFeatures.map(f => f.properties.NOMBRE_MPI).sort().join(', ')
+                        const subFeat = {
+                            type: 'Feature',
+                            id: subIdx,
+                            properties: {
+                                SUBREGION: subName,
+                                _color: color,
+                                _muniCount: mFeatures.length,
+                                _municipios: mFeatures.map(f => f.properties.NOMBRE_MPI).sort().join(', ')
+                            },
+                            geometry: {
+                                type: 'GeometryCollection',
+                                geometries: mFeatures.map(f => f.geometry).filter(Boolean)
+                            }
                         };
-                        subregionFeatures.push(dissolved);
+                        subregionFeatures.push(subFeat);
 
-                        // Punto de etiqueta en el centro de masa de la subregión
-                        if (typeof turf !== 'undefined' && dissolved.geometry) {
-                            try {
-                                let labelPt = turf.pointOnFeature(dissolved);
-                                if (!labelPt || !labelPt.geometry) {
-                                    labelPt = turf.centerOfMass(dissolved);
+                        // Centroide de etiqueta para la subregión
+                        const ctr = subregCenters[subName];
+                        if (ctr && ctr.count > 0) {
+                            subregionLabels.push({
+                                type: 'Feature',
+                                id: subIdx,
+                                properties: {
+                                    SUBREGION: subName,
+                                    _color: color,
+                                    _muniCount: mFeatures.length
+                                },
+                                geometry: {
+                                    type: 'Point',
+                                    coordinates: [ctr.sumLng / ctr.count, ctr.sumLat / ctr.count]
                                 }
-                                if (labelPt && labelPt.geometry) {
-                                    labelPt.id = dissolved.id;
-                                    labelPt.properties = {
-                                        SUBREGION: subName,
-                                        _color: color,
-                                        _muniCount: mFeatures.length
-                                    };
-                                    subregionLabels.push(labelPt);
-                                }
-                            } catch (ePt) { }
+                            });
                         }
+                        subIdx++;
                     }
 
                     synSubregionesData = {
@@ -11391,79 +11482,6 @@ async function initSyntheticMap() {
                         type: 'FeatureCollection',
                         features: subregionLabels
                     };
-
-                    // --- DISOLVER MUNICIPIOS EN CONTORNO DEPARTAMENTAL (TURF.JS) ---
-                    let antioquiaFeature = null;
-                    if (typeof turf !== 'undefined' && subregionFeatures.length > 0) {
-                        try {
-                            let deptUnioned = JSON.parse(JSON.stringify(subregionFeatures[0]));
-                            for (let i = 1; i < subregionFeatures.length; i++) {
-                                try {
-                                    deptUnioned = turf.union(deptUnioned, subregionFeatures[i]);
-                                } catch (e) { }
-                            }
-                            if (deptUnioned) {
-                                deptUnioned.properties = { nombre: 'ANTIOQUIA' };
-                                antioquiaFeature = deptUnioned;
-                            }
-                        } catch (turfError) {
-                            console.warn("Error al disolver departamento en mapa sintético:", turfError);
-                        }
-                    }
-
-                    // --- MÁSCARA EXTERIOR INVERTIDA: Opacar todo fuera de Antioquia ---
-                    if (antioquiaFeature) {
-                        try {
-                            const worldPoly = [[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]];
-                            let antioquiaRings = [];
-                            if (antioquiaFeature.geometry.type === 'Polygon') {
-                                antioquiaRings = [antioquiaFeature.geometry.coordinates[0]];
-                            } else if (antioquiaFeature.geometry.type === 'MultiPolygon') {
-                                antioquiaRings = antioquiaFeature.geometry.coordinates.map(poly => poly[0]);
-                            }
-                            if (antioquiaRings.length > 0) {
-                                const maskGeoJSON = {
-                                    type: 'FeatureCollection',
-                                    features: [{
-                                        type: 'Feature',
-                                        properties: {},
-                                        geometry: {
-                                            type: 'Polygon',
-                                            coordinates: [worldPoly, ...antioquiaRings]
-                                        }
-                                    }]
-                                };
-                                synMap.addSource('syn-outside-antioquia-src', { type: 'geojson', data: maskGeoJSON });
-
-                                synMap.addLayer({
-                                    id: 'syn-outside-antioquia-mask',
-                                    type: 'fill',
-                                    source: 'syn-outside-antioquia-src',
-                                    layout: { visibility: 'visible' },
-                                    paint: {
-                                        'fill-color': '#0F172A',
-                                        'fill-opacity': 0.58
-                                    }
-                                });
-
-                                // Contorno perimetral del departamento de Antioquia
-                                synMap.addSource('syn-antioquia-dpto-src', { type: 'geojson', data: antioquiaFeature });
-                                synMap.addLayer({
-                                    id: 'syn-antioquia-dpto-line',
-                                    type: 'line',
-                                    source: 'syn-antioquia-dpto-src',
-                                    layout: { visibility: 'visible' },
-                                    paint: {
-                                        'line-color': '#0B5640',
-                                        'line-width': 2.4,
-                                        'line-opacity': 0.95
-                                    }
-                                });
-                            }
-                        } catch (maskErr) {
-                            console.warn("Error creando máscara exterior sintética:", maskErr);
-                        }
-                    }
 
                     // --- FUENTES Y CAPAS DE LAS 9 SUBREGIONES ---
                     synMap.addSource('syn-subregiones-src', { type: 'geojson', data: synSubregionesData });
@@ -11481,30 +11499,30 @@ async function initSyntheticMap() {
                         }
                     });
 
-                    // 1.2 Límite subregional fino, elegante y discontinuo (un solo tono pizarra suave)
+                    // 1.2 Límite subregional fino, elegante y discontinuo
                     synMap.addLayer({
                         id: 'syn-subregiones-line',
                         type: 'line',
                         source: 'syn-subregiones-src',
                         layout: { visibility: synLayersState.subregiones ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' },
                         paint: {
-                            'line-color': '#1E293B',
+                            'line-color': '#0F172A',
                             'line-width': [
                                 'interpolate', ['linear'], ['zoom'],
-                                6, 1.2,
-                                8, 1.6,
-                                11, 2.2,
-                                14, 2.8
+                                6, 1.4,
+                                8, 1.8,
+                                11, 2.4,
+                                14, 3.0
                             ],
                             'line-dasharray': [4, 2],
-                            'line-opacity': 0.85
+                            'line-opacity': 0.9
                         }
                     });
 
-                    // --- FUENTES Y CAPAS DE MUNICIPIOS ---
+                    // --- FUENTES Y CAPAS DE MUNICIPIOS (RESALTADO SÓLIDO BRILLANTE) ---
                     synMap.addSource('syn-municipios-src', { type: 'geojson', data: synMpioData });
 
-                    // 1.3 Relleno de municipios según escala cromática de longitud ejecutada
+                    // 1.3 Relleno sólido de municipios (opaco sobre el fondo atenuado)
                     synMap.addLayer({
                         id: 'syn-municipios-fill',
                         type: 'fill',
@@ -11514,14 +11532,9 @@ async function initSyntheticMap() {
                             'fill-color': [
                                 'coalesce',
                                 ['get', '_colorFill'],
-                                '#F8FAFC'
+                                '#FFFFFF'
                             ],
-                            'fill-opacity': [
-                                'case',
-                                ['boolean', ['get', '_intervenido'], false],
-                                0.88,
-                                0.45
-                            ]
+                            'fill-opacity': 0.98
                         }
                     });
 
@@ -11552,16 +11565,16 @@ async function initSyntheticMap() {
                             'line-color': [
                                 'case',
                                 ['boolean', ['get', '_intervenido'], false],
-                                '#254434',
-                                '#CBD5E1'
+                                '#1E3A2B',
+                                '#94A3B8'
                             ],
                             'line-width': [
                                 'case',
                                 ['boolean', ['get', '_intervenido'], false],
                                 1.1,
-                                0.5
+                                0.6
                             ],
-                            'line-opacity': 0.85
+                            'line-opacity': 0.95
                         }
                     });
 
@@ -11570,15 +11583,16 @@ async function initSyntheticMap() {
                         id: 'syn-municipios-labels',
                         type: 'symbol',
                         source: 'syn-municipios-src',
-                        minzoom: 7.2,
+                        minzoom: 5.8,
                         layout: {
                             visibility: synLayersState.municipios ? 'visible' : 'none',
                             'text-field': ['get', 'NOMBRE_MPI'],
                             'text-size': [
                                 'interpolate', ['linear'], ['zoom'],
-                                7, 8.0,
-                                9, 10.0,
-                                12, 12.0
+                                6, 7.5,
+                                7, 8.5,
+                                9, 10.5,
+                                12, 12.5
                             ],
                             'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
                             'text-anchor': 'center',
@@ -11630,53 +11644,17 @@ async function initSyntheticMap() {
                     });
                 }
             } catch (err) {
-                console.warn('Error cargando municipios y subregiones en mapa sintético:', err);
+                console.warn('Error configurando municipios y subregiones en mapa sintético:', err);
             }
 
-            // 2. CARGAR RED VIAL OFICIAL (PRIMARIA, SECUNDARIA, TERCIARIA)
-            async function loadSynVial(id, url, color, width) {
-                try {
-                    const resp = await fetch(url);
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        synVialData[id] = data;
-                        synMap.addSource(`syn-vial-${id}-src`, { type: 'geojson', data });
-
-                        synMap.addLayer({
-                            id: `syn-vial-${id}`,
-                            type: 'line',
-                            source: `syn-vial-${id}-src`,
-                            layout: { visibility: synLayersState[id] ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' },
-                            paint: {
-                                'line-color': color,
-                                'line-width': [
-                                    'interpolate', ['linear'], ['zoom'],
-                                    7, width * 0.6,
-                                    10, width,
-                                    13, width * 1.5
-                                ],
-                                'line-opacity': 0.8
-                            }
-                        });
-                    }
-                } catch (e) {
-                    console.warn(`Error cargando red vial ${id} en mapa sintético:`, e);
-                }
-            }
-
-            await loadSynVial('terciaria', './data/Terciaria.geojson', '#d69e2e', 1.2);
-            await loadSynVial('secundaria', './data/Secundaria.geojson', '#38a169', 1.8);
-            await loadSynVial('primaria', './data/Primaria.geojson', '#e53e3e', 2.2);
-
-            // 3. FUENTE Y CAPAS DE TRAMOS INTERVENIDOS KML (ALTO CONTRASTE VERDE METÁLICO NEÓN + BEACON POINTS)
+            // 2. FUENTE Y CAPAS DE TRAMOS LINEALES KML (ALTO CONTRASTE VERDE METÁLICO NEÓN)
             synMap.addSource('syn-tramos-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
-            // 3.1 Contorno exterior oscuro sólido de alto contraste
+            // 2.1 Contorno exterior oscuro de tramos
             synMap.addLayer({
                 id: 'syn-tramos-casing',
                 type: 'line',
                 source: 'syn-tramos-src',
-                filter: ['!=', '$type', 'Point'],
                 layout: { visibility: synLayersState.tramos ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' },
                 paint: {
                     'line-color': '#032B18',
@@ -11691,12 +11669,11 @@ async function initSyntheticMap() {
                 }
             });
 
-            // 3.2 Línea principal verde metálico neón vibrante
+            // 2.2 Línea principal verde metálico neón
             synMap.addLayer({
                 id: 'syn-tramos-line',
                 type: 'line',
                 source: 'syn-tramos-src',
-                filter: ['!=', '$type', 'Point'],
                 layout: { visibility: synLayersState.tramos ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' },
                 paint: {
                     'line-color': [
@@ -11716,12 +11693,11 @@ async function initSyntheticMap() {
                 }
             });
 
-            // 3.3 Núcleo central blanco reflectivo
+            // 2.3 Núcleo central blanco reflectivo
             synMap.addLayer({
                 id: 'syn-tramos-core',
                 type: 'line',
                 source: 'syn-tramos-src',
-                filter: ['!=', '$type', 'Point'],
                 layout: { visibility: synLayersState.tramos ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' },
                 paint: {
                     'line-color': '#FFFFFF',
@@ -11736,72 +11712,7 @@ async function initSyntheticMap() {
                 }
             });
 
-            // 3.4 Puntos Beacon KML: Borde exterior oscuro
-            synMap.addLayer({
-                id: 'syn-tramos-points-casing',
-                type: 'circle',
-                source: 'syn-tramos-src',
-                filter: ['==', '$type', 'Point'],
-                layout: { visibility: synLayersState.tramos ? 'visible' : 'none' },
-                paint: {
-                    'circle-color': '#032B18',
-                    'circle-radius': [
-                        'interpolate', ['linear'], ['zoom'],
-                        6, 3.5,
-                        9, 5.5,
-                        12, 7.5,
-                        15, 10.0
-                    ],
-                    'circle-opacity': 1
-                }
-            });
-
-            // 3.5 Puntos Beacon KML: Cuerpo verde metálico neón
-            synMap.addLayer({
-                id: 'syn-tramos-points',
-                type: 'circle',
-                source: 'syn-tramos-src',
-                filter: ['==', '$type', 'Point'],
-                layout: { visibility: synLayersState.tramos ? 'visible' : 'none' },
-                paint: {
-                    'circle-color': [
-                        'case',
-                        ['boolean', ['feature-state', 'hover'], false],
-                        '#FFFFFF',
-                        '#00FF88'
-                    ],
-                    'circle-radius': [
-                        'interpolate', ['linear'], ['zoom'],
-                        6, 2.5,
-                        9, 4.0,
-                        12, 5.5,
-                        15, 7.5
-                    ],
-                    'circle-opacity': 1
-                }
-            });
-
-            // 3.6 Puntos Beacon KML: Núcleo blanco
-            synMap.addLayer({
-                id: 'syn-tramos-points-core',
-                type: 'circle',
-                source: 'syn-tramos-src',
-                filter: ['==', '$type', 'Point'],
-                layout: { visibility: synLayersState.tramos ? 'visible' : 'none' },
-                paint: {
-                    'circle-color': '#FFFFFF',
-                    'circle-radius': [
-                        'interpolate', ['linear'], ['zoom'],
-                        6, 0.9,
-                        9, 1.5,
-                        12, 2.2,
-                        15, 3.0
-                    ],
-                    'circle-opacity': 1
-                }
-            });
-
-            // 3.7 Capa invisible de Hitbox amplia para selección
+            // 2.4 Hitbox invisible amplia para selección
             synMap.addLayer({
                 id: 'syn-tramos-hitbox',
                 type: 'line',
@@ -11814,26 +11725,127 @@ async function initSyntheticMap() {
                 }
             });
 
-            // 4. CARGAR TRAMOS KML DE CONVENIOS (PARALELO)
-            await renderSyntheticKmlFeatures();
+            // 3. FUENTE Y CAPAS DE PUNTOS BEACON INDIVIDUALES (SIN CLUSTERING NI NÚMEROS)
+            synMap.addSource('syn-tramos-points-src', {
+                type: 'geojson',
+                data: { type: 'FeatureCollection', features: [] }
+            });
+
+            // 3.1 Puntos Beacon: Borde exterior oscuro
+            synMap.addLayer({
+                id: 'syn-tramos-points-casing',
+                type: 'circle',
+                source: 'syn-tramos-points-src',
+                layout: { visibility: synLayersState.tramos ? 'visible' : 'none' },
+                paint: {
+                    'circle-color': '#032B18',
+                    'circle-radius': [
+                        'interpolate', ['linear'], ['zoom'],
+                        6, 4.2,
+                        8, 5.8,
+                        11, 7.5,
+                        14, 10.0
+                    ],
+                    'circle-opacity': 1
+                }
+            });
+
+            // 3.2 Puntos Beacon: Cuerpo verde neón vibrante
+            synMap.addLayer({
+                id: 'syn-tramos-points',
+                type: 'circle',
+                source: 'syn-tramos-points-src',
+                layout: { visibility: synLayersState.tramos ? 'visible' : 'none' },
+                paint: {
+                    'circle-color': [
+                        'case',
+                        ['boolean', ['feature-state', 'hover'], false],
+                        '#FFFFFF',
+                        '#00FF88'
+                    ],
+                    'circle-radius': [
+                        'interpolate', ['linear'], ['zoom'],
+                        6, 3.0,
+                        8, 4.2,
+                        11, 5.6,
+                        14, 7.5
+                    ],
+                    'circle-opacity': 1
+                }
+            });
+
+            // 3.3 Puntos Beacon: Núcleo reflectivo blanco
+            synMap.addLayer({
+                id: 'syn-tramos-points-core',
+                type: 'circle',
+                source: 'syn-tramos-points-src',
+                layout: { visibility: synLayersState.tramos ? 'visible' : 'none' },
+                paint: {
+                    'circle-color': '#FFFFFF',
+                    'circle-radius': [
+                        'interpolate', ['linear'], ['zoom'],
+                        6, 1.0,
+                        8, 1.5,
+                        11, 2.2,
+                        14, 3.0
+                    ],
+                    'circle-opacity': 1
+                }
+            });
+
+            // 4. CARGAR TRAMOS KML DE CONVENIOS (ASÍNCRONO CONCURRENTE)
+            renderSyntheticKmlFeatures();
 
             if (loadingBadge) loadingBadge.classList.add('hidden');
 
-            // 5. EVENTOS DE HOVER Y CLICK UNIFICADOS CON PRIORIDAD
+            // 5. EVENTOS DE HOVER Y CLICK UNIFICADOS
             let synHoveredMuniId = null;
             let synHoveredSubregId = null;
             let synHoveredTramoId = null;
+            let synHoveredPointId = null;
 
             synMap.on('mousemove', (e) => {
-                // 1. Prioridad tramo KML
+                // 1. Prioridad: Puntos / Tramos
                 if (synLayersState.tramos) {
                     const buffer = 14;
                     const bbox = [
                         [e.point.x - buffer, e.point.y - buffer],
                         [e.point.x + buffer, e.point.y + buffer]
                     ];
+                    const pointHits = synMap.queryRenderedFeatures(bbox, {
+                        layers: ['syn-tramos-points', 'syn-tramos-points-casing'].filter(id => synMap.getLayer(id))
+                    });
+
+                    if (pointHits && pointHits.length > 0) {
+                        if (synHoveredMuniId !== null) {
+                            synMap.setFeatureState({ source: 'syn-municipios-src', id: synHoveredMuniId }, { hover: false });
+                            synHoveredMuniId = null;
+                        }
+                        if (synHoveredSubregId !== null) {
+                            synMap.setFeatureState({ source: 'syn-subregiones-src', id: synHoveredSubregId }, { hover: false });
+                            synHoveredSubregId = null;
+                        }
+                        const newPtId = pointHits[0].id;
+                        if (synHoveredPointId !== newPtId) {
+                            if (synHoveredPointId !== null) {
+                                synMap.setFeatureState({ source: 'syn-tramos-points-src', id: synHoveredPointId }, { hover: false });
+                            }
+                            synHoveredPointId = newPtId;
+                            if (synHoveredPointId !== undefined) {
+                                synMap.setFeatureState({ source: 'syn-tramos-points-src', id: synHoveredPointId }, { hover: true });
+                            }
+                        }
+                        synMap.getCanvas().style.cursor = 'pointer';
+                        return;
+                    }
+
+                    if (synHoveredPointId !== null) {
+                        synMap.setFeatureState({ source: 'syn-tramos-points-src', id: synHoveredPointId }, { hover: false });
+                        synHoveredPointId = null;
+                    }
+
                     const tramoHits = synMap.queryRenderedFeatures(bbox, {
-                        layers: ['syn-tramos-hitbox', 'syn-tramos-line', 'syn-tramos-points', 'syn-tramos-casing'].filter(id => synMap.getLayer(id))
+                        layers: ['syn-tramos-hitbox', 'syn-tramos-line', 'syn-tramos-casing'].filter(id => synMap.getLayer(id))
                     });
 
                     if (tramoHits && tramoHits.length > 0) {
@@ -11860,6 +11872,10 @@ async function initSyntheticMap() {
                     }
                 }
 
+                if (synHoveredPointId !== null) {
+                    synMap.setFeatureState({ source: 'syn-tramos-points-src', id: synHoveredPointId }, { hover: false });
+                    synHoveredPointId = null;
+                }
                 if (synHoveredTramoId !== null) {
                     synMap.setFeatureState({ source: 'syn-tramos-src', id: synHoveredTramoId }, { hover: false });
                     synHoveredTramoId = null;
@@ -11920,6 +11936,10 @@ async function initSyntheticMap() {
             });
 
             synMap.on('mouseleave', () => {
+                if (synHoveredPointId !== null) {
+                    synMap.setFeatureState({ source: 'syn-tramos-points-src', id: synHoveredPointId }, { hover: false });
+                    synHoveredPointId = null;
+                }
                 if (synHoveredTramoId !== null) {
                     synMap.setFeatureState({ source: 'syn-tramos-src', id: synHoveredTramoId }, { hover: false });
                     synHoveredTramoId = null;
@@ -11935,19 +11955,26 @@ async function initSyntheticMap() {
                 synMap.getCanvas().style.cursor = '';
             });
 
-            // Dispatcher de clics: Tramo KML > Subregión (si modo subregional) > Municipio
+            // 6. EVENTOS DE CLIC: Punto individual / Tramo -> Popup | Subregión -> Popup | Municipio -> Filtro
             synMap.on('click', (e) => {
-                // 1. Tramo KML
+                // 1. Clic en Punto individual o Tramo
                 if (synLayersState.tramos) {
                     const buffer = 18;
                     const bbox = [
                         [e.point.x - buffer, e.point.y - buffer],
                         [e.point.x + buffer, e.point.y + buffer]
                     ];
-                    const tramoHits = synMap.queryRenderedFeatures(bbox, {
-                        layers: ['syn-tramos-hitbox', 'syn-tramos-line', 'syn-tramos-points', 'syn-tramos-casing'].filter(id => synMap.getLayer(id))
+                    const pointHits = synMap.queryRenderedFeatures(bbox, {
+                        layers: ['syn-tramos-points', 'syn-tramos-points-casing'].filter(id => synMap.getLayer(id))
                     });
+                    if (pointHits && pointHits.length > 0) {
+                        showSyntheticTramoPopup(pointHits[0], e.lngLat);
+                        return;
+                    }
 
+                    const tramoHits = synMap.queryRenderedFeatures(bbox, {
+                        layers: ['syn-tramos-hitbox', 'syn-tramos-line', 'syn-tramos-casing'].filter(id => synMap.getLayer(id))
+                    });
                     if (tramoHits && tramoHits.length > 0) {
                         showSyntheticTramoPopup(tramoHits[0], e.lngLat);
                         return;
@@ -11988,15 +12015,25 @@ async function initSyntheticMap() {
             // Asegurar que las capas de tramos queden arriba
             ensureSynTramosOnTop();
 
-            // Ajustar encuadre general a Antioquia
-            synMap.fitBounds([
-                [-77.15, 5.4],
-                [-73.85, 8.88]
-            ], { padding: { top: 20, bottom: 20, left: 20, right: 20 }, animate: false });
+            // Ajustar encuadre general a Antioquia de cerca
+            fitSyntheticMapToAntioquia(false);
+            setTimeout(() => {
+                fitSyntheticMapToAntioquia(false);
+            }, 120);
+            setTimeout(() => {
+                fitSyntheticMapToAntioquia(false);
+            }, 350);
         });
 
         // Controles de eventos de la interfaz
         setupSyntheticControls();
+
+        window.addEventListener('resize', () => {
+            if (synMap) {
+                synMap.resize();
+                fitSyntheticMapToAntioquia(false);
+            }
+        });
 
     } catch (e) {
         console.error('Error inicializando mapa sintético:', e);
@@ -12087,7 +12124,7 @@ function showSyntheticTramoPopup(feature, lngLat) {
             <div style="font-family:'Plus Jakarta Sans',sans-serif;padding:2px;min-width:230px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.12);">
                     <span style="font-size:9px;font-weight:800;color:#00B0FF;background:rgba(0,176,255,0.18);padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:0.06em;">
-                        <i class="fa-solid fa-route mr-1"></i>Tramo KML/KMZ
+                        <i class="fa-solid fa-route mr-1"></i>Convenio DIAT
                     </span>
                     <span style="font-size:9px;font-weight:700;color:#FFFFFF;background:${sysState.hex};padding:2px 8px;border-radius:99px;">
                         ${sysState.label}
@@ -12125,13 +12162,13 @@ function showSyntheticTramoPopup(feature, lngLat) {
 }
 
 function getMpioColorByLongitud(longKm, hasConvenio) {
-    if (!hasConvenio) return '#F8FAFC'; // Sin convenios (0 km)
+    if (!hasConvenio) return '#FFFFFF'; // Sin convenios (blanco puro brillante que resalta nítidamente frente al fondo atenuado)
     const km = Number(longKm) || 0;
     if (km <= 0) return '#D4EFCD';       // Convenio activo pero 0 km ejecutados aún
-    if (km <= 2.0) return '#9FD490';     // 0.1 – 2.0 km (verde claro / opaco)
+    if (km <= 2.0) return '#9FD490';     // 0.1 – 2.0 km (verde claro)
     if (km <= 5.0) return '#5FC466';     // 2.0 – 5.0 km (verde medio)
     if (km <= 10.0) return '#398056';    // 5.0 – 10.0 km (verde fuerte)
-    return '#254434';                   // > 10.0 km (verde muy fuerte / oscuro)
+    return '#254434';                   // > 10.0 km (verde oscuro institucional)
 }
 
 function showSyntheticMuniPopup(feature, lngLat) {
@@ -12201,14 +12238,13 @@ function ensureSynTramosOnTop() {
     const topLayers = [
         'syn-subregiones-line',
         'syn-subregiones-labels',
-        'syn-antioquia-dpto-line',
         'syn-tramos-casing',
         'syn-tramos-line',
         'syn-tramos-core',
+        'syn-tramos-hitbox',
         'syn-tramos-points-casing',
         'syn-tramos-points',
-        'syn-tramos-points-core',
-        'syn-tramos-hitbox'
+        'syn-tramos-points-core'
     ];
     topLayers.forEach(lid => {
         if (synMap.getLayer(lid)) {
@@ -12426,74 +12462,98 @@ async function renderSyntheticKmlFeatures() {
         convNums = synAllKnownKmls;
     }
 
-    // Cargar y almacenar en caché los KMLs que falten
-    const toFetch = convNums.filter(num => !synKmlCache[num]);
+    // Cargar y almacenar en caché los KMLs que falten en lotes de 8
+    const toFetch = convNums.filter(num => synKmlCache[num] === undefined);
     if (toFetch.length > 0) {
-        const promises = toFetch.map(async (num) => {
-            try {
-                const mapData = await loadMapData(num);
-                if (mapData) {
-                    if (mapData.type === 'kml') {
-                        synKmlCache[num] = parseKMLStringToGeoJSON(mapData.data, num);
-                    } else if (mapData.type === 'geojson') {
-                        const d = mapData.data;
-                        const feats = d.features || (d.geometry ? [d] : []);
-                        feats.forEach(f => {
-                            if (f && f.geometry) {
-                                f.properties = f.properties || {};
-                                f.properties.CONVENIO = num;
-                            }
-                        });
-                        synKmlCache[num] = feats;
+        const batchSize = 8;
+        for (let i = 0; i < toFetch.length; i += batchSize) {
+            const batch = toFetch.slice(i, i + batchSize);
+            await Promise.all(batch.map(async (num) => {
+                try {
+                    const mapData = await loadMapData(num);
+                    if (mapData) {
+                        if (mapData.type === 'kml') {
+                            synKmlCache[num] = parseKMLStringToGeoJSON(mapData.data, num);
+                        } else if (mapData.type === 'geojson') {
+                            const d = mapData.data;
+                            const feats = d.features || (d.geometry ? [d] : []);
+                            feats.forEach(f => {
+                                if (f && f.geometry) {
+                                    f.properties = f.properties || {};
+                                    f.properties.CONVENIO = num;
+                                }
+                            });
+                            synKmlCache[num] = feats;
+                        }
+                    } else {
+                        synKmlCache[num] = [];
                     }
-                } else {
+                } catch (e) {
                     synKmlCache[num] = [];
                 }
-            } catch (e) {
-                synKmlCache[num] = [];
-            }
-        });
-        await Promise.all(promises);
+            }));
+        }
     }
 
-    // Unir todas las features activas y generar puntos beacon para cada tramo
-    const features = [];
+    // Unir todas las features activas: Líneas completas + 1 único punto representativo por convenio
+    const lineFeatures = [];
+    const pointFeatures = [];
+
     convNums.forEach(num => {
         const feats = synKmlCache[num] || [];
-        feats.forEach(f => {
-            features.push(f);
-            if (f.geometry) {
-                if (f.geometry.type === 'LineString' && f.geometry.coordinates && f.geometry.coordinates.length > 0) {
-                    const coords = f.geometry.coordinates;
-                    const midCoord = coords[Math.floor(coords.length / 2)];
-                    features.push({
-                        type: 'Feature',
-                        geometry: { type: 'Point', coordinates: midCoord },
-                        properties: { ...f.properties, _isTramoPoint: true }
-                    });
-                } else if (f.geometry.type === 'MultiLineString' && f.geometry.coordinates) {
-                    f.geometry.coordinates.forEach(line => {
-                        if (line.length > 0) {
-                            const midCoord = line[Math.floor(line.length / 2)];
-                            features.push({
-                                type: 'Feature',
-                                geometry: { type: 'Point', coordinates: midCoord },
-                                properties: { ...f.properties, _isTramoPoint: true }
-                            });
+        let repPoint = null;
+
+        if (feats.length > 0) {
+            feats.forEach(f => {
+                if (!f || !f.geometry) return;
+                if (f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString') {
+                    lineFeatures.push(f);
+                    if (!repPoint) {
+                        if (f.geometry.type === 'LineString' && f.geometry.coordinates && f.geometry.coordinates.length > 0) {
+                            const coords = f.geometry.coordinates;
+                            repPoint = coords[Math.floor(coords.length / 2)];
+                        } else if (f.geometry.type === 'MultiLineString' && f.geometry.coordinates && f.geometry.coordinates[0]) {
+                            const coords = f.geometry.coordinates[0];
+                            repPoint = coords[Math.floor(coords.length / 2)];
                         }
-                    });
+                    }
+                } else if (f.geometry.type === 'Point' && !repPoint) {
+                    repPoint = f.geometry.coordinates;
+                }
+            });
+        }
+
+        // Si no se obtuvo punto del KML, buscar lat/lon en el Excel
+        if (!repPoint) {
+            const row = (rawData || []).find(r => String(r['CONVENIO']).trim() === num);
+            if (row) {
+                const la = parseFloat(row['LATITUD']), lo = parseFloat(row['LONGITUD']);
+                if (!isNaN(la) && !isNaN(lo) && la !== 0 && lo !== 0) {
+                    repPoint = [lo, la];
                 }
             }
-        });
+        }
+
+        if (repPoint) {
+            pointFeatures.push({
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: repPoint },
+                properties: { CONVENIO: num, _isTramoPoint: true, name: `Convenio ${num}` }
+            });
+        }
     });
 
-    features.forEach((f, idx) => {
-        f.id = idx + 1;
-    });
+    lineFeatures.forEach((f, idx) => { f.id = idx + 1; });
+    pointFeatures.forEach((f, idx) => { f.id = idx + 1; });
 
-    synKmlGeojson = { type: 'FeatureCollection', features: features };
+    synKmlGeojson = { type: 'FeatureCollection', features: lineFeatures };
+    synPointsGeojson = { type: 'FeatureCollection', features: pointFeatures };
+
     if (synMap.getSource('syn-tramos-src')) {
         synMap.getSource('syn-tramos-src').setData(synKmlGeojson);
+    }
+    if (synMap.getSource('syn-tramos-points-src')) {
+        synMap.getSource('syn-tramos-points-src').setData(synPointsGeojson);
     }
     ensureSynTramosOnTop();
 }
@@ -12502,12 +12562,7 @@ function setupSyntheticControls() {
     const btnCentrar = document.getElementById('btn-synthetic-centrar');
     if (btnCentrar) {
         btnCentrar.addEventListener('click', () => {
-            if (synMap) {
-                synMap.fitBounds([
-                    [-77.15, 5.4],
-                    [-73.85, 8.88]
-                ], { padding: { top: 20, bottom: 20, left: 20, right: 20 }, duration: 900 });
-            }
+            fitSyntheticMapToAntioquia(true);
         });
     }
 
@@ -12525,10 +12580,10 @@ function setupSyntheticControls() {
         'syn-tramos-casing',
         'syn-tramos-line',
         'syn-tramos-core',
+        'syn-tramos-hitbox',
         'syn-tramos-points-casing',
         'syn-tramos-points',
-        'syn-tramos-points-core',
-        'syn-tramos-hitbox'
+        'syn-tramos-points-core'
     ];
 
     const subregLayerIds = ['syn-subregiones-fill', 'syn-subregiones-line', 'syn-subregiones-labels'];
@@ -12550,13 +12605,21 @@ function setupSyntheticControls() {
                 const isChecked = e.target.checked;
                 synLayersState[key] = isChecked;
                 if (synMap && synMapReady) {
-                    layerIds.forEach(lid => {
-                        if (synMap.getLayer(lid)) {
-                            synMap.setLayoutProperty(lid, 'visibility', isChecked ? 'visible' : 'none');
+                    if (['primaria', 'secundaria', 'terciaria'].includes(key)) {
+                        if (isChecked) {
+                            loadSynVialOnDemand(key);
+                        } else {
+                            setSynLayerVis(`syn-vial-${key}`, false);
                         }
-                    });
-                    if (key === 'tramos' && isChecked) {
-                        ensureSynTramosOnTop();
+                    } else {
+                        layerIds.forEach(lid => {
+                            if (synMap.getLayer(lid)) {
+                                synMap.setLayoutProperty(lid, 'visibility', isChecked ? 'visible' : 'none');
+                            }
+                        });
+                        if (key === 'tramos' && isChecked) {
+                            ensureSynTramosOnTop();
+                        }
                     }
                 }
             });
@@ -12569,10 +12632,10 @@ function setSynTramosVis(visible) {
         'syn-tramos-casing',
         'syn-tramos-line',
         'syn-tramos-core',
+        'syn-tramos-hitbox',
         'syn-tramos-points-casing',
         'syn-tramos-points',
-        'syn-tramos-points-core',
-        'syn-tramos-hitbox'
+        'syn-tramos-points-core'
     ];
     tramoLayerIds.forEach(lid => setSynLayerVis(lid, visible));
 }
@@ -12612,9 +12675,9 @@ function applySyntheticMode(mode) {
         setSynLayerVis('syn-municipios-line', true);
         setSynLayerVis('syn-municipios-labels', false);
         setSynTramosVis(false);
-        setSynLayerVis('syn-vial-primaria', true);
-        setSynLayerVis('syn-vial-secundaria', true);
-        setSynLayerVis('syn-vial-terciaria', true);
+        loadSynVialOnDemand('primaria');
+        loadSynVialOnDemand('secundaria');
+        loadSynVialOnDemand('terciaria');
     } else if (mode === 'intervenciones') {
         setSynLayerVis('syn-subregiones-fill', synLayersState.subregiones);
         setSynLayerVis('syn-subregiones-line', synLayersState.subregiones);
