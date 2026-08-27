@@ -631,7 +631,7 @@ async function generateAntioquiaSVG(municipalityName, row, width = 500, height =
     let mpioData = await getAntioquiaMpioData();
 
     if (!mpioData || !mpioData.features || mpioData.features.length === 0) {
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="#F8FAFC"/><text x="${width/2}" y="${height/2}" fill="#94A3B8" font-family="sans-serif" font-size="10" text-anchor="middle">Mapa no disponible</text></svg>`;
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="#F8FAFC"/><text x="${width / 2}" y="${height / 2}" fill="#94A3B8" font-family="sans-serif" font-size="10" text-anchor="middle">Mapa no disponible</text></svg>`;
     }
 
     const normMuniName = (s) => normCanonicalMuni(s);
@@ -13472,11 +13472,11 @@ const DiatAI = {
         const isSupRankingQuery = (
             qUpper.includes('SUPERVISOR') || qUpper.includes('SUPERVISORES') || qUpper.includes('SUPERVISION')
         ) && (
-            qUpper.includes('MAS') || qUpper.includes('MAYOR') || qUpper.includes('RANKING') || 
-            qUpper.includes('CUAL') || qUpper.includes('QUIEN') || qUpper.includes('LISTA') || 
-            qUpper.includes('TODOS') || qUpper.includes('CARGA') || qUpper.includes('CUANTOS') ||
-            qUpper.includes('TIENE MAS') || qUpper.includes('CADA') || qUpper.includes('TOP')
-        );
+                qUpper.includes('MAS') || qUpper.includes('MAYOR') || qUpper.includes('RANKING') ||
+                qUpper.includes('CUAL') || qUpper.includes('QUIEN') || qUpper.includes('LISTA') ||
+                qUpper.includes('TODOS') || qUpper.includes('CARGA') || qUpper.includes('CUANTOS') ||
+                qUpper.includes('TIENE MAS') || qUpper.includes('CADA') || qUpper.includes('TOP')
+            );
 
         if (isSupRankingQuery && !this.isSpecificSupervisorMention(qUpper, data)) {
             return this.formatSupervisoresRankingResponse(data);
@@ -13642,7 +13642,7 @@ const DiatAI = {
         for (const s of sups) {
             const sClean = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
             if (qUpper.includes(sClean)) return s;
-            
+
             const parts = sClean.split(' ').filter(p => p.length >= 4);
             if (parts.length >= 2) {
                 const matchCount = parts.filter(p => qUpper.includes(p)).length;
@@ -13695,7 +13695,7 @@ const DiatAI = {
                 <div style="margin-bottom:6px;">
                     <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;">
                         <span>Avance Físico</span>
-                        <span style="color:#0B5640;">${fisPct}% (${(lonEjeM/1000).toFixed(2)} / ${(lonConM/1000).toFixed(2)} km)</span>
+                        <span style="color:#0B5640;">${fisPct}% (${(lonEjeM / 1000).toFixed(2)} / ${(lonConM / 1000).toFixed(2)} km)</span>
                     </div>
                     <div class="diat-ai-progress-track">
                         <div class="diat-ai-progress-bar" style="width:${Math.min(100, Math.max(0, fisPct))}%; background:#0B5640;"></div>
@@ -13907,7 +13907,7 @@ const DiatAI = {
         const totalInv = convs.reduce((acc, r) => acc + (r['APORTE DEPARTAMENTO'] || 0) + (r['ADICION DEPARTAMENTO'] || 0), 0);
         const munis = Array.from(new Set(convs.map(r => r['MUNICIPIO'])));
         const totalKmEje = (convs.reduce((acc, r) => acc + (getRowLongitudEjecutada(r) || 0), 0) / 1000).toFixed(2);
-        
+
         let convList = convs.map(c => {
             const num = c['CONVENIO'];
             const fis = (c['FISICO_NORM'] || 0).toFixed(1);
@@ -14047,7 +14047,7 @@ const DiatAI = {
                 muniInv[m] = (muniInv[m] || 0) + inv;
             }
         });
-        const top5 = Object.entries(muniInv).sort((a,b) => b[1] - a[1]).slice(0, 5);
+        const top5 = Object.entries(muniInv).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
         const list = top5.map((item, idx) => `
             <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#F8FAFC;border-radius:4px;margin-bottom:3px;font-size:10.5px;">
@@ -14146,7 +14146,7 @@ const DiatAI = {
                     📍 En Antioquia hay <strong>${sinConvenio.length} municipios sin convenio activo</strong> (0 km) de los 125 municipios del departamento.
                 </p>
                 <p style="margin:0 0 6px;font-size:11px;color:#475569;">
-                    Actualmente la DIAT tiene presencia en <strong>${totalMunisConConvenio} municipios (${((totalMunisConConvenio/125)*100).toFixed(1)}%)</strong> con ${totalConvs} convenios viales.
+                    Actualmente la DIAT tiene presencia en <strong>${totalMunisConConvenio} municipios (${((totalMunisConConvenio / 125) * 100).toFixed(1)}%)</strong> con ${totalConvs} convenios viales.
                 </p>
             </div>
 
@@ -14208,7 +14208,7 @@ const DiatAI = {
 
 window.DiatAI = DiatAI;
 
-window.goToIndicadoresTab = function(yearFilter) {
+window.goToIndicadoresTab = function (yearFilter) {
     const tabBtn = document.querySelector('.tab-btn[data-tab="plan"]');
     if (tabBtn) tabBtn.click();
     if (yearFilter && yearFilter !== 'todos' && typeof setPlanYearFilter === 'function') {

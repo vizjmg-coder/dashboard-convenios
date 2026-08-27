@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Convenio 25AS111B2226 - San Andrés de Cuerquia</name>
+    <description>Puntos de supervisión e inspección de placa huella / infraestructura.</description>
+
+    <!-- Carpeta Chorrera -->
+    <Folder>
+      <name>Chorrera</name>
+      <Placemark>
+        <name>Chorrera - 09:58:09</name>
+        <description><![CDATA[Convenio: 25AS111B2226<br>Sector: Chorrera<br>Fecha: 4 may 2026 9:58:09 a. m.]]></description>
+        <Point>
+          <coordinates>-75.6651,6.8875,0</coordinates>
+        </Point>
+      </Placemark>
+    </Folder>
+
+    <!-- Carpeta Aguacatal -->
+    <Folder>
+      <name>Aguacatal</name>
+      <Placemark>
+        <name>Aguacatal - 11:32:04</name>
+        <description><![CDATA[Convenio: 25AS111B2226<br>Sector: Aguacatal<br>Fecha: 4 may 2026 11:32:04 a. m.]]></description>
+        <Point>
+          <coordinates>-75.6435,6.9662,0</coordinates>
+        </Point>
+      </Placemark>
+    </Folder>
+
+    <!-- Carpeta Travesias -->
+    <Folder>
+      <name>Travesias</name>
+      <Placemark>
+        <name>Travesias - 12:23:14</name>
+        <description><![CDATA[Convenio: 25AS111B2226<br>Sector: Travesias<br>Fecha: 4 may 2026 12:23:14 p. m.]]></description>
+        <Point>
+          <coordinates>-75.6692,6.9709,0</coordinates>
+        </Point>
+      </Placemark>
+      <Placemark>
+        <name>Travesias - 12:28:40</name>
+        <description><![CDATA[Convenio: 25AS111B2226<br>Sector: Travesias<br>Fecha: 4 may 2026 12:28:40 p. m.]]></description>
+        <Point>
+          <coordinates>-75.6693,6.9704,0</coordinates>
+        </Point>
+      </Placemark>
+    </Folder>
+
+    <!-- Carpeta Loma del Indio -->
+    <Folder>
+      <name>Loma del Indio</name>
+      <Placemark>
+        <name>Loma del indio - 13:22:03</name>
+        <description><![CDATA[Convenio: 25AS111B2226<br>Sector: Loma del indio<br>Fecha: 4 may 2026 1:22:03 p. m.]]></description>
+        <Point>
+          <coordinates>-75.6871,6.9312,0</coordinates>
+        </Point>
+      </Placemark>
+      <Placemark>
+        <name>Loma del indio - 13:22:34</name>
+        <description><![CDATA[Convenio: 25AS111B2226<br>Sector: Loma del indio<br>Fecha: 4 may 2026 1:22:34 p. m.]]></description>
+        <Point>
+          <coordinates>-75.6870,6.9312,0</coordinates>
+        </Point>
+      </Placemark>
+      <Placemark>
+        <name>Loma del indio - 13:29:22</name>
+        <description><![CDATA[Convenio: 25AS111B2226<br>Sector: Loma del indio<br>Fecha: 4 may 2026 1:29:22 p. m.]]></description>
+        <Point>
+          <coordinates>-75.6829,6.9342,0</coordinates>
+        </Point>
+      </Placemark>
+      <Placemark>
+        <name>Loma del indio - 13:35:56</name>
+        <description><![CDATA[Convenio: 25AS111B2226<br>Sector: Loma del indio<br>Fecha: 4 may 2026 1:35:56 p. m.]]></description>
+        <Point>
+          <coordinates>-75.6796,6.9366,0</coordinates>
+        </Point>
+      </Placemark>
+      <Placemark>
+        <name>Loma del indio - 13:36:37</name>
+        <description><![CDATA[Convenio: 25AS111B2226<br>Sector: Loma del indio<br>Fecha: 4 may 2026 1:36:37 p. m.]]></description>
+        <Point>
+          <coordinates>-75.6793,6.9367,0</coordinates>
+        </Point>
+      </Placemark>
+    </Folder>
+
+  </Document>
+</kml>
