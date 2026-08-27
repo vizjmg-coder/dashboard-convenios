@@ -2753,24 +2753,19 @@ select.filter-control option { font-family: var(--font-base); }
    NUEVOS ESTILOS: FILTROS COLAPSABLES Y BUSCADORES DE MUNICIPIOS
    ============================================================ */
 
-/* 1. Panel de Filtros Colapsable */
+/* 1. Panel de Filtros */
+.filter-panel,
 .filter-panel-collapsible {
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, padding 0.35s ease;
-    padding-bottom: 0;
+    max-height: none;
+    opacity: 1;
+    overflow: visible;
+    padding-bottom: 4px;
 }
 
 .filter-panel-collapsible.expanded {
-    max-height: 600px;
+    max-height: none;
     opacity: 1;
-    padding-bottom: 8px;
-}
-
-/* Animación de rotación del chevron en el botón de filtros */
-.btn-filter-toggle.active i:last-child {
-    transform: rotate(180deg);
+    padding-bottom: 4px;
 }
 
 /* 2. Componente de Dropdown con Buscador Personalizado */

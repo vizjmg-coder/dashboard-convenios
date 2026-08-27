@@ -655,8 +655,10 @@ header {
     z-index: 40 !important; /* Eleva la sección de filtros por encima de los KPIs y gráficos de abajo */
 }
 
+.filter-panel,
+.filter-panel-collapsible,
 .filter-panel-collapsible.expanded {
-    overflow: visible !important; /* Permite desplegar las opciones sobre otros elementos al expandirse */
+    overflow: visible !important; /* Permite desplegar las opciones sobre otros elementos */
 }
 
 /* Control del orden de apilamiento de los dropdowns en la misma fila */
