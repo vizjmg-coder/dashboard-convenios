@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document id="document">
+	<name>Proyecto de mapa sin título</name>
+	<gx:CascadingStyle kml:id="__managed_style_0B6F167E6041B19B11F0_highlight">
+		<styleUrl>https://earth.google.com/balloon_components/base/1.1.0.0/card_template.kml#main</styleUrl>
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>6</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_0B6F167E6041B19B11F0_normal">
+		<styleUrl>https://earth.google.com/balloon_components/base/1.1.0.0/card_template.kml#main</styleUrl>
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>4</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_0B6F167E6041B19B11F0">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_0B6F167E6041B19B11F0_normal</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_0B6F167E6041B19B11F0_highlight</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Placemark id="0714C3B33041B19B11D6">
+		<name>Concepción - Los pomos</name>
+		<LookAt>
+			<longitude>-75.25816481332919</longitude>
+			<latitude>6.392628790723158</latitude>
+			<altitude>1831.189188396076</altitude>
+			<heading>1.207418269725733e-06</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>783.6783009509963</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0B6F167E6041B19B11F0</styleUrl>
+		<LineString>
+			<coordinates>
+				-75.26006093872672,6.391149255905149,0 -75.25989403114082,6.391281117685773,0 -75.25968557256773,6.391525797186807,0 -75.25957891910872,6.391613982377311,0 -75.2594091582616,6.391726103605556,0 -75.25901561236333,6.391992236175854,0 -75.25894157197594,6.39202957908958,0 -75.25885362522133,6.392059001615635,0 -75.25858528773897,6.392101869157428,0 -75.25675465931937,6.392355965925798,0 -75.25652779966552,6.392383148986198,0 -75.2563577266248,6.392395980881012,0 -75.25619246225881,6.392390020618802,0 -75.25596211876015,6.392355741897546,0 -75.25575497116941,6.392323723319745,0 -75.25536106676988,6.39228511270623,0 -75.25515088561285,6.39225482143117,0 -75.25507293424494,6.392248343694668,0 -75.25499752082283,6.392257783855241,0 -75.25493679278657,6.392283076084937,0 -75.25487793584112,6.392322044631661,0 -75.25480732573065,6.39243231589308,0 -75.25470899091701,6.392614568577012,0 -75.25461965701645,6.392767392541006,0 -75.2545512824792,6.392876108816659,0 -75.25443878362748,6.393033073291015,0 -75.25425397221804,6.393280710626606,0 -75.25404622759086,6.393557965101661,0 -75.25382462680831,6.393834629449717,0 -75.25375347984813,6.393930795186758,0 -75.25373276374354,6.393965560210066,0 -75.25377755231646,6.394015746364953,0 -75.25383177614843,6.394074455577336,0 -75.25389041068308,6.394160950367793,0 -75.2539196102704,6.394207084237425,0 -75.2539353243241,6.394233668334431,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+</Document>
+</kml>
