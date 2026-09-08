@@ -113,6 +113,13 @@
                         </span>
                         <span class="active-dot hidden"></span>
                     </button>
+                    <button class="tab-btn" data-tab="visitas">
+                        <span class="tab-btn-content">
+                            <span class="tab-icon"><i class="fa-solid fa-clipboard-check"></i></span>
+                            <span class="tab-label">Control de Visitas</span>
+                        </span>
+                        <span class="active-dot hidden"></span>
+                    </button>
                     <button class="tab-btn" data-tab="portal">
                         <span class="tab-btn-content">
                             <span class="tab-icon"><i class="fa-solid fa-user-shield"></i></span>
@@ -1607,9 +1614,9 @@
                                                 Evolución y proyección del porcentaje de cumplimiento por año de
                                                 vigencia</p>
                                         </div>
-                                        <div class="shrink-0">
+                                        <div class="shrink-0 flex items-center gap-1.5 flex-wrap">
                                             <select id="select-anual-indicador"
-                                                onchange="setPlanAnualFilter(this.value)"
+                                                onchange="setPlanAnualFilter(this.value); if(this.value && !this.value.startsWith('todos')) openIndicadorDetailModal(this.value);"
                                                 class="bg-white border border-slate-200 text-slate-700 text-[10.5px] font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-teal-500 shadow-sm"
                                                 style="max-width: 260px;">
                                                 <option value="todos">Todos los Indicadores (% Proyección Global)
@@ -1630,6 +1637,11 @@
                                                     Aéreos (%)</option>
                                                 <option value="VÍA URBANA MEJORADA. (RVU)">Vía Urbana (%)</option>
                                             </select>
+                                            <button type="button" id="btn-ver-indicador-select" onclick="openIndicadorDetailFromSelect()"
+                                                class="px-2.5 py-1.5 bg-institutional-accent hover:bg-blue-600 text-white font-bold rounded-lg text-[10.5px] transition-all shadow-xs flex items-center gap-1 shrink-0"
+                                                title="Ver convenios y alcance de este indicador">
+                                                <i class="fa-solid fa-folder-open"></i> Ver Convenios
+                                            </button>
                                         </div>
                                     </div>
                                     <div style="height:288px;margin-top:16px;"><canvas id="chart-plan-anual"></canvas>
@@ -1676,8 +1688,401 @@
                         <!-- Fin tab-plan -->
 
                         <!-- ================================================================
-             PESTAÑA 4: PORTAL DEL SUPERVISOR
-             ================================================================ -->
+                             PESTAÑA 3: CONTROL DE VISITAS TÉCNICAS
+                             ================================================================ -->
+                        <div id="tab-visitas" class="tab-content hidden space-y-6">
+
+                            <!-- HERO / BANNER EJECUTIVO DE VISITAS -->
+                            <div class="vt-hero-banner bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm relative overflow-hidden"
+                                style="background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%);">
+                                <div class="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                    <div class="flex items-start gap-4">
+                                        <div class="w-12 h-12 rounded-2xl bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-700 text-2xl shrink-0 shadow-sm">
+                                            <i class="fa-solid fa-clipboard-check"></i>
+                                        </div>
+                                        <div>
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <h1 class="text-xl font-black text-slate-900 tracking-tight">Centro de Control de Visitas Técnicas</h1>
+                                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                                                    Monitoreo Territorial DIAT
+                                                </span>
+                                            </div>
+                                            <p class="text-xs text-slate-500 mt-1 max-w-2xl font-medium">
+                                                Georreferenciación, seguimiento en sitio, registro fotográfico y control de compromisos de supervisores en los convenios de Antioquia.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Acciones Rápidas -->
+                                    <div class="flex items-center gap-2 flex-wrap w-full lg:w-auto">
+                                        <button type="button" id="btn-vt-programar-modal"
+                                            class="flex-1 sm:flex-initial px-4 py-2.5 bg-institutional-primary hover:bg-institutional-light text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2">
+                                            <i class="fa-solid fa-calendar-plus"></i>
+                                            <span>Programar Visita</span>
+                                        </button>
+                                        <button type="button" id="btn-vt-registrar-modal"
+                                            class="flex-1 sm:flex-initial px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider border border-slate-300 shadow-sm transition-all flex items-center justify-center gap-2">
+                                            <i class="fa-solid fa-camera text-emerald-600"></i>
+                                            <span>Registrar Realizada</span>
+                                        </button>
+                                        <button type="button" id="btn-vt-exportar-pdf"
+                                            class="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2"
+                                            title="Exportar reporte territorial en PDF con mapa vectorial y tabla">
+                                            <i class="fa-solid fa-file-pdf text-sm"></i>
+                                            <span>Exportar PDF</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TARJETAS KPI DE VISITAS TÉCNICAS -->
+                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                                <!-- KPI 1: Total Visitas -->
+                                <div class="vt-kpi-card bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all">
+                                    <div class="flex justify-between items-start">
+                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Visitas</p>
+                                        <span class="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-xs">
+                                            <i class="fa-solid fa-clipboard-list"></i>
+                                        </span>
+                                    </div>
+                                    <h3 class="text-2xl font-black text-slate-800 mt-1" id="kpi-vt-total">0</h3>
+                                    <p class="text-[10px] text-slate-500 font-semibold mt-1">
+                                        <span id="kpi-vt-pct-total" class="font-bold text-slate-700">100%</span> registradas
+                                    </p>
+                                </div>
+
+                                <!-- KPI 2: Visitas Realizadas -->
+                                <div class="vt-kpi-card bg-white p-4 rounded-2xl border border-emerald-200/70 shadow-xs hover:shadow-md transition-all"
+                                    style="border-left: 4px solid #10B981;">
+                                    <div class="flex justify-between items-start">
+                                        <p class="text-[10px] font-bold text-emerald-800 uppercase tracking-widest">Realizadas</p>
+                                        <span class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs">
+                                            <i class="fa-solid fa-circle-check"></i>
+                                        </span>
+                                    </div>
+                                    <h3 class="text-2xl font-black text-emerald-700 mt-1" id="kpi-vt-realizadas">0</h3>
+                                    <p class="text-[10px] text-emerald-600 font-bold mt-1">
+                                        <span id="kpi-vt-realizadas-pct">0%</span> del total · <span id="kpi-vt-fotos-total">0</span> fotos
+                                    </p>
+                                </div>
+
+                                <!-- KPI 3: Visitas Programadas -->
+                                <div class="vt-kpi-card bg-white p-4 rounded-2xl border border-amber-200/70 shadow-xs hover:shadow-md transition-all"
+                                    style="border-left: 4px solid #F59E0B;">
+                                    <div class="flex justify-between items-start">
+                                        <p class="text-[10px] font-bold text-amber-800 uppercase tracking-widest">Programadas</p>
+                                        <span class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xs">
+                                            <i class="fa-solid fa-calendar-days"></i>
+                                        </span>
+                                    </div>
+                                    <h3 class="text-2xl font-black text-amber-600 mt-1" id="kpi-vt-programadas">0</h3>
+                                    <p class="text-[10px] text-amber-600 font-bold mt-1">
+                                        <span id="kpi-vt-proximas-dias">Próximos 30 días</span>
+                                    </p>
+                                </div>
+
+                                <!-- KPI 4: Cobertura Territorial -->
+                                <div class="vt-kpi-card bg-white p-4 rounded-2xl border border-blue-200/70 shadow-xs hover:shadow-md transition-all"
+                                    style="border-left: 4px solid #3B82F6;">
+                                    <div class="flex justify-between items-start">
+                                        <p class="text-[10px] font-bold text-blue-800 uppercase tracking-widest">Cobertura</p>
+                                        <span class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs">
+                                            <i class="fa-solid fa-map-location-dot"></i>
+                                        </span>
+                                    </div>
+                                    <h3 class="text-2xl font-black text-blue-700 mt-1" id="kpi-vt-municipios">0</h3>
+                                    <p class="text-[10px] text-blue-600 font-semibold mt-1">
+                                        Municipios · <span id="kpi-vt-convenios" class="font-bold">0</span> Convenios
+                                    </p>
+                                </div>
+
+                                <!-- KPI 5: Supervisores y Equipo Técnico en Sitio (Visitas Programadas) -->
+                                <div class="vt-kpi-card bg-white p-4 rounded-2xl border border-purple-200/70 shadow-xs hover:shadow-md transition-all col-span-2 sm:col-span-1"
+                                    style="border-left: 4px solid #8B5CF6;">
+                                    <div class="flex justify-between items-start">
+                                        <p class="text-[10px] font-bold text-purple-800 uppercase tracking-widest">Técnicos en Sitio</p>
+                                        <span class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xs">
+                                            <i class="fa-solid fa-user-helmet-safety"></i>
+                                        </span>
+                                    </div>
+                                    <h3 class="text-2xl font-black text-purple-700 mt-1" id="kpi-vt-supervisores">0</h3>
+                                    <p class="text-[10px] text-purple-600 font-semibold mt-1" id="kpi-vt-supervisores-sub">
+                                        0 en visitas programadas
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- SECCIÓN DE FILTROS AVANZADOS -->
+                            <section class="filter-section">
+                                <div class="filter-section-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                    <div class="flex items-center gap-3 flex-wrap">
+                                        <div class="filter-section-title">
+                                            <i class="fa-solid fa-filter"></i>
+                                            Filtros de Visitas Técnicas
+                                        </div>
+
+                                        <!-- CHIPS SELECTORES DE ESTADO (TODAS / REALIZADAS / PROGRAMADAS) -->
+                                        <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1">
+                                            <button type="button" class="vt-state-chip active px-3 py-1 rounded-lg text-xs font-bold transition-all"
+                                                data-estado="todos" id="btn-vt-chip-todos">
+                                                <span>Todas</span>
+                                                <span class="ml-1 px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700 text-[10px]" id="badge-vt-count-todos">0</span>
+                                            </button>
+                                            <button type="button" class="vt-state-chip px-3 py-1 rounded-lg text-xs font-bold transition-all text-emerald-700 hover:bg-emerald-50"
+                                                data-estado="Realizada" id="btn-vt-chip-realizadas">
+                                                <i class="fa-solid fa-circle-check text-[10px] mr-1"></i>
+                                                <span>Realizadas</span>
+                                                <span class="ml-1 px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px]" id="badge-vt-count-realizadas">0</span>
+                                            </button>
+                                            <button type="button" class="vt-state-chip px-3 py-1 rounded-lg text-xs font-bold transition-all text-amber-700 hover:bg-amber-50"
+                                                data-estado="Programada" id="btn-vt-chip-programadas">
+                                                <i class="fa-solid fa-calendar-days text-[10px] mr-1"></i>
+                                                <span>Programadas</span>
+                                                <span class="ml-1 px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[10px]" id="badge-vt-count-programadas">0</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center gap-2">
+                                        <button id="btn-vt-reset-filters" class="btn-reset">
+                                            <i class="fa-solid fa-eraser"></i> Limpiar Filtros
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-3">
+                                    <!-- Buscador -->
+                                    <div class="lg:col-span-2">
+                                        <label class="filter-label">Búsqueda Rápida</label>
+                                        <div class="relative">
+                                            <input type="text" id="filter-vt-search" placeholder="Buscar por convenio, municipio, vía..."
+                                                class="filter-control pl-8" />
+                                            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                                        </div>
+                                    </div>
+                                    <!-- Supervisor -->
+                                    <div>
+                                        <label class="filter-label">Supervisor</label>
+                                        <select id="filter-vt-supervisor" class="filter-control">
+                                            <option value="">Todos los Supervisores</option>
+                                        </select>
+                                    </div>
+                                    <!-- Subregión -->
+                                    <div>
+                                        <label class="filter-label">Subregión</label>
+                                        <select id="filter-vt-subregion" class="filter-control">
+                                            <option value="">Todas las Subregiones</option>
+                                        </select>
+                                    </div>
+                                    <!-- Municipio -->
+                                    <div>
+                                        <label class="filter-label">Municipio</label>
+                                        <select id="filter-vt-municipio" class="filter-control">
+                                            <option value="">Todos los Municipios</option>
+                                        </select>
+                                    </div>
+                                    <!-- Tipo de Visita -->
+                                    <div>
+                                        <label class="filter-label">Tipo de Visita</label>
+                                        <select id="filter-vt-tipo" class="filter-control">
+                                            <option value="">Todos los Tipos</option>
+                                            <option value="Avance de obra">Avance de obra</option>
+                                            <option value="Inspección inicial">Inspección inicial</option>
+                                            <option value="Control de calidad">Control de calidad</option>
+                                            <option value="Recepción final">Recepción final</option>
+                                            <option value="Seguimiento y control">Seguimiento y control</option>
+                                            <option value="Atención de alertas / quejas">Atención de alertas</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <!-- SECCIÓN: MAPA TERRITORIAL DE ANTIOQUIA + ANALÍTICA GRÁFICA -->
+                            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                                <!-- MAPA TERRITORIAL DE ANTIOQUIA (7 COLUMNAS) -->
+                                <div class="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                                        <div>
+                                            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                                <i class="fa-solid fa-map-location-dot text-emerald-600"></i>
+                                                Georreferenciación de Visitas en Antioquia
+                                            </h3>
+                                            <p class="text-[11px] text-slate-400 font-medium mt-0.5">
+                                                Puntos geolocalizados de inspección técnica en territorio
+                                            </p>
+                                        </div>
+
+                                        <div class="flex items-center gap-2">
+                                            <button type="button" id="btn-vt-map-center"
+                                                class="px-2.5 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all flex items-center gap-1"
+                                                title="Centrar mapa en Antioquia">
+                                                <i class="fa-solid fa-arrows-to-dot"></i> Antioquia
+                                            </button>
+                                            <button type="button" id="btn-vt-map-fit"
+                                                class="px-2.5 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all flex items-center gap-1"
+                                                title="Ajustar zoom a visitas visibles">
+                                                <i class="fa-solid fa-expand"></i> Ajustar Puntos
+                                            </button>
+                                            <button type="button" id="btn-vt-map-layer-toggle"
+                                                class="px-2.5 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all flex items-center gap-1"
+                                                title="Alternar entre mapa topográfico y satelital">
+                                                <i class="fa-solid fa-layer-group text-emerald-600"></i> <span id="vt-map-layer-text">Satelital</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Contenedor del Mapa Leaflet -->
+                                    <div class="relative w-full rounded-xl overflow-hidden border border-slate-200 shadow-inner"
+                                        style="height: 520px;">
+                                        <div id="visitas-map-container" class="w-full h-full" style="z-index: 10;"></div>
+
+                                        <!-- Leyenda Flotante del Mapa -->
+                                        <div class="absolute bottom-3 left-3 bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-slate-200/90 shadow-md text-xs font-semibold z-20 space-y-1.5">
+                                            <p class="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Convenciones</p>
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-xs"></span>
+                                                <span class="text-slate-700 font-bold text-[11px]">Visita Realizada</span>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-3 h-3 rounded-full bg-amber-500 border-2 border-white shadow-xs"></span>
+                                                <span class="text-slate-700 font-bold text-[11px]">Visita Programada</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- PANEL DE ANALÍTICA GRÁFICA (5 COLUMNAS) -->
+                                <div class="lg:col-span-5 space-y-4">
+                                    <!-- Gráfico 1: Visitas por Supervisor -->
+                                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <h4 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                                                <i class="fa-solid fa-user-tie text-emerald-600 mr-1.5"></i> Visitas por Supervisor
+                                            </h4>
+                                            <span class="text-[10px] text-slate-400 font-bold">Realizadas vs Programadas</span>
+                                        </div>
+                                        <div style="height: 200px;" class="relative">
+                                            <canvas id="chart-vt-supervisor"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <!-- Gráfico 2: Distribución por Subregión -->
+                                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <h4 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                                                <i class="fa-solid fa-chart-pie text-emerald-600 mr-1.5"></i> Visitas por Subregión
+                                            </h4>
+                                            <span class="text-[10px] text-slate-400 font-bold">Distribución Territorial</span>
+                                        </div>
+                                        <div style="height: 200px;" class="relative">
+                                            <canvas id="chart-vt-subregion"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- GRÁFICOS COMPLEMENTARIOS (CRONOGRAMA Y TIPOLOGÍA) -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Gráfico 3: Cronograma Mensual -->
+                                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                    <div class="flex justify-between items-center mb-3">
+                                        <div>
+                                            <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                                                <i class="fa-regular fa-calendar-check text-emerald-600 mr-1.5"></i> Cronograma de Visitas
+                                            </h4>
+                                            <p class="text-[11px] text-slate-400 font-medium">Evolución y programación temporal de visitas</p>
+                                        </div>
+                                    </div>
+                                    <div style="height: 220px;" class="relative">
+                                        <canvas id="chart-vt-timeline"></canvas>
+                                    </div>
+                                </div>
+
+                                <!-- Gráfico 4: Tipología de Visitas -->
+                                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                    <div class="flex justify-between items-center mb-3">
+                                        <div>
+                                            <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                                                <i class="fa-solid fa-tags text-emerald-600 mr-1.5"></i> Tipología de Visitas Técnicas
+                                            </h4>
+                                            <p class="text-[11px] text-slate-400 font-medium">Clasificación por objetivo de la inspección</p>
+                                        </div>
+                                    </div>
+                                    <div style="height: 220px;" class="relative">
+                                        <canvas id="chart-vt-tipo"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- LISTADO DETALLADO DE VISITAS (TARJETAS / TABLA) -->
+                            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-4">
+                                    <div>
+                                        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                                            <i class="fa-solid fa-list-check text-institutional-primary"></i>
+                                            Listado Detallado de Visitas
+                                        </h3>
+                                        <p class="text-xs text-slate-400 font-medium mt-0.5">
+                                            Mostrando <span id="vt-list-count" class="font-bold text-slate-700">0</span> visitas técnicas según los filtros activos
+                                        </p>
+                                    </div>
+
+                                    <!-- Selector de Vista (Tarjetas / Tabla) -->
+                                    <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                                        <button type="button" id="btn-vt-view-cards"
+                                            class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-800 shadow-xs transition-all flex items-center gap-1.5">
+                                            <i class="fa-solid fa-grip"></i> Tarjetas
+                                        </button>
+                                        <button type="button" id="btn-vt-view-table"
+                                            class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-800 transition-all flex items-center gap-1.5">
+                                            <i class="fa-solid fa-table-list"></i> Tabla
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Vista 1: Cuadrícula de Tarjetas (Cards) -->
+                                <div id="vt-cards-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                    <!-- Tarjetas generadas dinámicamente -->
+                                </div>
+
+                                <!-- Vista 2: Tabla Detallada -->
+                                <div id="vt-table-container" class="hidden overflow-x-auto rounded-xl border border-slate-200">
+                                    <table class="w-full text-left text-xs text-slate-600">
+                                        <thead class="bg-slate-50 text-slate-400 font-bold uppercase text-[10px] border-b border-slate-200">
+                                            <tr>
+                                                <th class="p-3">Estado</th>
+                                                <th class="p-3">Convenio</th>
+                                                <th class="p-3">Municipio / Subregión</th>
+                                                <th class="p-3 text-center">Fecha</th>
+                                                <th class="p-3">Supervisor</th>
+                                                <th class="p-3">Tipo de Visita</th>
+                                                <th class="p-3">Observaciones</th>
+                                                <th class="p-3 text-center">Fotos</th>
+                                                <th class="p-3 text-center">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="vt-table-body" class="divide-y divide-slate-100">
+                                            <!-- Filas generadas dinámicamente -->
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Paginación -->
+                                <div id="vt-pagination-wrapper" class="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100 text-xs">
+                                    <span class="text-slate-500 font-medium" id="vt-pagination-info">Página 1 de 1</span>
+                                    <div class="flex items-center gap-1" id="vt-pagination-controls">
+                                        <!-- Botones de página generados dinámicamente -->
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <!-- Fin tab-visitas -->
+
+                        <!-- ================================================================
+                             PESTAÑA 4: PORTAL DEL SUPERVISOR
+                             ================================================================ -->
                         <div id="tab-portal" class="tab-content hidden space-y-6">
 
                             <!-- VISTA NO AUTENTICADO -->
@@ -2515,37 +2920,148 @@
             <!-- Modal Content (Scrollable) -->
             <div class="flex-1 overflow-y-auto p-6 custom-scrollbar bg-slate-50/50 space-y-6">
 
-                <!-- SECCIÓN 1: SELECCIÓN DE CONVENIO Y DATOS BÁSICOS -->
-                <div class="bg-white p-5 rounded-xl border border-slate-200 space-y-4">
-                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider border-b pb-2">
-                        <i class="fa-solid fa-file-contract text-institutional-primary mr-1"></i>Información General
+                <!-- TARJETA 1: CONVENIO Y LOCALIZACIÓN TERRITORIAL -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 space-y-4 shadow-sm">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider border-b pb-2 flex items-center justify-between">
+                        <span><i class="fa-solid fa-file-contract text-institutional-primary mr-1.5"></i>Convenio y Localización Territorial</span>
+                        <span class="text-[10px] text-slate-400 font-normal">Antioquia</span>
                     </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="col-span-1 md:col-span-2">
-                            <label class="filter-label">Seleccionar Convenio Asignado</label>
-                            <select id="visit-convenio-select" class="filter-control">
-                                <!-- Cargado dinámicamente -->
-                            </select>
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                        <!-- MUNICIPIO -->
+                        <div class="md:col-span-4">
+                            <label class="filter-label flex justify-between items-center mb-1">
+                                <span>Municipio</span>
+                                <span class="text-[10px] text-slate-400 font-normal">125 Municipios</span>
+                            </label>
+                            <div class="relative vt-select-wrapper">
+                                <select id="visit-municipio-select" class="filter-control font-semibold text-xs pr-8 cursor-pointer">
+                                    <option value="">-- Seleccionar Municipio --</option>
+                                    <!-- Cargado dinámicamente con los 125 municipios -->
+                                </select>
+                                <i class="fa-solid fa-chevron-down vt-select-chevron pointer-events-none"></i>
+                            </div>
                         </div>
-                        <div>
-                            <label class="filter-label">Fecha de Visita</label>
-                            <input type="date" id="visit-fecha" class="filter-control">
-                        </div>
-                        <div>
-                            <label class="filter-label">Tipo de Visita</label>
-                            <select id="visit-tipo" class="filter-control">
-                                <option value="Avance de obra">Avance de obra</option>
-                                <option value="Entrega final">Entrega final</option>
-                                <option value="Suspensión">Suspensión</option>
-                                <option value="Inspección de riesgo">Inspección de riesgo</option>
-                                <option value="Otro">Otro</option>
-                            </select>
+
+                        <!-- BUSCADOR UNIFICADO DE CONVENIO -->
+                        <div class="md:col-span-8">
+                            <label class="filter-label flex justify-between items-center mb-1">
+                                <span>Convenio Asociado</span>
+                                <span class="text-[10px] text-slate-400 font-normal">Búsqueda rápida por número, municipio o vía</span>
+                            </label>
+                            <div class="relative vt-combobox-wrapper">
+                                <div class="relative flex items-center">
+                                    <i class="fa-solid fa-file-signature absolute left-3 text-slate-400 text-xs pointer-events-none"></i>
+                                    <input type="text" id="visit-convenio-search" class="filter-control text-xs pl-8 pr-16"
+                                        placeholder="Buscar convenio por número, vía o palabra clave...">
+                                    <div class="absolute right-2.5 flex items-center gap-1.5">
+                                        <button type="button" id="btn-clear-convenio" class="hidden text-slate-400 hover:text-slate-600 p-1 text-xs" title="Limpiar convenio">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                        <button type="button" id="btn-toggle-convenio-dropdown" class="text-slate-400 hover:text-slate-600 p-1 text-xs" title="Ver listado de convenios">
+                                            <i class="fa-solid fa-chevron-down"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Select oculto para mantener compatibilidad total con el resto del sistema -->
+                                <select id="visit-convenio-select" class="hidden"></select>
+
+                                <!-- Menú flotante desplegable para convenios -->
+                                <div id="visit-convenio-dropdown"
+                                    class="hidden absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto custom-scrollbar p-1.5 space-y-1">
+                                    <!-- Items generados dinámicamente -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- SECCIÓN 2: DETALLES DE LA VISITA -->
-                <div class="bg-white p-5 rounded-xl border border-slate-200 space-y-4">
+                <!-- TARJETA 2: PLANIFICACIÓN Y CLASIFICACIÓN -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 space-y-4 shadow-sm">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider border-b pb-2">
+                        <i class="fa-solid fa-calendar-check text-institutional-primary mr-1.5"></i>Planificación y Clasificación de la Visita
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label class="filter-label mb-1">Fecha de Visita</label>
+                            <input type="date" id="visit-fecha" class="filter-control font-semibold text-xs">
+                        </div>
+                        <div>
+                            <label class="filter-label mb-1">Tipo de Visita</label>
+                            <div class="relative vt-select-wrapper">
+                                <select id="visit-tipo" class="filter-control font-semibold text-xs pr-8 cursor-pointer">
+                                    <option value="Avance de obra">Avance de obra</option>
+                                    <option value="Inspección inicial">Inspección inicial</option>
+                                    <option value="Control de calidad">Control de calidad</option>
+                                    <option value="Recepción final">Recepción final</option>
+                                    <option value="Seguimiento y control">Seguimiento y control</option>
+                                    <option value="Atención de alertas / quejas">Atención de alertas / quejas</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                                <i class="fa-solid fa-chevron-down vt-select-chevron pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="filter-label mb-1">Prioridad</label>
+                            <div class="relative vt-select-wrapper">
+                                <select id="visit-prioridad" class="filter-control font-semibold text-xs pr-8 cursor-pointer">
+                                    <option value="Alta">Alta</option>
+                                    <option value="Media">Media</option>
+                                    <option value="Baja">Baja</option>
+                                </select>
+                                <i class="fa-solid fa-chevron-down vt-select-chevron pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="filter-label mb-1">Estado de la Visita</label>
+                            <div class="relative vt-select-wrapper">
+                                <select id="visit-estado" class="filter-control font-bold text-xs pr-8 cursor-pointer">
+                                    <option value="Programada" class="text-amber-700">📅 Visita Programada (Pendiente)</option>
+                                    <option value="Realizada" class="text-emerald-700">✅ Visita Realizada (Ejecutada)</option>
+                                </select>
+                                <i class="fa-solid fa-chevron-down vt-select-chevron pointer-events-none"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TARJETA 3: EQUIPO TÉCNICO Y SUPERVISORES -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 space-y-3 shadow-sm">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <i class="fa-solid fa-user-group text-institutional-primary mr-1.5"></i>Equipo Técnico / Supervisores Asignados
+                        </h3>
+                        <span class="text-[11px] text-purple-700 font-bold bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full" id="visit-supervisor-count-badge">0 seleccionados</span>
+                    </div>
+
+                    <input type="hidden" id="visit-supervisor-input" value="">
+
+                    <!-- Chips de supervisores seleccionados -->
+                    <div id="visit-supervisor-chips" class="flex flex-wrap gap-1.5 min-h-[34px] p-2 bg-slate-50/70 border border-slate-200 rounded-lg items-center">
+                        <span class="text-[11px] text-slate-400 italic font-normal" id="visit-supervisor-chips-placeholder">Ningún supervisor asignado aún. Selecciona o busca en el catálogo inferior.</span>
+                    </div>
+
+                    <!-- Buscador con catálogo desplegable completo -->
+                    <div class="relative">
+                        <div class="relative flex items-center">
+                            <i class="fa-solid fa-user-tie absolute left-3 text-slate-400 text-xs pointer-events-none"></i>
+                            <input type="text" id="visit-supervisor-search" class="filter-control text-xs pl-8 pr-8"
+                                placeholder="Buscar supervisor por nombre en la base de datos... (clic para desplegar catálogo)">
+                            <button type="button" id="btn-toggle-supervisor-dropdown"
+                                class="absolute right-2 text-slate-400 hover:text-slate-600 text-xs p-1" title="Desplegar catálogo de supervisores">
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </button>
+                        </div>
+
+                        <!-- Desplegable flotante con checkboxes -->
+                        <div id="visit-supervisor-dropdown"
+                            class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 max-h-56 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                            <!-- Opciones generadas dinámicamente desde rawData y usuarios -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 2: DETALLES DE LA VISITA (OCULTO EN PROGRAMADAS) -->
+                <div id="visit-seccion-observaciones" class="bg-white p-5 rounded-xl border border-slate-200 space-y-4">
                     <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider border-b pb-2">
                         <i class="fa-solid fa-clipboard-list text-institutional-primary mr-1"></i>Observaciones y
                         Compromisos
@@ -2569,8 +3085,8 @@
                     </div>
                 </div>
 
-                <!-- SECCIÓN 3: REGISTRO FOTOGRÁFICO -->
-                <div class="bg-white p-5 rounded-xl border border-slate-200 space-y-4">
+                <!-- SECCIÓN 3: REGISTRO FOTOGRÁFICO (OCULTO EN PROGRAMADAS) -->
+                <div id="visit-seccion-fotos" class="bg-white p-5 rounded-xl border border-slate-200 space-y-4">
                     <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider border-b pb-2">
                         <i class="fa-solid fa-camera text-institutional-primary mr-1"></i>Registro Fotográfico de la
                         Visita
@@ -2743,6 +3259,168 @@
                     <i class="fa-solid fa-pen-to-square mr-1"></i> Editar Visita
                 </button>
                 <button type="button" id="btn-close-visit-detail"
+                    class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg text-xs uppercase tracking-wider transition-all">
+                    Cerrar
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ================================================================
+         MODAL: DETALLE Y CONVENIOS DEL INDICADOR ESTRATÉGICO
+         ================================================================ -->
+    <div id="modal-indicador-detalle"
+        class="fixed inset-0 z-[70] hidden flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-sm no-print">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 transition-all transform animate-in fade-in zoom-in-95 duration-200">
+
+            <!-- Modal Header -->
+            <div class="p-5 border-b border-slate-200 flex justify-between items-start bg-gradient-to-r from-slate-50 via-white to-emerald-50/40 shrink-0">
+                <div class="flex items-start gap-3.5 pr-4">
+                    <div class="w-11 h-11 rounded-xl bg-emerald-700 text-white flex items-center justify-center text-xl shrink-0 shadow-md shadow-emerald-700/20">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap mb-1">
+                            <span id="modal-ind-badge-tipo" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                Métrica: km
+                            </span>
+                            <span id="modal-ind-badge-meta" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                Meta: 30 km
+                            </span>
+                            <span id="modal-ind-badge-cumplimiento" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
+                                37.5% Cumplido
+                            </span>
+                        </div>
+                        <h2 id="modal-ind-title" class="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                            VÍA URBANA MEJORADA. (RVU)
+                        </h2>
+                        <p class="text-xs text-slate-500 font-medium">
+                            Plan de Desarrollo Departamental "Por Antioquia Firme" 2024-2027 • Seguimiento de Metas y Alcance
+                        </p>
+                    </div>
+                </div>
+                <button type="button" id="btn-close-modal-indicador"
+                    class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all shrink-0">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar bg-slate-50/40">
+
+                <!-- Ribbon de Métricas Clave -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <!-- KPI 1: Convenios -->
+                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between text-slate-400 mb-2">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Convenios Asignados</span>
+                            <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-file-contract"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div id="modal-ind-kpi-convenios" class="text-xl font-black text-slate-900">0</div>
+                            <div id="modal-ind-kpi-munis" class="text-[10.5px] text-slate-400 font-medium">En 0 municipios</div>
+                        </div>
+                    </div>
+
+                    <!-- KPI 2: Alcance Total Ejecutado -->
+                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between text-slate-400 mb-2">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Alcance Total Ejecutado</span>
+                            <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-road"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div id="modal-ind-kpi-alcance-total" class="text-xl font-black text-emerald-700">0.00 km</div>
+                            <div id="modal-ind-kpi-alcance-m" class="text-[10.5px] text-slate-400 font-medium">0 m ejecutados en total</div>
+                        </div>
+                    </div>
+
+                    <!-- KPI 3: Alcance Cuatrienio (DESTACADO) -->
+                    <div class="bg-gradient-to-br from-amber-500/10 to-amber-600/5 p-3.5 rounded-xl border border-amber-300 shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between text-slate-400 mb-2">
+                            <span class="text-[10px] font-black uppercase tracking-wider text-amber-800">Aporte Este Cuatrienio</span>
+                            <div class="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-black">
+                                <i class="fa-solid fa-award"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div id="modal-ind-kpi-alcance-cuatrenio" class="text-xl font-black text-amber-900">0.00 km</div>
+                            <div id="modal-ind-kpi-alcance-cuatrenio-sub" class="text-[10.5px] text-amber-700 font-bold">Longitud Ejecutada Cuatrienio</div>
+                        </div>
+                    </div>
+
+                    <!-- KPI 4: Inversión Total -->
+                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between text-slate-400 mb-2">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Inversión Total Dpto</span>
+                            <div class="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-coins"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div id="modal-ind-kpi-inversion" class="text-lg font-black text-slate-900">$0</div>
+                            <div id="modal-ind-kpi-meta-restante" class="text-[10.5px] text-slate-400 font-medium">Restante: 0 km</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Barra de Búsqueda y Filtros de la Tabla -->
+                <div class="bg-white p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+                    <div class="relative w-full sm:w-80">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                        <input type="text" id="modal-ind-search"
+                            class="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-none transition-all"
+                            placeholder="Buscar por convenio, municipio o vía...">
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                        <span id="modal-ind-table-count" class="text-xs font-semibold text-slate-500">
+                            Mostrando 0 convenios
+                        </span>
+                        <button type="button" id="btn-modal-ind-export-pdf"
+                            class="px-3 py-1.5 bg-institutional-primary hover:bg-institutional-light text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-file-pdf"></i>
+                            Exportar Reporte
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla Sintética de Convenios -->
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto max-h-96 custom-scrollbar">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead class="bg-slate-50/80 sticky top-0 z-10 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+                                <tr>
+                                    <th class="py-2.5 px-3">Convenio</th>
+                                    <th class="py-2.5 px-3">Municipio / Subregión</th>
+                                    <th class="py-2.5 px-3">Clasificación</th>
+                                    <th class="py-2.5 px-3 text-right">Alcance Total Ejecutado</th>
+                                    <th class="py-2.5 px-3 text-right bg-amber-50/60 text-amber-900 border-x border-amber-200/50">Aporte Cuatrienio</th>
+                                    <th class="py-2.5 px-3 text-center">% Físico / Estado</th>
+                                    <th class="py-2.5 px-3 text-center">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-ind-table-body" class="divide-y divide-slate-100 text-slate-700">
+                                <!-- Filas generadas dinámicamente -->
+                            </tbody>
+                            <tfoot id="modal-ind-table-footer" class="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-300 text-xs sticky bottom-0 z-10">
+                                <!-- Totales consolidados -->
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-3.5 bg-slate-50 border-t border-slate-200 flex justify-between items-center shrink-0">
+                <div class="text-[11px] text-slate-500 font-medium">
+                    <i class="fa-solid fa-circle-info text-emerald-600 mr-1"></i>Haz clic en cualquier convenio para consultar su ficha técnica detallada.
+                </div>
+                <button type="button" id="btn-close-modal-indicador-footer"
                     class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg text-xs uppercase tracking-wider transition-all">
                     Cerrar
                 </button>

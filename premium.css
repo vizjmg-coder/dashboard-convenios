@@ -2429,7 +2429,512 @@ button, select, input, .tab-btn, .kpi-card, .alert-filter-btn {
     font-weight: 700;
 }
 
+/* ============================================================
+   CONTROL DE VISITAS TÉCNICAS — PREMIUM STYLES
+   ============================================================ */
 
+.vt-kpi-card {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
+.vt-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
+}
 
+.vt-state-chip {
+    cursor: pointer;
+    background: transparent;
+    color: #64748B;
+    border: 1px solid transparent;
+}
+
+.vt-state-chip.active {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    border: 1px solid #CBD5E1 !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
+}
+
+.vt-state-chip[data-estado="Realizada"].active {
+    color: #065F46 !important;
+    border-color: #A7F3D0 !important;
+    background: #ECFDF5 !important;
+}
+
+.vt-state-chip[data-estado="Programada"].active {
+    color: #92400E !important;
+    border-color: #FDE68A !important;
+    background: #FFFBEB !important;
+}
+
+/* Pines Personalizados de Leaflet para Visitas con Etiqueta Informativa */
+.custom-vt-div-icon {
+    background: transparent !important;
+    border: none !important;
+}
+
+.vt-marker-pin-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 140px;
+    pointer-events: auto;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.vt-marker-pin-wrap:hover {
+    transform: scale(1.15) translateY(-3px);
+    z-index: 9999 !important;
+}
+
+.vt-marker-pin-wrap:hover .vt-pin-info-card {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.vt-map-pin {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.vt-map-pin.realizada {
+    background: linear-gradient(135deg, #059669, #047857);
+    color: #FFFFFF;
+    border: 2px solid #FFFFFF;
+}
+
+.vt-map-pin.programada {
+    background: linear-gradient(135deg, #F59E0B, #D97706);
+    color: #FFFFFF;
+    border: 2px solid #FFFFFF;
+}
+
+.vt-map-pin-pulse {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    animation: vt-pin-pulse 2s infinite cubic-bezier(0.24, 0, 0.38, 1);
+    pointer-events: none;
+}
+
+.vt-map-pin.realizada .vt-map-pin-pulse {
+    background: rgba(16, 185, 129, 0.5);
+}
+
+.vt-map-pin.programada .vt-map-pin-pulse {
+    background: rgba(245, 158, 11, 0.5);
+}
+
+/* Tarjeta / Etiqueta debajo del icono con Municipio, Supervisor y Fecha */
+.vt-pin-info-card {
+    margin-top: 4px;
+    padding: 3px 6px 4px 6px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(4px);
+    border-radius: 7px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22), 0 1px 2px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    border: 1.5px solid #E2E8F0;
+    max-width: 135px;
+    width: max-content;
+    line-height: 1.22;
+    pointer-events: none;
+    transition: all 0.2s ease;
+}
+
+.vt-pin-info-card.realizada {
+    border-color: #10B981;
+    border-top: 2.5px solid #059669;
+}
+
+.vt-pin-info-card.realizada .vt-pin-muni {
+    color: #047857;
+}
+
+.vt-pin-info-card.programada {
+    border-color: #F59E0B;
+    border-top: 2.5px solid #D97706;
+}
+
+.vt-pin-info-card.programada .vt-pin-muni {
+    color: #B45309;
+}
+
+.vt-pin-muni {
+    font-size: 9.5px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+    display: block;
+}
+
+.vt-pin-sup {
+    font-size: 8.5px;
+    font-weight: 600;
+    color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+    margin-top: 1px;
+    display: block;
+}
+
+.vt-pin-date {
+    font-size: 8px;
+    font-weight: 700;
+    color: #64748B;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+    background: #F1F5F9;
+    padding: 0.5px 4px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+@keyframes vt-pin-pulse {
+    0% {
+        transform: scale(0.9);
+        opacity: 0.8;
+    }
+    70% {
+        transform: scale(2.2);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(2.4);
+        opacity: 0;
+    }
+}
+
+/* Estilos de Popup Leaflet de Visitas */
+.leaflet-popup-content-wrapper {
+    border-radius: 16px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    box-shadow: 0 16px 36px -6px rgba(15, 23, 42, 0.2) !important;
+    border: 1px solid rgba(226, 232, 240, 0.9) !important;
+}
+
+.leaflet-popup-content {
+    margin: 0 !important;
+    line-height: 1.4 !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+.vt-popup-card {
+    min-width: 260px;
+    max-width: 320px;
+    background: #FFFFFF;
+}
+
+.vt-popup-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid #E2E8F0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.vt-popup-header.realizada {
+    background: linear-gradient(135deg, #ECFDF5, #D1FAE5);
+    border-bottom: 1px solid #A7F3D0;
+}
+
+.vt-popup-header.programada {
+    background: linear-gradient(135deg, #FFFBEB, #FEF3C7);
+    border-bottom: 1px solid #FDE68A;
+}
+
+.vt-popup-body {
+    padding: 12px 14px;
+    font-size: 11.5px;
+    color: #334155;
+    space-y: 6px;
+}
+
+.vt-popup-footer {
+    padding: 10px 14px;
+    background: #F8FAFC;
+    border-top: 1px solid #E2E8F0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+/* Tarjeta Individual de Visita (Grid View) */
+.vt-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 18px;
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+}
+
+.vt-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.08);
+    border-color: #CBD5E1;
+}
+
+.vt-card.realizada {
+    border-top: 4px solid #10B981;
+}
+
+.vt-card.programada {
+    border-top: 4px solid #F59E0B;
+}
+
+.vt-badge-realizada {
+    background: #ECFDF5;
+    color: #065F46;
+    border: 1px solid #A7F3D0;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-weight: 800;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.vt-badge-programada {
+    background: #FFFBEB;
+    color: #92400E;
+    border: 1px solid #FDE68A;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-weight: 800;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Chips de Supervisores Seleccionados */
+.vt-sup-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #F3E8FF;
+    color: #6B21A8;
+    border: 1px solid #D8B4FE;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    transition: all 0.15s ease;
+}
+
+.vt-sup-chip button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #9333EA;
+    font-size: 12px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    padding: 0;
+}
+
+.vt-sup-chip button:hover {
+    color: #581C87;
+}
+
+.vt-sup-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11.5px;
+    transition: background 0.15s;
+    user-select: none;
+}
+
+.vt-sup-option:hover {
+    background: #F8FAFC;
+}
+
+.vt-sup-option.selected {
+    background: #F5F3FF;
+    color: #6B21A8;
+    font-weight: 700;
+}
+
+/* Indicador de selector desplegable con flecha visible */
+.vt-select-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.vt-select-wrapper select {
+    padding-right: 28px !important;
+    cursor: pointer;
+}
+
+.vt-select-chevron {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #64748B;
+    font-size: 11px;
+    pointer-events: none;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.vt-select-wrapper:focus-within .vt-select-chevron {
+    color: #10B981;
+    transform: translateY(-50%) rotate(180deg);
+}
+
+/* Combobox Unificado de Convenios */
+.vt-combobox-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.vt-combobox-item {
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+}
+
+.vt-combobox-item:hover,
+.vt-combobox-item.active {
+    background: #F8FAFC;
+    border-color: #CBD5E1;
+}
+
+.vt-combobox-item.selected {
+    background: #ECFDF5;
+    border-color: #A7F3D0;
+}
+
+.vt-combobox-badge {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #065F46;
+    background: #D1FAE5;
+    padding: 2px 7px;
+    border-radius: 6px;
+    border: 1px solid #A7F3D0;
+    display: inline-flex;
+    align-items: center;
+}
+
+.vt-combobox-muni {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #1E293B;
+    background: #F1F5F9;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.vt-combobox-subregion {
+    font-size: 10px;
+    color: #64748B;
+}
+
+.vt-combobox-via {
+    font-size: 11px;
+    color: #475569;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ============================================================
+   INTERACTIVIDAD DE TARJETAS DE INDICADORES (META-CARDS)
+   ============================================================ */
+.meta-card {
+    cursor: pointer !important;
+    position: relative;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease, border-color 0.22s ease !important;
+}
+
+.meta-card:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 16px 32px -8px rgba(15, 23, 42, 0.14), 0 0 0 1.5px #0B5640 !important;
+}
+
+.meta-card-action {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(226, 232, 240, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 700;
+    color: #0B5640;
+    transition: color 0.15s ease;
+}
+
+.meta-card:hover .meta-card-action {
+    color: #043828;
+}
+
+.meta-card:hover .meta-card-action i.fa-chevron-right {
+    transform: translateX(3px);
+}
+
+.meta-card-action i.fa-chevron-right {
+    transition: transform 0.2s ease;
+}
+
+/* Modal Detalle de Indicadores */
+#modal-indicador-detalle table tr:hover {
+    background-color: #F8FAFC;
+}
+
+.modal-ind-badge-cuatrenio {
+    background: #FEF3C7;
+    color: #92400E;
+    border: 1px solid #FCD34D;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
 

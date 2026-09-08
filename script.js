@@ -4067,6 +4067,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } else if (targetTab === 'plan' && typeof renderPlanTab === 'function') {
                     renderPlanTab();
+                } else if (targetTab === 'visitas' && typeof renderVisitasTab === 'function') {
+                    renderVisitasTab();
                 } else if (targetTab === 'portal' && typeof checkAndRenderPortal === 'function') {
                     checkAndRenderPortal();
                 }
@@ -4107,6 +4109,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (typeof initSupervisorPortal === 'function') {
             initSupervisorPortal();
+        }
+        if (typeof initVisitasControl === 'function') {
+            initVisitasControl();
         }
         loadExcelFile();
     } catch (e) { console.error("Error inicial:", e); }
@@ -4330,6 +4335,7 @@ function processExcelData(data) {
             'AREA EJECUTADA CUATRENIO (M2)': parseNum(c('AREA EJECUTADA CUATRENIO (m2)', 'AREA EJECUTADA CUATRENIO (M2)', 'AREA EJECUTADA CUATRENIO')),
             'CONVENIANTE EJECUTOR': c('CONVENIANTE EJECUTOR', 'EJECUTOR'),
             'SUBREGION': String(c('SUBREGION', 'SUBREGIÓN', 'SUB REGIÓN') || '').trim().toUpperCase(),
+            'CLASIFICACION': String(c('CLASIFICACION', 'CLASIFICACIÓN', 'CLASIFICACIN') || '').trim().toUpperCase(),
             'INDICADOR': String(c('INDICADOR', 'INDICADOR PLAN DE DESARROLLO') || '').trim(),
             'FISICO_NORM': pfis,
             'FINANCIERO_NORM': pfin,
@@ -6159,11 +6165,11 @@ async function renderMap(row, mapId, overlayId, msgId, inst, cb) {
             attribution: 'Esri'
         }).addTo(m);
 
-        // Etiquetas sutiles de lugares y vías sobre la imagen satelital
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+        // Etiquetas sutiles de lugares y vías sobre la imagen satelital (Esri Boundaries sin API key)
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 20,
             maxNativeZoom: 19,
-            subdomains: 'abcd'
+            attribution: 'Esri'
         }).addTo(m);
 
         L.control.zoom({ position: 'bottomright' }).addTo(m);
@@ -8415,6 +8421,10 @@ window.setPlanAnualFilter = function (val) {
     if (selectEl) selectEl.value = val;
 
     renderPlanTab();
+
+    if (val && !val.startsWith('todos') && typeof openIndicadorDetailModal === 'function') {
+        openIndicadorDetailModal(val);
+    }
 };
 
 window.setPlanAnualMetric = function (val) {
@@ -8656,7 +8666,7 @@ function renderPlanTab() {
         const restanteText = isNP ? '-' : fmtVal(restante);
 
         container.innerHTML += `
-            <div class="meta-card meta-${pctCls}">
+            <div class="meta-card meta-${pctCls} group" data-indicador="${ind}" onclick="openIndicadorDetailModal('${ind.replace(/'/g, "\\'")}')" title="Haz clic para ver los ${d.convenios} convenios asignados y el desglose de alcance">
                 <div class="meta-card-header">
                     <h4 class="meta-card-title">${ind}</h4>
                     <span class="meta-pct-badge ${pctCls}">${badgeText}</span>
@@ -8680,6 +8690,10 @@ function renderPlanTab() {
                         </div>
                     </div>
                     <span class="meta-meta-text">${d.convenios} convenio(s)</span>
+                </div>
+                <div class="meta-card-action">
+                    <span><i class="fa-solid fa-list-check mr-1.5 text-emerald-700"></i>Ver ${d.convenios} convenios y alcance</span>
+                    <i class="fa-solid fa-chevron-right text-emerald-700 text-[10px]"></i>
                 </div>
             </div>
         `;
@@ -8732,6 +8746,15 @@ function renderPlanTab() {
             indexAxis: 'y',
             responsive: true,
             maintainAspectRatio: false,
+            onClick: function (evt, elements) {
+                if (elements && elements.length > 0) {
+                    const idx = elements[0].index;
+                    const indKey = Object.keys(indicadoresEstrategicos)[idx];
+                    if (indKey && typeof openIndicadorDetailModal === 'function') {
+                        openIndicadorDetailModal(indKey);
+                    }
+                }
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -8860,6 +8883,498 @@ function renderPlanTab() {
         }
     });
 }
+
+/**
+ * Abre el pop-up de detalle de indicador a partir de la selección del dropdown anual
+ */
+window.openIndicadorDetailFromSelect = function () {
+    const sel = document.getElementById('select-anual-indicador');
+    if (!sel) return;
+    const val = sel.value;
+    if (val && val !== 'todos' && val !== 'todos-km' && val !== 'todos-m2') {
+        openIndicadorDetailModal(val);
+    } else {
+        openIndicadorDetailModal('VÍA URBANA MEJORADA. (RVU)');
+    }
+};
+
+/**
+ * Abre la ventana modal con el resumen del indicador y la tabla sintética de convenios asignados
+ */
+window.openIndicadorDetailModal = function (indKey) {
+    if (!indKey) return;
+    const normalizedKey = (typeof normalizarIndicador === 'function' ? normalizarIndicador(indKey) : '') || indKey;
+    const cfg = (typeof indicadoresEstrategicos !== 'undefined' && (indicadoresEstrategicos[normalizedKey] || indicadoresEstrategicos[indKey]))
+        || { unit: 'und', tipo: 'und', metas: { todos: 0 } };
+
+    // 1. Obtener convenios asociados a este indicador en rawData
+    const relatedRows = (rawData || []).filter(r => {
+        const rInd = typeof normalizarIndicador === 'function' ? normalizarIndicador(r['INDICADOR']) : (r['INDICADOR'] || '');
+        return rInd === normalizedKey || r['INDICADOR'] === normalizedKey || rInd === indKey;
+    });
+
+    // 2. Referencias a elementos del DOM
+    const modalEl = document.getElementById('modal-indicador-detalle');
+    const titleEl = document.getElementById('modal-ind-title');
+    const badgeTipo = document.getElementById('modal-ind-badge-tipo');
+    const badgeMeta = document.getElementById('modal-ind-badge-meta');
+    const badgeCumplimiento = document.getElementById('modal-ind-badge-cumplimiento');
+
+    const kpiConvenios = document.getElementById('modal-ind-kpi-convenios');
+    const kpiMunis = document.getElementById('modal-ind-kpi-munis');
+    const kpiAlcanceTotal = document.getElementById('modal-ind-kpi-alcance-total');
+    const kpiAlcanceM = document.getElementById('modal-ind-kpi-alcance-m');
+    const kpiCuatrenio = document.getElementById('modal-ind-kpi-alcance-cuatrenio');
+    const kpiCuatrenioSub = document.getElementById('modal-ind-kpi-alcance-cuatrenio-sub');
+    const kpiInversion = document.getElementById('modal-ind-kpi-inversion');
+    const kpiMetaRestante = document.getElementById('modal-ind-kpi-meta-restante');
+    const searchInput = document.getElementById('modal-ind-search');
+    const countEl = document.getElementById('modal-ind-table-count');
+    const tableBody = document.getElementById('modal-ind-table-body');
+    const tableFooter = document.getElementById('modal-ind-table-footer');
+
+    if (!modalEl) return;
+
+    // 3. Configurar Título y Badges
+    if (titleEl) titleEl.textContent = normalizedKey;
+    if (badgeTipo) {
+        const tipoLabel = cfg.tipo === 'km' ? 'Kilómetros (km)' : (cfg.tipo === 'm2' ? 'Metros Cuadrados (m²)' : 'Unidades (und)');
+        badgeTipo.textContent = `Métrica: ${tipoLabel}`;
+    }
+
+    const metaCuatrienio = cfg.metas ? (cfg.metas['todos'] || 0) : 0;
+    if (badgeMeta) {
+        const metaFmt = cfg.tipo === 'km' ? `${metaCuatrienio} km` : (cfg.tipo === 'm2' ? formatNumber(metaCuatrienio) + ' m²' : `${metaCuatrienio} und`);
+        badgeMeta.textContent = `Meta Oficial: ${metaFmt}`;
+    }
+
+    // 4. Agregación de Métricas Totales y Cuatrienio
+    let totalLongitudEjecutadaM = 0;
+    let totalLongitudCuatrenioM = 0;
+    let totalAreaEjecutadaM2 = 0;
+    let totalAreaCuatrenioM2 = 0;
+    let totalUndEjecutada = 0;
+    let totalUndCuatrenio = 0;
+    let totalInversion = 0;
+    const munisSet = new Set();
+
+    relatedRows.forEach(row => {
+        if (row['MUNICIPIO']) munisSet.add(String(row['MUNICIPIO']).trim());
+        const inv = (parseNum(row['APORTE DEPARTAMENTO']) || 0) + (parseNum(row['ADICION DEPARTAMENTO']) || 0);
+        totalInversion += inv;
+
+        const le = parseNum(row['LONGITUD EJECUTADA']) || 0;
+        let lc = parseNum(row['LONGITUD EJECUTADA CUATRENIO']) || 0;
+        // Si no es cuatrenio anterior (vigencia >= 2024), todo lo ejecutado cuenta al cuatrienio actual
+        if (!isCuatrenioAnterior(row) && lc === 0 && le > 0) {
+            lc = le;
+        }
+
+        totalLongitudEjecutadaM += le;
+        totalLongitudCuatrenioM += lc;
+
+        const ae = parseNum(row['AREA EJECUTADA (M2)']) || 0;
+        let ac = parseNum(row['AREA EJECUTADA CUATRENIO (M2)']) || 0;
+        if (!isCuatrenioAnterior(row) && ac === 0 && ae > 0) {
+            ac = ae;
+        }
+        totalAreaEjecutadaM2 += ae;
+        totalAreaCuatrenioM2 += ac;
+
+        const fis = parseNum(row['FISICO_NORM']) || 0;
+        if (fis >= 100) {
+            totalUndEjecutada += 1;
+            totalUndCuatrenio += 1;
+        } else if (fis > 0) {
+            totalUndEjecutada += fis / 100;
+            totalUndCuatrenio += fis / 100;
+        }
+    });
+
+    // Formatear métricas principales según tipo
+    let valAlcanceTotalNum = 0;
+    let valAlcanceTotalStr = '';
+    let valAlcanceMStr = '';
+    let valCuatrenioNum = 0;
+    let valCuatrenioStr = '';
+    let valCuatrenioSubStr = '';
+
+    if (cfg.tipo === 'km') {
+        valAlcanceTotalNum = totalLongitudEjecutadaM / 1000;
+        valAlcanceTotalStr = new Intl.NumberFormat('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valAlcanceTotalNum) + ' km';
+        valAlcanceMStr = `${formatNumber(Math.round(totalLongitudEjecutadaM))} m ejecutados en total`;
+
+        valCuatrenioNum = totalLongitudCuatrenioM / 1000;
+        valCuatrenioStr = new Intl.NumberFormat('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valCuatrenioNum) + ' km';
+        valCuatrenioSubStr = `Longitud Ejecutada Cuatrienio (${formatNumber(Math.round(totalLongitudCuatrenioM))} m)`;
+    } else if (cfg.tipo === 'm2') {
+        valAlcanceTotalNum = totalAreaEjecutadaM2;
+        valAlcanceTotalStr = formatNumber(Math.round(valAlcanceTotalNum)) + ' m²';
+        valAlcanceMStr = 'Área total ejecutada';
+
+        valCuatrenioNum = totalAreaCuatrenioM2;
+        valCuatrenioStr = formatNumber(Math.round(valCuatrenioNum)) + ' m²';
+        valCuatrenioSubStr = 'Área Ejecutada Cuatrienio';
+    } else {
+        valAlcanceTotalNum = totalUndEjecutada;
+        valAlcanceTotalStr = Number.isInteger(valAlcanceTotalNum) ? `${valAlcanceTotalNum} und` : `${valAlcanceTotalNum.toFixed(1)} und`;
+        valAlcanceMStr = 'Unidades terminadas / en operación';
+
+        valCuatrenioNum = totalUndCuatrenio;
+        valCuatrenioStr = Number.isInteger(valCuatrenioNum) ? `${valCuatrenioNum} und` : `${valCuatrenioNum.toFixed(1)} und`;
+        valCuatrenioSubStr = 'Aporte en unidades al Cuatrienio';
+    }
+
+    const pctCumplido = metaCuatrienio > 0 ? Math.min((valAlcanceTotalNum / metaCuatrienio) * 100, 100) : 0;
+    if (badgeCumplimiento) {
+        badgeCumplimiento.textContent = `${pctCumplido.toFixed(1)}% Cumplido`;
+    }
+
+    if (kpiConvenios) kpiConvenios.textContent = `${relatedRows.length} convenios`;
+    if (kpiMunis) kpiMunis.textContent = `En ${munisSet.size} municipio${munisSet.size === 1 ? '' : 's'}`;
+    if (kpiAlcanceTotal) kpiAlcanceTotal.textContent = valAlcanceTotalStr;
+    if (kpiAlcanceM) kpiAlcanceM.textContent = valAlcanceMStr;
+    if (kpiCuatrenio) kpiCuatrenio.textContent = valCuatrenioStr;
+    if (kpiCuatrenioSub) kpiCuatrenioSub.textContent = valCuatrenioSubStr;
+    if (kpiInversion) kpiInversion.textContent = formatCurrency(totalInversion);
+
+    const restante = Math.max(metaCuatrienio - valAlcanceTotalNum, 0);
+    if (kpiMetaRestante) {
+        const resFmt = cfg.tipo === 'km' ? `${restante.toFixed(2)} km` : (cfg.tipo === 'm2' ? formatNumber(Math.round(restante)) + ' m²' : `${restante} und`);
+        kpiMetaRestante.textContent = `Restante: ${resFmt}`;
+    }
+
+    // 5. Renderizado de la Tabla Sintética con Buscador en Vivo
+    function renderTable(filterQuery = '') {
+        if (!tableBody) return;
+        tableBody.innerHTML = '';
+        const q = String(filterQuery || '').toLowerCase().trim();
+
+        const filtered = relatedRows.filter(r => {
+            if (!q) return true;
+            const conv = String(r['CONVENIO'] || '').toLowerCase();
+            const mun = String(r['MUNICIPIO'] || '').toLowerCase();
+            const sub = String(r['SUBREGION'] || '').toLowerCase();
+            const clasif = String(r['CLASIFICACION'] || r['CLASIFICACIÓN'] || r['CLASIFICACIN'] || '').toLowerCase();
+            const via = String(r['VIA_PRIORIZADA'] || '').toLowerCase();
+            const obj = String(r['OBJETO'] || '').toLowerCase();
+            const est = String(r['ESTADO CONVENIO'] || '').toLowerCase();
+            return conv.includes(q) || mun.includes(q) || sub.includes(q) || clasif.includes(q) || via.includes(q) || obj.includes(q) || est.includes(q);
+        });
+
+        if (countEl) {
+            countEl.textContent = `Mostrando ${filtered.length} de ${relatedRows.length} convenios`;
+        }
+
+        if (filtered.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="py-8 text-center text-slate-400 italic">
+                        No se encontraron convenios que coincidan con la búsqueda.
+                    </td>
+                </tr>
+            `;
+            if (tableFooter) tableFooter.innerHTML = '';
+            return;
+        }
+
+        let sumFiltroTotal = 0;
+        let sumFiltroCuatrenio = 0;
+        let sumFiltroInversion = 0;
+
+        filtered.forEach(row => {
+            const convId = String(row['CONVENIO']).trim();
+            const muni = String(row['MUNICIPIO'] || 'Antioquia').trim();
+            const subreg = String(row['SUBREGION'] || '').trim();
+            const clasif = String(row['CLASIFICACION'] || row['CLASIFICACIÓN'] || row['CLASIFICACIN'] || 'SIN CLASIFICACIÓN').trim().toUpperCase();
+            const via = String(row['VIA_PRIORIZADA'] || row['OBJETO'] || 'No especificada').trim();
+            const vig = String(row['VIGENCIA'] || '').trim();
+            const inv = (parseNum(row['APORTE DEPARTAMENTO']) || 0) + (parseNum(row['ADICION DEPARTAMENTO']) || 0);
+            sumFiltroInversion += inv;
+
+            let rowAlcanceTotalStr = '';
+            let rowAlcanceCuatrenioStr = '';
+            let valRowTotal = 0;
+            let valRowCuatrenio = 0;
+
+            if (cfg.tipo === 'km') {
+                const le = parseNum(row['LONGITUD EJECUTADA']) || 0;
+                let lc = parseNum(row['LONGITUD EJECUTADA CUATRENIO']) || 0;
+                if (!isCuatrenioAnterior(row) && lc === 0 && le > 0) lc = le;
+
+                valRowTotal = le / 1000;
+                valRowCuatrenio = lc / 1000;
+                sumFiltroTotal += valRowTotal;
+                sumFiltroCuatrenio += valRowCuatrenio;
+
+                rowAlcanceTotalStr = `
+                    <div class="font-bold text-slate-900">${valRowTotal.toFixed(2)} km</div>
+                    <div class="text-[10px] text-slate-400">${formatNumber(Math.round(le))} m</div>
+                `;
+                rowAlcanceCuatrenioStr = `
+                    <div class="font-black text-amber-900">${valRowCuatrenio.toFixed(2)} km</div>
+                    <div class="text-[10px] text-amber-700">${formatNumber(Math.round(lc))} m</div>
+                `;
+            } else if (cfg.tipo === 'm2') {
+                const ae = parseNum(row['AREA EJECUTADA (M2)']) || 0;
+                let ac = parseNum(row['AREA EJECUTADA CUATRENIO (M2)']) || 0;
+                if (!isCuatrenioAnterior(row) && ac === 0 && ae > 0) ac = ae;
+
+                valRowTotal = ae;
+                valRowCuatrenio = ac;
+                sumFiltroTotal += valRowTotal;
+                sumFiltroCuatrenio += valRowCuatrenio;
+
+                rowAlcanceTotalStr = `<div class="font-bold text-slate-900">${formatNumber(Math.round(ae))} m²</div>`;
+                rowAlcanceCuatrenioStr = `<div class="font-black text-amber-900">${formatNumber(Math.round(ac))} m²</div>`;
+            } else {
+                const fis = parseNum(row['FISICO_NORM']) || 0;
+                valRowTotal = fis >= 100 ? 1 : (fis > 0 ? fis / 100 : 0);
+                valRowCuatrenio = valRowTotal;
+                sumFiltroTotal += valRowTotal;
+                sumFiltroCuatrenio += valRowCuatrenio;
+
+                rowAlcanceTotalStr = `<div class="font-bold text-slate-900">${valRowTotal.toFixed(1)} und</div>`;
+                rowAlcanceCuatrenioStr = `<div class="font-black text-amber-900">${valRowCuatrenio.toFixed(1)} und</div>`;
+            }
+
+            const sysState = getSystemState(row['ESTADO CONVENIO']);
+            const fisPct = Math.round(parseNum(row['FISICO_NORM']) || parseNum(row['% EJECUCION FISICA']) || 0);
+
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50/80 transition-colors cursor-pointer group";
+            tr.innerHTML = `
+                <td class="py-2.5 px-3">
+                    <span class="font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 group-hover:bg-emerald-100 transition-colors">
+                        ${convId}
+                    </span>
+                    ${vig ? `<div class="text-[9.5px] text-slate-400 mt-0.5">Vigencia ${vig}</div>` : ''}
+                </td>
+                <td class="py-2.5 px-3">
+                    <div class="font-bold text-slate-900">${muni}</div>
+                    <div class="text-[10px] text-slate-400">${subreg}</div>
+                </td>
+                <td class="py-2.5 px-3">
+                    <div class="font-bold text-slate-900 text-xs tracking-wide" title="${via}">
+                        ${clasif}
+                    </div>
+                    <div class="text-[10px] text-slate-400 font-medium mt-0.5" title="${via}">Inv: ${formatCurrency(inv)}</div>
+                </td>
+                <td class="py-2.5 px-3 text-right">
+                    ${rowAlcanceTotalStr}
+                </td>
+                <td class="py-2.5 px-3 text-right bg-amber-50/40 border-x border-amber-200/40">
+                    ${rowAlcanceCuatrenioStr}
+                </td>
+                <td class="py-2.5 px-3 text-center">
+                    <div class="inline-flex items-center gap-1.5">
+                        <span class="font-bold text-[11px] text-slate-800">${fisPct}%</span>
+                        <div class="w-12 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-emerald-600 rounded-full" style="width: ${Math.min(fisPct, 100)}%"></div>
+                        </div>
+                    </div>
+                    <div class="mt-0.5"><span class="badge-estado ${sysState.badgeClass} text-[9px] py-0 px-1.5">${sysState.label}</span></div>
+                </td>
+                <td class="py-2.5 px-3 text-center">
+                    <button type="button" class="btn-ver-ficha-conv px-2.5 py-1 bg-slate-100 hover:bg-institutional-primary hover:text-white text-slate-700 font-bold rounded text-[11px] transition-all shadow-xs" title="Ver ficha técnica completa">
+                        <i class="fa-solid fa-folder-open mr-1"></i>Ficha
+                    </button>
+                </td>
+            `;
+
+            tr.addEventListener('click', (e) => {
+                if (typeof openModal === 'function') {
+                    openModal(row);
+                }
+            });
+
+            tableBody.appendChild(tr);
+        });
+
+        // 6. Fila de Totales en el Footer
+        if (tableFooter) {
+            const sumTotFmt = cfg.tipo === 'km' ? `${sumFiltroTotal.toFixed(2)} km` : (cfg.tipo === 'm2' ? formatNumber(Math.round(sumFiltroTotal)) + ' m²' : `${sumFiltroTotal.toFixed(1)} und`);
+            const sumCuatFmt = cfg.tipo === 'km' ? `${sumFiltroCuatrenio.toFixed(2)} km` : (cfg.tipo === 'm2' ? formatNumber(Math.round(sumFiltroCuatrenio)) + ' m²' : `${sumFiltroCuatrenio.toFixed(1)} und`);
+
+            tableFooter.innerHTML = `
+                <tr>
+                    <td colspan="3" class="py-3 px-3 text-slate-800 uppercase tracking-wider text-[11px]">
+                        TOTAL CONSOLIDADO (${filtered.length} Convenios) • Inversión: ${formatCurrency(sumFiltroInversion)}
+                    </td>
+                    <td class="py-3 px-3 text-right text-emerald-800 font-black text-sm">
+                        ${sumTotFmt}
+                    </td>
+                    <td class="py-3 px-3 text-right text-amber-900 font-black text-sm bg-amber-100/70 border-x border-amber-300">
+                        ${sumCuatFmt}
+                    </td>
+                    <td colspan="2" class="py-3 px-3 text-center text-[10px] text-slate-500">
+                        Aporte total al Plan
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    // Configurar Input de Búsqueda
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.oninput = (e) => renderTable(e.target.value);
+    }
+
+    // Configurar Botón Exportar PDF
+    const btnPdf = document.getElementById('btn-modal-ind-export-pdf');
+    if (btnPdf) {
+        btnPdf.onclick = () => exportIndicadorReportPDF(indKey);
+    }
+
+    // Configurar Botones de Cierre
+    const btnClose = document.getElementById('btn-close-modal-indicador');
+    const btnCloseFooter = document.getElementById('btn-close-modal-indicador-footer');
+    const closeModal = () => {
+        modalEl.classList.add('hidden');
+        modalEl.style.display = 'none';
+        document.body.classList.remove('overflow-hidden');
+    };
+    if (btnClose) btnClose.onclick = closeModal;
+    if (btnCloseFooter) btnCloseFooter.onclick = closeModal;
+
+    modalEl.onclick = (e) => {
+        if (e.target === modalEl) closeModal();
+    };
+
+    renderTable('');
+
+    modalEl.classList.remove('hidden');
+    modalEl.style.display = 'flex';
+    document.body.classList.add('overflow-hidden');
+};
+
+/**
+ * Exporta el reporte del indicador a una ventana de impresión / PDF estilizada
+ */
+window.exportIndicadorReportPDF = function (indKey) {
+    if (!indKey) return;
+    const normalizedKey = (typeof normalizarIndicador === 'function' ? normalizarIndicador(indKey) : '') || indKey;
+    const cfg = (typeof indicadoresEstrategicos !== 'undefined' && (indicadoresEstrategicos[normalizedKey] || indicadoresEstrategicos[indKey]))
+        || { unit: 'und', tipo: 'und', metas: { todos: 0 } };
+    const relatedRows = (rawData || []).filter(r => {
+        const rInd = typeof normalizarIndicador === 'function' ? normalizarIndicador(r['INDICADOR']) : (r['INDICADOR'] || '');
+        return rInd === normalizedKey || r['INDICADOR'] === normalizedKey || rInd === indKey;
+    });
+
+    const printWin = window.open('', '_blank', 'width=1100,height=850');
+    if (!printWin) {
+        alert("Por favor permite las ventanas emergentes en tu navegador para generar el reporte en PDF.");
+        return;
+    }
+
+    let totalLongM = 0;
+    let totalCuatM = 0;
+    let totalInv = 0;
+
+    let rowsHtml = '';
+    relatedRows.forEach((r) => {
+        const conv = r['CONVENIO'] || '';
+        const mun = r['MUNICIPIO'] || '';
+        const sub = r['SUBREGION'] || '';
+        const clasif = String(r['CLASIFICACION'] || r['CLASIFICACIÓN'] || r['CLASIFICACIN'] || 'N/A').trim().toUpperCase();
+        const via = r['VIA_PRIORIZADA'] || r['OBJETO'] || '';
+        const inv = (parseNum(r['APORTE DEPARTAMENTO']) || 0) + (parseNum(r['ADICION DEPARTAMENTO']) || 0);
+        totalInv += inv;
+
+        const le = parseNum(r['LONGITUD EJECUTADA']) || 0;
+        let lc = parseNum(r['LONGITUD EJECUTADA CUATRENIO']) || 0;
+        if (!isCuatrenioAnterior(r) && lc === 0 && le > 0) lc = le;
+        totalLongM += le;
+        totalCuatM += lc;
+
+        const ae = parseNum(r['AREA EJECUTADA (M2)']) || 0;
+        let ac = parseNum(r['AREA EJECUTADA CUATRENIO (M2)']) || 0;
+        if (!isCuatrenioAnterior(r) && ac === 0 && ae > 0) ac = ae;
+
+        const fis = Math.round(parseNum(r['FISICO_NORM']) || 0);
+        const est = r['ESTADO CONVENIO'] || 'N/A';
+
+        let alcanceTotFmt = cfg.tipo === 'km' ? `${(le / 1000).toFixed(2)} km (${formatNumber(Math.round(le))} m)` : (cfg.tipo === 'm2' ? `${formatNumber(Math.round(ae))} m²` : '1 und');
+        let alcanceCuatFmt = cfg.tipo === 'km' ? `${(lc / 1000).toFixed(2)} km (${formatNumber(Math.round(lc))} m)` : (cfg.tipo === 'm2' ? `${formatNumber(Math.round(ac))} m²` : '1 und');
+
+        rowsHtml += `
+            <tr style="border-bottom: 1px solid #E2E8F0; font-size: 11px;">
+                <td style="padding: 6px 8px; font-weight: bold; font-family: monospace;">${conv}</td>
+                <td style="padding: 6px 8px;"><strong>${mun}</strong><br><span style="color:#64748B;font-size:10px;">${sub}</span></td>
+                <td style="padding: 6px 8px;"><strong>${clasif}</strong><br><span style="color:#64748B;font-size:10px;">${via}</span></td>
+                <td style="padding: 6px 8px; text-align: right; font-weight: bold; color:#065F46;">${alcanceTotFmt}</td>
+                <td style="padding: 6px 8px; text-align: right; font-weight: bold; color: #92400E; background: #FEF3C7;">${alcanceCuatFmt}</td>
+                <td style="padding: 6px 8px; text-align: right;">${formatCurrency(inv)}</td>
+                <td style="padding: 6px 8px; text-align: center;">${fis}% - ${est}</td>
+            </tr>
+        `;
+    });
+
+    let totalTotFmt = cfg.tipo === 'km' ? `${(totalLongM / 1000).toFixed(2)} km (${formatNumber(Math.round(totalLongM))} m)` : `${formatNumber(Math.round(totalLongM))} m²`;
+    let totalCuatFmt = cfg.tipo === 'km' ? `${(totalCuatM / 1000).toFixed(2)} km (${formatNumber(Math.round(totalCuatM))} m)` : `${formatNumber(Math.round(totalCuatM))} m²`;
+
+    printWin.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Reporte Indicador - ${indKey}</title>
+            <style>
+                body { font-family: Arial, sans-serif; color: #0F172A; padding: 25px; margin: 0; }
+                h1 { font-size: 18px; color: #0B5640; margin: 0 0 4px 0; }
+                p { font-size: 11px; color: #64748B; margin: 0 0 15px 0; }
+                .kpi-box { display: inline-block; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px 15px; margin-right: 10px; margin-bottom: 15px; vertical-align: top; }
+                .kpi-title { font-size: 9px; text-transform: uppercase; color: #64748B; font-weight: bold; margin-bottom: 3px; }
+                .kpi-val { font-size: 16px; font-weight: bold; color: #0F172A; }
+                table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                th { background: #F1F5F9; color: #475569; font-size: 10px; text-transform: uppercase; padding: 8px; text-align: left; border-bottom: 2px solid #CBD5E1; }
+                tfoot tr td { background: #E2E8F0; font-weight: bold; font-size: 11px; padding: 8px; }
+                @media print { .no-print { display: none; } }
+            </style>
+        </head>
+        <body>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 15px; border-bottom: 2px solid #0B5640; padding-bottom: 10px;">
+                <div>
+                    <h1>INFORME DE CUMPLIMIENTO POR INDICADOR</h1>
+                    <h2 style="font-size: 14px; color: #334155; margin: 3px 0;">${indKey}</h2>
+                    <p>Secretaría de Infraestructura Física de Antioquia • DIAT • Generado el ${new Date().toLocaleDateString('es-CO')}</p>
+                </div>
+                <button class="no-print" onclick="window.print()" style="background:#0B5640;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:bold;cursor:pointer;">Imprimir / Guardar PDF</button>
+            </div>
+            <div>
+                <div class="kpi-box"><div class="kpi-title">Convenios Asignados</div><div class="kpi-val">${relatedRows.length}</div></div>
+                <div class="kpi-box"><div class="kpi-title">Alcance Total Ejecutado</div><div class="kpi-val" style="color:#059669;">${totalTotFmt}</div></div>
+                <div class="kpi-box" style="border-color:#FCD34D;background:#FFFBEB;"><div class="kpi-title" style="color:#92400E;">Aporte Este Cuatrienio</div><div class="kpi-val" style="color:#B45309;">${totalCuatFmt}</div></div>
+                <div class="kpi-box"><div class="kpi-title">Inversión Total</div><div class="kpi-val">${formatCurrency(totalInv)}</div></div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Convenio</th>
+                        <th>Municipio / Subregión</th>
+                        <th>Clasificación</th>
+                        <th style="text-align:right;">Alcance Total Ejecutado</th>
+                        <th style="text-align:right;background:#FEF3C7;color:#92400E;">Aporte Cuatrienio</th>
+                        <th style="text-align:right;">Inversión</th>
+                        <th style="text-align:center;">Estado / %</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3">TOTAL (${relatedRows.length} convenios)</td>
+                        <td style="text-align:right;">${totalTotFmt}</td>
+                        <td style="text-align:right;color:#92400E;background:#FEF3C7;">${totalCuatFmt}</td>
+                        <td style="text-align:right;">${formatCurrency(totalInv)}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </body>
+        </html>
+    `);
+    printWin.document.close();
+};
 
 // ============================================================
 // 34. PORTAL DE SUPERVISORES DIAT - LOGICA INTEGRADA
@@ -9058,6 +9573,9 @@ function initSupervisorPortal() {
             const action = item.getAttribute('data-action');
             if (action === 'logout') {
                 handleLogout();
+            } else if (action === 'visitas') {
+                const vtTabBtn = document.querySelector('.tab-btn[data-tab="visitas"]');
+                if (vtTabBtn) vtTabBtn.click();
             } else {
                 // Ir a pestaña del portal
                 const portalTabBtn = document.querySelector('.tab-btn[data-tab="portal"]');
@@ -9235,8 +9753,9 @@ function initSupervisorPortal() {
                 attributionControl: false
             });
 
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                maxZoom: 18,
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Esri',
                 crossOrigin: true
             }).addTo(window.visitMapInstance);
 
@@ -9264,6 +9783,7 @@ function initSupervisorPortal() {
             window.visitMapInstance.invalidateSize();
         }, 100);
     }
+    window.initVisitMap = initVisitMap;
 
     // Función para inicializar mapa de detalle de visita (solo lectura)
     window.visitDetailMapInstance = null;
@@ -9281,8 +9801,9 @@ function initSupervisorPortal() {
                 attributionControl: false
             });
 
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                maxZoom: 18,
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Esri',
                 crossOrigin: true
             }).addTo(window.visitDetailMapInstance);
 
@@ -9296,6 +9817,7 @@ function initSupervisorPortal() {
             window.visitDetailMapInstance.invalidateSize();
         }, 100);
     }
+    window.initVisitDetailMap = initVisitDetailMap;
 
     // Modal para visualizar detalle de visita técnica
     window.openVisitDetailModal = function (visitId) {
@@ -9303,12 +9825,13 @@ function initSupervisorPortal() {
         const v = visits.find(visit => visit.id === visitId);
         if (!v) return;
 
-        document.getElementById('visit-detail-title').textContent = `Visita Técnica - Convenio N° ${v.convenioId}`;
-        document.getElementById('visit-detail-subtitle').textContent = `Fecha de Visita: ${v.fecha}`;
+        const estadoLabel = (v.estado === 'Programada' ? 'PROGRAMADA' : 'REALIZADA');
+        document.getElementById('visit-detail-title').textContent = `Visita Técnica (${estadoLabel}) - Convenio N° ${v.convenioId}`;
+        document.getElementById('visit-detail-subtitle').textContent = `${v.estado === 'Programada' ? 'Fecha Estimada' : 'Fecha de Visita'}: ${v.fecha}`;
         document.getElementById('visit-detail-tipo').textContent = v.tipo;
         document.getElementById('visit-detail-usuario').textContent = v.usuario || 'N/A';
-        document.getElementById('visit-detail-obs').textContent = v.observaciones || '--';
-        document.getElementById('visit-detail-compromisos').textContent = v.compromisos || '--';
+        document.getElementById('visit-detail-obs').textContent = v.observaciones || (v.estado === 'Programada' ? 'Visita técnica programada. Las observaciones se registrarán una vez realizada.' : '--');
+        document.getElementById('visit-detail-compromisos').textContent = v.compromisos || (v.estado === 'Programada' ? 'Compromisos a definir en terreno.' : '--');
         document.getElementById('visit-detail-riesgos').textContent = v.riesgos || '--';
 
         // Mostrar botón de editar si el usuario logueado es el creador de la visita
@@ -9344,6 +9867,7 @@ function initSupervisorPortal() {
             });
         } else {
             emptyPhotos.classList.remove('hidden');
+            emptyPhotos.textContent = (v.estado === 'Programada' ? 'Sin registro fotográfico (visita programada para ejecución futura)' : 'No se adjuntaron fotos en esta visita.');
             photosContainer.classList.add('hidden');
         }
 
@@ -9403,6 +9927,15 @@ function initSupervisorPortal() {
         // Poblar campos
         document.getElementById('visit-fecha').value = toDateInputValue(v.fecha);
         document.getElementById('visit-tipo').value = v.tipo || 'Avance de obra';
+        if (document.getElementById('visit-estado')) {
+            document.getElementById('visit-estado').value = v.estado || 'Realizada';
+        }
+        if (document.getElementById('visit-prioridad')) {
+            document.getElementById('visit-prioridad').value = v.prioridad || 'Media';
+        }
+        if (document.getElementById('visit-supervisor-input')) {
+            document.getElementById('visit-supervisor-input').value = v.usuario || '';
+        }
         document.getElementById('visit-obs').value = v.observaciones || '';
         document.getElementById('visit-compromisos').value = v.compromisos || '';
         document.getElementById('visit-riesgos').value = v.riesgos || '';
@@ -9449,19 +9982,34 @@ function initSupervisorPortal() {
 
             const fechaVal = document.getElementById('visit-fecha').value;
             const tipo = document.getElementById('visit-tipo').value;
-            const observaciones = document.getElementById('visit-obs').value;
+            const estado = document.getElementById('visit-estado') ? document.getElementById('visit-estado').value : 'Realizada';
+            const prioridad = document.getElementById('visit-prioridad') ? document.getElementById('visit-prioridad').value : 'Media';
+            const supervisorInput = document.getElementById('visit-supervisor-input') ? document.getElementById('visit-supervisor-input').value.trim() : '';
+            let observaciones = document.getElementById('visit-obs').value;
             const compromisos = document.getElementById('visit-compromisos').value;
             const riesgos = document.getElementById('visit-riesgos').value;
             const lat = parseFloat(document.getElementById('visit-gps-lat').value) || 0;
             const lng = parseFloat(document.getElementById('visit-gps-lng').value) || 0;
 
-            if (!observaciones.trim()) {
-                alertToast("Error", "Las observaciones técnicas son obligatorias para registrar la visita", "error");
+            if (estado === 'Realizada' && !observaciones.trim()) {
+                alertToast("Error", "Las observaciones técnicas son obligatorias para registrar una visita realizada", "error");
                 return;
             }
 
+            if (estado === 'Programada' && !observaciones.trim()) {
+                observaciones = 'Visita técnica programada para inspección en terreno.';
+            }
+
             const user = getLoggedUser();
-            const username = user ? user.name : 'Jonathan Marín';
+            const username = supervisorInput || (user ? user.name : 'Jonathan Marín Gallego');
+            const supervisorList = supervisorInput ? supervisorInput.split(/[,;\/]+/).map(s => s.trim()).filter(Boolean) : [username];
+
+            // Buscar datos del convenio y municipio para enriquecer la visita
+            const convRow = (rawData || []).find(r => String(r['CONVENIO']).trim() === String(convenioId).trim()) || {};
+            const muniSelect = document.getElementById('visit-municipio-select');
+            const selectedMuni = muniSelect ? muniSelect.value.trim() : '';
+            const municipio = selectedMuni || convRow['MUNICIPIO'] || '';
+            const subregion = convRow['SUBREGION'] || (typeof getSubregionForMuni === 'function' ? getSubregionForMuni(municipio) : '');
 
             btnSaveVisit.disabled = true;
             const oldHtml = btnSaveVisit.innerHTML;
@@ -9472,6 +10020,12 @@ function initSupervisorPortal() {
                 await window.DIATDataService.updateTechnicalVisit(window.editingVisitId, {
                     fecha: fechaVal ? toDateInputValue(fechaVal) : undefined,
                     tipo,
+                    estado,
+                    prioridad,
+                    usuario: username,
+                    supervisores: supervisorList,
+                    municipio: municipio || undefined,
+                    subregion: subregion || undefined,
                     observaciones,
                     compromisos,
                     riesgos,
@@ -9485,13 +10039,18 @@ function initSupervisorPortal() {
                 await window.DIATDataService.addTechnicalVisit(username, convenioId, {
                     fecha: fechaVal ? toDateInputValue(fechaVal) : undefined,
                     tipo,
+                    estado,
+                    prioridad,
+                    municipio,
+                    subregion,
                     observaciones,
                     compromisos,
                     riesgos,
                     lat,
                     lng,
-                    photoCount: window.visitUploadedPhotos.length,
-                    photos: window.visitUploadedPhotos
+                    supervisores: supervisorList,
+                    photoCount: (estado === 'Programada' ? 0 : window.visitUploadedPhotos.length),
+                    photos: (estado === 'Programada' ? [] : window.visitUploadedPhotos)
                 });
             }
 
@@ -9536,9 +10095,10 @@ function initSupervisorPortal() {
                 rawData = window.DIATDataService.mergeData(window.baseExcelData);
             }
 
-            // Actualizar dashboard principal, mapa, listados y portal
+            // Actualizar dashboard principal, mapa, listados, portal y pestaña de visitas
             applyFilters();
-            renderSupervisorPortal();
+            if (typeof renderSupervisorPortal === 'function') renderSupervisorPortal();
+            if (typeof renderVisitasTab === 'function') renderVisitasTab();
         });
     }
 
@@ -10195,8 +10755,9 @@ function initEditMap(lat, lng) {
             attributionControl: false
         });
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 18,
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Esri',
             crossOrigin: true
         }).addTo(window.editMapInstance);
 
@@ -14230,6 +14791,2149 @@ if (document.readyState === 'loading') {
 } else {
     DiatAI.init();
 }
+
+// =============================================================================
+// MÓDULO DE CONTROL DE VISITAS TÉCNICAS (DIAT ANTIOQUIA)
+// =============================================================================
+let vtMap = null;
+let vtMarkersLayer = null;
+let vtMpioGeojsonLayer = null;
+let vtBaseLayerTopo = null;
+let vtBaseLayerSat = null;
+let vtCurrentBaseLayer = 'topo';   // 'topo' | 'sat'
+let vtCurrentStateFilter = 'todos'; // 'todos' | 'Realizada' | 'Programada'
+let vtCurrentViewMode = 'cards';    // 'cards' | 'table'
+let vtCurrentPage = 1;
+const vtRowsPerPage = 9;
+let vtCharts = { supervisor: null, subregion: null, timeline: null, tipo: null };
+let vtMarkersMap = {}; // visitId -> marker instance
+
+/**
+ * Inicializa los eventos de la barra de control, filtros, mapa y acciones de visitas
+ */
+function initVisitasControl() {
+    // 1. Selector de Chips de Estado (Todas / Realizadas / Programadas)
+    const chipBtns = document.querySelectorAll('.vt-state-chip');
+    chipBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            chipBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            vtCurrentStateFilter = btn.dataset.estado || 'todos';
+            vtCurrentPage = 1;
+            renderVisitasTab();
+        });
+    });
+
+    // 2. Filtros de Búsqueda y Selects
+    const filterIds = ['filter-vt-search', 'filter-vt-supervisor', 'filter-vt-subregion', 'filter-vt-municipio', 'filter-vt-tipo'];
+    filterIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            const eventName = el.tagName === 'INPUT' ? 'input' : 'change';
+            el.addEventListener(eventName, () => {
+                vtCurrentPage = 1;
+                renderVisitasTab();
+            });
+        }
+    });
+
+    // 3. Botón Limpiar Filtros
+    const btnReset = document.getElementById('btn-vt-reset-filters');
+    if (btnReset) {
+        btnReset.addEventListener('click', () => {
+            const searchEl = document.getElementById('filter-vt-search');
+            const supEl = document.getElementById('filter-vt-supervisor');
+            const subEl = document.getElementById('filter-vt-subregion');
+            const munEl = document.getElementById('filter-vt-municipio');
+            const tipoEl = document.getElementById('filter-vt-tipo');
+
+            if (searchEl) searchEl.value = '';
+            if (supEl) supEl.value = '';
+            if (subEl) subEl.value = '';
+            if (munEl) munEl.value = '';
+            if (tipoEl) tipoEl.value = '';
+
+            // Restaurar chip a "Todas"
+            chipBtns.forEach(b => b.classList.remove('active'));
+            const chipTodos = document.getElementById('btn-vt-chip-todos');
+            if (chipTodos) chipTodos.classList.add('active');
+            vtCurrentStateFilter = 'todos';
+            vtCurrentPage = 1;
+
+            renderVisitasTab();
+        });
+    }
+
+    // 4. Alternador de Vista (Tarjetas / Tabla)
+    const btnViewCards = document.getElementById('btn-vt-view-cards');
+    const btnViewTable = document.getElementById('btn-vt-view-table');
+    const cardsContainer = document.getElementById('vt-cards-container');
+    const tableContainer = document.getElementById('vt-table-container');
+
+    if (btnViewCards && btnViewTable) {
+        btnViewCards.addEventListener('click', () => {
+            vtCurrentViewMode = 'cards';
+            btnViewCards.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-800 shadow-xs transition-all flex items-center gap-1.5';
+            btnViewTable.className = 'px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-800 transition-all flex items-center gap-1.5';
+            if (cardsContainer) cardsContainer.classList.remove('hidden');
+            if (tableContainer) tableContainer.classList.add('hidden');
+            renderVisitasTab();
+        });
+
+        btnViewTable.addEventListener('click', () => {
+            vtCurrentViewMode = 'table';
+            btnViewTable.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-800 shadow-xs transition-all flex items-center gap-1.5';
+            btnViewCards.className = 'px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-800 transition-all flex items-center gap-1.5';
+            if (tableContainer) tableContainer.classList.remove('hidden');
+            if (cardsContainer) cardsContainer.classList.add('hidden');
+            renderVisitasTab();
+        });
+    }
+
+    // 5. Botones de Control del Mapa
+    const btnMapCenter = document.getElementById('btn-vt-map-center');
+    if (btnMapCenter) {
+        btnMapCenter.addEventListener('click', () => {
+            if (vtMap) vtMap.setView([6.8, -75.4], 7.8, { animate: true });
+        });
+    }
+
+    const btnMapFit = document.getElementById('btn-vt-map-fit');
+    if (btnMapFit) {
+        btnMapFit.addEventListener('click', () => {
+            if (vtMap && vtMarkersLayer && vtMarkersLayer.getLayers().length > 0) {
+                vtMap.fitBounds(vtMarkersLayer.getBounds(), { padding: [35, 35], maxZoom: 14, animate: true });
+            }
+        });
+    }
+
+    const btnMapLayerToggle = document.getElementById('btn-vt-map-layer-toggle');
+    const txtLayer = document.getElementById('vt-map-layer-text');
+    if (btnMapLayerToggle) {
+        btnMapLayerToggle.addEventListener('click', () => {
+            if (!vtMap || !vtBaseLayerTopo || !vtBaseLayerSat) return;
+            if (vtCurrentBaseLayer === 'topo') {
+                vtMap.removeLayer(vtBaseLayerTopo);
+                vtBaseLayerSat.addTo(vtMap);
+                vtCurrentBaseLayer = 'sat';
+                if (txtLayer) txtLayer.textContent = 'Topográfico';
+                if (vtMpioGeojsonLayer) vtMpioGeojsonLayer.setStyle({ color: '#34D399', opacity: 0.6 });
+            } else {
+                vtMap.removeLayer(vtBaseLayerSat);
+                vtBaseLayerTopo.addTo(vtMap);
+                vtCurrentBaseLayer = 'topo';
+                if (txtLayer) txtLayer.textContent = 'Satelital';
+                if (vtMpioGeojsonLayer) vtMpioGeojsonLayer.setStyle({ color: '#10B981', opacity: 0.4 });
+            }
+            if (vtMpioGeojsonLayer) vtMpioGeojsonLayer.bringToBack();
+        });
+    }
+
+    // 6. Botones de Acción de la Cabecera
+    const btnProgramar = document.getElementById('btn-vt-programar-modal');
+    if (btnProgramar) {
+        btnProgramar.addEventListener('click', () => window.openScheduleVisitModal());
+    }
+
+    const btnRegistrar = document.getElementById('btn-vt-registrar-modal');
+    if (btnRegistrar) {
+        btnRegistrar.addEventListener('click', () => {
+            if (!checkOrPromptAuthPassword('registrar una visita técnica como realizada')) return;
+            window.openRegisterCompletedVisitModal();
+        });
+    }
+
+    const btnExportarPdf = document.getElementById('btn-vt-exportar-pdf');
+    if (btnExportarPdf) {
+        btnExportarPdf.addEventListener('click', () => exportVisitsToPDF());
+    }
+
+    // Inicializar componentes auxiliares del modal de visitas
+    initVisitSupervisorMultiSelect();
+    initVisitConvenioCombobox();
+
+    const estadoModalSelect = document.getElementById('visit-estado');
+    if (estadoModalSelect) {
+        estadoModalSelect.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (val === 'Realizada') {
+                if (!checkOrPromptAuthPassword('cambiar el estado a Visita Realizada')) {
+                    e.target.value = 'Programada';
+                    updateVisitModalSectionsByState('Programada');
+                    return;
+                }
+            }
+            updateVisitModalSectionsByState(val);
+        });
+    }
+}
+
+/**
+ * Obtiene el conjunto de visitas filtradas según los controles activos
+ */
+function getVisitasDataset() {
+    if (!window.DIATDataService) return { allVisits: [], filteredVisits: [] };
+
+    let allVisits = window.DIATDataService.getTechnicalVisits() || [];
+
+    // Enriquecer visitas con datos maestros del convenio si faltan datos
+    const convMap = {};
+    (rawData || []).forEach(r => {
+        const id = String(r['CONVENIO'] || '').trim();
+        if (id) convMap[id] = r;
+    });
+
+    allVisits = allVisits.map(v => {
+        const conv = convMap[String(v.convenioId).trim()] || {};
+        return {
+            ...v,
+            estado: v.estado || 'Realizada',
+            prioridad: v.prioridad || 'Media',
+            municipio: v.municipio || conv['MUNICIPIO'] || 'Antioquia',
+            subregion: v.subregion || conv['SUBREGION'] || 'OTRAS',
+            lat: (parseFloat(v.lat) && parseFloat(v.lat) !== 0) ? parseFloat(v.lat) : (parseFloat(conv['LATITUD']) || 0),
+            lng: (parseFloat(v.lng) && parseFloat(v.lng) !== 0) ? parseFloat(v.lng) : (parseFloat(conv['LONGITUD']) || 0),
+            convenioRow: conv
+        };
+    });
+
+    // Leer valores de filtros
+    const searchVal = (document.getElementById('filter-vt-search')?.value || '').trim().toLowerCase();
+    const supVal = (document.getElementById('filter-vt-supervisor')?.value || '').trim().toLowerCase();
+    const subVal = (document.getElementById('filter-vt-subregion')?.value || '').trim().toUpperCase();
+    const munVal = (document.getElementById('filter-vt-municipio')?.value || '').trim();
+    const tipoVal = (document.getElementById('filter-vt-tipo')?.value || '').trim().toLowerCase();
+
+    const filteredVisits = allVisits.filter(v => {
+        // 1. Filtro por Estado (Todas / Realizadas / Programadas)
+        if (vtCurrentStateFilter !== 'todos' && v.estado !== vtCurrentStateFilter) {
+            return false;
+        }
+
+        // 2. Filtro por Búsqueda de Texto
+        if (searchVal) {
+            const matchSearch = String(v.convenioId || '').toLowerCase().includes(searchVal) ||
+                String(v.municipio || '').toLowerCase().includes(searchVal) ||
+                String(v.subregion || '').toLowerCase().includes(searchVal) ||
+                String(v.usuario || '').toLowerCase().includes(searchVal) ||
+                String(v.tipo || '').toLowerCase().includes(searchVal) ||
+                String(v.observaciones || '').toLowerCase().includes(searchVal) ||
+                String(v.compromisos || '').toLowerCase().includes(searchVal);
+            if (!matchSearch) return false;
+        }
+
+        // 3. Filtro por Supervisor
+        if (supVal && String(v.usuario || '').toLowerCase() !== supVal) {
+            return false;
+        }
+
+        // 4. Filtro por Subregión
+        if (subVal && String(v.subregion || '').toUpperCase() !== subVal) {
+            return false;
+        }
+
+        // 5. Filtro por Municipio
+        if (munVal && !isSameMuni(v.municipio, munVal)) {
+            return false;
+        }
+
+        // 6. Filtro por Tipo de Visita
+        if (tipoVal && String(v.tipo || '').toLowerCase() !== tipoVal) {
+            return false;
+        }
+
+        return true;
+    });
+
+    return { allVisits, filteredVisits };
+}
+
+/**
+ * Función Maestra para renderizar la pestaña de Control de Visitas Técnicas
+ */
+function renderVisitasTab() {
+    const tabEl = document.getElementById('tab-visitas');
+    if (!tabEl || tabEl.classList.contains('hidden')) return;
+
+    const { allVisits, filteredVisits } = getVisitasDataset();
+
+    // Actualizar contadores en chips de estado
+    const countTodos = allVisits.length;
+    const countRealizadas = allVisits.filter(v => v.estado === 'Realizada').length;
+    const countProgramadas = allVisits.filter(v => v.estado === 'Programada').length;
+
+    const bTodos = document.getElementById('badge-vt-count-todos');
+    const bRealizadas = document.getElementById('badge-vt-count-realizadas');
+    const bProgramadas = document.getElementById('badge-vt-count-programadas');
+
+    if (bTodos) bTodos.textContent = countTodos;
+    if (bRealizadas) bRealizadas.textContent = countRealizadas;
+    if (bProgramadas) bProgramadas.textContent = countProgramadas;
+
+    // Poblar filtros desplegables dinámicamente si están vacíos
+    populateVisitasFilterSelects(allVisits);
+
+    // 1. Actualizar Tarjetas KPI
+    renderVisitasKPIs(filteredVisits, allVisits);
+
+    // 2. Inicializar o Actualizar Mapa de Antioquia
+    initOrUpdateVisitasMap(filteredVisits);
+
+    // 3. Renderizar Gráficos de Analítica
+    renderVisitasCharts(filteredVisits);
+
+    // 4. Renderizar Listado Detallado (Cards / Tabla)
+    renderVisitasList(filteredVisits);
+}
+
+/**
+ * Llena las opciones de los selectores de filtro con valores únicos
+ */
+function populateVisitasFilterSelects(allVisits) {
+    const supSelect = document.getElementById('filter-vt-supervisor');
+    const subSelect = document.getElementById('filter-vt-subregion');
+    const munSelect = document.getElementById('filter-vt-municipio');
+
+    if (supSelect && supSelect.options.length <= 1) {
+        const supervisors = [...new Set(allVisits.map(v => (v.usuario || '').trim()).filter(Boolean))].sort();
+        supervisors.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.toLowerCase();
+            opt.textContent = s;
+            supSelect.appendChild(opt);
+        });
+    }
+
+    if (subSelect && subSelect.options.length <= 1) {
+        const subregiones = Object.keys(antioquiaSubregiones).sort();
+        subregiones.forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = sub;
+            opt.textContent = sub;
+            subSelect.appendChild(opt);
+        });
+    }
+
+    if (munSelect && munSelect.options.length <= 1) {
+        const municipios = [...new Set(allVisits.map(v => (v.municipio || '').trim()).filter(Boolean))].sort();
+        municipios.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m;
+            munSelect.appendChild(opt);
+        });
+    }
+}
+
+/**
+ * Renderiza las tarjetas KPI de la pestaña de Visitas Técnicas
+ */
+function renderVisitasKPIs(filteredVisits, allVisits) {
+    const total = filteredVisits.length;
+    const realizadas = filteredVisits.filter(v => v.estado === 'Realizada');
+    const programadas = filteredVisits.filter(v => v.estado === 'Programada');
+
+    const totalRealizadas = realizadas.length;
+    const totalProgramadas = programadas.length;
+    const pctRealizadas = total > 0 ? Math.round((totalRealizadas / total) * 100) : 0;
+
+    let totalFotos = 0;
+    realizadas.forEach(v => {
+        if (v.photos && Array.isArray(v.photos)) totalFotos += v.photos.length;
+        else if (v.photoCount) totalFotos += parseInt(v.photoCount) || 0;
+    });
+
+    const uniqueMunis = new Set(filteredVisits.map(v => normCanonicalMuni(v.municipio)).filter(Boolean)).size;
+    const uniqueConvs = new Set(filteredVisits.map(v => String(v.convenioId).trim()).filter(Boolean)).size;
+
+    // Cálculo específico para KPI 5: Supervisores en visitas programadas y cantidad de técnicos
+    let totalSupervisoresEnProgramadas = 0;
+    const uniqueSupsProgramadas = new Set();
+    programadas.forEach(v => {
+        let sups = [];
+        if (Array.isArray(v.supervisores) && v.supervisores.length > 0) {
+            sups = v.supervisores;
+        } else if (v.usuario) {
+            sups = String(v.usuario).split(/[,;\/]+/).map(s => s.trim()).filter(Boolean);
+        }
+        const count = sups.length > 0 ? sups.length : 1;
+        totalSupervisoresEnProgramadas += count;
+        sups.forEach(s => uniqueSupsProgramadas.add(s.toLowerCase()));
+    });
+
+    // Actualizar DOM
+    const kpiTotal = document.getElementById('kpi-vt-total');
+    const kpiPctTotal = document.getElementById('kpi-vt-pct-total');
+    const kpiRealizadas = document.getElementById('kpi-vt-realizadas');
+    const kpiRealizadasPct = document.getElementById('kpi-vt-realizadas-pct');
+    const kpiFotosTotal = document.getElementById('kpi-vt-fotos-total');
+    const kpiProgramadas = document.getElementById('kpi-vt-programadas');
+    const kpiMunis = document.getElementById('kpi-vt-municipios');
+    const kpiConvs = document.getElementById('kpi-vt-convenios');
+    const kpiSups = document.getElementById('kpi-vt-supervisores');
+    const kpiSupsSub = document.getElementById('kpi-vt-supervisores-sub');
+
+    if (kpiTotal) kpiTotal.textContent = total;
+    if (kpiPctTotal) kpiPctTotal.textContent = `${total} de ${allVisits.length}`;
+    if (kpiRealizadas) kpiRealizadas.textContent = totalRealizadas;
+    if (kpiRealizadasPct) kpiRealizadasPct.textContent = `${pctRealizadas}%`;
+    if (kpiFotosTotal) kpiFotosTotal.textContent = totalFotos;
+    if (kpiProgramadas) kpiProgramadas.textContent = totalProgramadas;
+    if (kpiMunis) kpiMunis.textContent = uniqueMunis;
+    if (kpiConvs) kpiConvs.textContent = uniqueConvs;
+    if (kpiSups) kpiSups.textContent = totalSupervisoresEnProgramadas;
+    if (kpiSupsSub) {
+        if (totalProgramadas > 0) {
+            kpiSupsSub.textContent = `${uniqueSupsProgramadas.size} técnico${uniqueSupsProgramadas.size === 1 ? '' : 's'} en ${totalProgramadas} programada${totalProgramadas === 1 ? '' : 's'}`;
+        } else {
+            kpiSupsSub.textContent = `Sin visitas programadas`;
+        }
+    }
+}
+
+/**
+ * Inicializa o actualiza el mapa Leaflet de Antioquia con los pines de visitas
+ */
+function initOrUpdateVisitasMap(visits) {
+    const mapContainer = document.getElementById('visitas-map-container');
+    if (!mapContainer || typeof L === 'undefined') return;
+
+    if (!vtMap) {
+        // Inicializar mapa de Antioquia centrado
+        vtMap = L.map('visitas-map-container', {
+            center: [6.8, -75.4],
+            zoom: 7.8,
+            zoomControl: true,
+            attributionControl: false
+        });
+
+        // Capa 1: Topográfica / Vial ESRI (Limpia, elegante y 100% libre sin API key)
+        vtBaseLayerTopo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Esri'
+        });
+
+        // Capa 2: Satelital Esri HD con límites y nombres
+        const satImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Esri'
+        });
+        const satLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Esri'
+        });
+        vtBaseLayerSat = L.layerGroup([satImagery, satLabels]);
+
+        // Agregar capa inicial por defecto (Topográfica)
+        vtBaseLayerTopo.addTo(vtMap);
+
+        vtMarkersLayer = L.featureGroup().addTo(vtMap);
+
+        // Cargar polígonos de municipios de Antioquia desde mpio.json para contexto territorial
+        fetch('./mpio.json')
+            .then(res => res.ok ? res.json() : null)
+            .then(geojson => {
+                if (geojson && geojson.features) {
+                    const antFeatures = geojson.features.filter(f => {
+                        const dpto = String(f.properties.DPTO || '').trim();
+                        const nomDpt = String(f.properties.NOMBRE_DPT || f.properties.NOM_DEPART || '').trim().toUpperCase();
+                        return dpto === '05' || nomDpt === 'ANTIOQUIA';
+                    });
+                    window.antioquiaGeojsonFeatures = antFeatures;
+
+                    if (antFeatures.length > 0) {
+                        vtMpioGeojsonLayer = L.geoJSON({ type: 'FeatureCollection', features: antFeatures }, {
+                            style: {
+                                fillColor: '#0B5640',
+                                fillOpacity: 0.03,
+                                color: '#10B981',
+                                weight: 1,
+                                opacity: 0.4
+                            },
+                            onEachFeature: (feature, layer) => {
+                                const mName = feature.properties.NOMBRE_MPI || feature.properties.NOM_MUNICI || '';
+                                layer.bindTooltip(mName, { sticky: true, className: 'text-[10px] font-bold' });
+                            }
+                        }).addTo(vtMap);
+                        vtMpioGeojsonLayer.bringToBack();
+                    }
+                }
+            })
+            .catch(e => console.warn("No se pudo cargar mpio.json en el mapa de visitas:", e));
+    }
+
+    // Limpiar marcadores anteriores
+    if (vtMarkersLayer) {
+        vtMarkersLayer.clearLayers();
+    }
+    vtMarkersMap = {};
+
+    // Agregar pines de visitas técnicas
+    const validMarkers = [];
+    const coordCountMap = {};
+
+    visits.forEach(v => {
+        let lat = parseFloat(v.lat) || 0;
+        let lng = parseFloat(v.lng) || 0;
+
+        // Fallback de coordenadas si lat/lng son 0 usando convenio
+        if ((lat === 0 || lng === 0 || isNaN(lat) || isNaN(lng)) && v.convenioRow) {
+            lat = parseFloat(v.convenioRow['LATITUD']) || 0;
+            lng = parseFloat(v.convenioRow['LONGITUD']) || 0;
+        }
+
+        // Fallback a centroide del municipio desde mpio.json si aún es 0
+        if ((lat === 0 || lng === 0 || isNaN(lat) || isNaN(lng)) && window.antioquiaGeojsonFeatures && v.municipio) {
+            const feat = window.antioquiaGeojsonFeatures.find(f => {
+                const m = (f.properties.NOMBRE_MPI || f.properties.NOM_MUNICI || '').toUpperCase().trim();
+                return isSameMuni(m, v.municipio);
+            });
+            if (feat && typeof L !== 'undefined') {
+                try {
+                    const tempLayer = L.geoJSON(feat);
+                    const center = tempLayer.getBounds().getCenter();
+                    lat = center.lat;
+                    lng = center.lng;
+                } catch(e) {}
+            }
+        }
+
+        if (lat !== 0 && lng !== 0 && !isNaN(lat) && !isNaN(lng)) {
+            // Evitar solapamiento exacto si varias visitas comparten las mismas coordenadas
+            const coordKey = `${lat.toFixed(4)}_${lng.toFixed(4)}`;
+            if (coordCountMap[coordKey]) {
+                const offsetIdx = coordCountMap[coordKey];
+                coordCountMap[coordKey]++;
+                const angle = (offsetIdx * Math.PI) / 3;
+                lat += 0.0028 * Math.sin(angle);
+                lng += 0.0028 * Math.cos(angle);
+            } else {
+                coordCountMap[coordKey] = 1;
+            }
+
+            const isRealizada = (v.estado === 'Realizada');
+            const pinClass = isRealizada ? 'realizada' : 'programada';
+            const iconGlyph = isRealizada ? '<i class="fa-solid fa-check text-[11px]"></i>' : '<i class="fa-solid fa-calendar-days text-[11px]"></i>';
+
+            const supName = String(v.usuario || 'Supervisor')
+                .replace(/MarÃ­n|Mar\?n|Marn/g, 'Marín')
+                .replace(/GÃ³mez|G\?mez|Gmez/g, 'Gómez')
+                .replace(/"/g, '&quot;').trim();
+            const fechaText = String(v.fecha || '').replace(/"/g, '&quot;').trim();
+            const muniName = String(v.municipio || 'Antioquia')
+                .replace(/YOLOMBÃ“|YOLOMB/g, 'YOLOMBÓ')
+                .replace(/"/g, '&quot;').trim();
+
+            const customIcon = L.divIcon({
+                className: 'custom-vt-div-icon',
+                html: `
+                    <div class="vt-marker-pin-wrap">
+                        <div class="vt-map-pin ${pinClass}" style="width: 32px; height: 32px; position: relative;">
+                            <div class="vt-map-pin-pulse"></div>
+                            ${iconGlyph}
+                        </div>
+                        <div class="vt-pin-info-card ${pinClass}">
+                            <span class="vt-pin-muni" title="${muniName}">${muniName}</span>
+                            <span class="vt-pin-sup" title="${supName}"><i class="fa-solid fa-user-shield text-[8px] mr-0.5 opacity-70"></i>${supName}</span>
+                            <span class="vt-pin-date" title="${fechaText}"><i class="fa-regular fa-calendar text-[8px] mr-0.5 opacity-70"></i>${fechaText}</span>
+                        </div>
+                    </div>
+                `,
+                iconSize: [140, 82],
+                iconAnchor: [70, 16],
+                popupAnchor: [0, -20]
+            });
+
+            const marker = L.marker([lat, lng], { icon: customIcon });
+
+            // Contenido del Popup
+            const photoCount = (v.photos && v.photos.length) || parseInt(v.photoCount) || 0;
+            const photoThumbnail = (v.photos && v.photos.length > 0)
+                ? `<div class="mt-2"><img src="${v.photos[0]}" class="w-full h-24 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-95" onclick="window.openVisitPhotoLightbox('${v.id}', 0)" /></div>`
+                : '';
+
+            const popupHtml = `
+                <div class="vt-popup-card">
+                    <div class="vt-popup-header ${pinClass}">
+                        <div>
+                            <span class="vt-badge-${pinClass}">${v.estado}</span>
+                            <span class="text-[10px] text-slate-500 font-bold ml-1">${v.fecha}</span>
+                        </div>
+                        <span class="text-xs font-black text-slate-800">${v.convenioId}</span>
+                    </div>
+                    <div class="vt-popup-body">
+                        <p class="font-bold text-slate-800 text-xs">${v.municipio} <span class="text-[10px] text-slate-400 font-normal">(${v.subregion})</span></p>
+                        <p class="text-[11px] text-slate-600"><strong class="text-slate-700">Supervisor:</strong> ${v.usuario}</p>
+                        <p class="text-[11px] text-slate-600"><strong class="text-slate-700">Tipo:</strong> ${v.tipo}</p>
+                        <p class="text-[10.5px] text-slate-500 mt-1 italic line-clamp-2">"${(v.observaciones || 'Sin observaciones registradas').slice(0, 110)}..."</p>
+                        ${photoThumbnail}
+                    </div>
+                    <div class="vt-popup-footer">
+                        <button type="button" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10.5px] transition-all"
+                            onclick="window.openVisitDetailModal('${v.id}')">
+                            <i class="fa-solid fa-eye mr-1"></i>Ver Ficha
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            marker.bindPopup(popupHtml, { maxWidth: 320 });
+            marker.addTo(vtMarkersLayer);
+            vtMarkersMap[v.id] = marker;
+            validMarkers.push(marker);
+        }
+    });
+
+    // Ajustar zoom para mostrar los puntos si hay marcadores
+    setTimeout(() => {
+        if (vtMap) {
+            vtMap.invalidateSize();
+            if (validMarkers.length > 0 && vtMarkersLayer) {
+                vtMap.fitBounds(vtMarkersLayer.getBounds(), { padding: [35, 35], maxZoom: 13 });
+            }
+        }
+    }, 250);
+}
+
+/**
+ * Centra el mapa en una visita específica y abre su popup
+ */
+window.flyToVisitOnMap = function (visitId) {
+    const visits = (window.DIATDataService ? window.DIATDataService.getTechnicalVisits() : []) || [];
+    const v = visits.find(visit => visit.id === visitId);
+    if (!v) return;
+
+    const lat = parseFloat(v.lat) || 0;
+    const lng = parseFloat(v.lng) || 0;
+
+    if (lat === 0 || lng === 0) {
+        alertToast("Ubicación No Disponible", "Esta visita técnica aún no cuenta con coordenadas GPS.");
+        return;
+    }
+
+    const mapSection = document.getElementById('visitas-map-container');
+    if (mapSection) {
+        mapSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    if (vtMap) {
+        vtMap.flyTo([lat, lng], 13, { duration: 1.2 });
+        setTimeout(() => {
+            const marker = vtMarkersMap[v.id];
+            if (marker) {
+                marker.openPopup();
+            }
+        }, 1300);
+    }
+};
+
+/**
+ * Renderiza los 4 gráficos de analítica de visitas técnicas con Chart.js
+ */
+function renderVisitasCharts(filteredVisits) {
+    if (typeof Chart === 'undefined') return;
+
+    // --- GRÁFICO 1: VISITAS POR SUPERVISOR (REALIZADAS VS PROGRAMADAS) ---
+    const ctxSup = document.getElementById('chart-vt-supervisor')?.getContext('2d');
+    if (ctxSup) {
+        if (vtCharts.supervisor) vtCharts.supervisor.destroy();
+
+        const supervisors = [...new Set(filteredVisits.map(v => v.usuario || 'Sin asignar'))].sort();
+        const supRealizadas = supervisors.map(s => filteredVisits.filter(v => (v.usuario || 'Sin asignar') === s && v.estado === 'Realizada').length);
+        const supProgramadas = supervisors.map(s => filteredVisits.filter(v => (v.usuario || 'Sin asignar') === s && v.estado === 'Programada').length);
+
+        // Abreviar nombres largos de supervisores para la gráfica
+        const supLabels = supervisors.map(s => {
+            const clean = s.replace(/MarÃ­n|Mar\?n|Marn/g, 'Marín').replace(/GÃ³mez|G\?mez|Gmez/g, 'Gómez');
+            const parts = clean.split(' ');
+            return parts.length > 2 ? `${parts[0]} ${parts[parts.length - 2]}` : clean;
+        });
+
+        vtCharts.supervisor = new Chart(ctxSup, {
+            type: 'bar',
+            data: {
+                labels: supLabels,
+                datasets: [
+                    {
+                        label: 'Realizadas',
+                        data: supRealizadas,
+                        backgroundColor: '#10B981',
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'Programadas',
+                        data: supProgramadas,
+                        backgroundColor: '#F59E0B',
+                        borderRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { font: { size: 10, weight: 'bold' } } },
+                    tooltip: {
+                        callbacks: {
+                            title: (items) => supervisors[items[0].dataIndex] || ''
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { font: { size: 9.5 } }, grid: { display: false } },
+                    y: { ticks: { stepSize: 1, font: { size: 10 } }, beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    // --- GRÁFICO 2: DISTRIBUCIÓN POR SUBREGIÓN ---
+    const ctxSub = document.getElementById('chart-vt-subregion')?.getContext('2d');
+    if (ctxSub) {
+        if (vtCharts.subregion) vtCharts.subregion.destroy();
+
+        const subCountMap = {};
+        filteredVisits.forEach(v => {
+            const sub = (v.subregion || 'OTRAS').toUpperCase();
+            subCountMap[sub] = (subCountMap[sub] || 0) + 1;
+        });
+
+        const subLabels = Object.keys(subCountMap);
+        const subData = Object.values(subCountMap);
+        const subColorsList = subLabels.map(sub => (subregionColors[sub] ? subregionColors[sub].fill : '#94A3B8'));
+
+        vtCharts.subregion = new Chart(ctxSub, {
+            type: 'doughnut',
+            data: {
+                labels: subLabels,
+                datasets: [{
+                    data: subData,
+                    backgroundColor: subColorsList,
+                    borderColor: '#FFFFFF',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { font: { size: 9.5 }, boxWidth: 10 } }
+                },
+                cutout: '60%'
+            }
+        });
+    }
+
+    // --- GRÁFICO 3: CRONOGRAMA MENSUAL ---
+    const ctxTime = document.getElementById('chart-vt-timeline')?.getContext('2d');
+    if (ctxTime) {
+        if (vtCharts.timeline) vtCharts.timeline.destroy();
+
+        // Agrupar visitas por Año-Mes
+        const monthMap = {};
+        filteredVisits.forEach(v => {
+            let key = '2025-01';
+            if (v.fecha) {
+                const parts = v.fecha.split('/');
+                if (parts.length === 3) {
+                    key = `${parts[2]}-${parts[1].padStart(2, '0')}`;
+                }
+            }
+            if (!monthMap[key]) monthMap[key] = { realizadas: 0, programadas: 0 };
+            if (v.estado === 'Realizada') monthMap[key].realizadas++;
+            else monthMap[key].programadas++;
+        });
+
+        const sortedMonths = Object.keys(monthMap).sort();
+        const dataR = sortedMonths.map(m => monthMap[m].realizadas);
+        const dataP = sortedMonths.map(m => monthMap[m].programadas);
+
+        vtCharts.timeline = new Chart(ctxTime, {
+            type: 'line',
+            data: {
+                labels: sortedMonths,
+                datasets: [
+                    {
+                        label: 'Visitas Realizadas',
+                        data: dataR,
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4
+                    },
+                    {
+                        label: 'Visitas Programadas',
+                        data: dataP,
+                        borderColor: '#F59E0B',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        borderDash: [5, 5],
+                        pointRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { font: { size: 10, weight: 'bold' } } }
+                },
+                scales: {
+                    x: { ticks: { font: { size: 9.5 } } },
+                    y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } }
+                }
+            }
+        });
+    }
+
+    // --- GRÁFICO 4: TIPOLOGÍA DE VISITAS ---
+    const ctxTipo = document.getElementById('chart-vt-tipo')?.getContext('2d');
+    if (ctxTipo) {
+        if (vtCharts.tipo) vtCharts.tipo.destroy();
+
+        const tipoMap = {};
+        filteredVisits.forEach(v => {
+            const t = v.tipo || 'Avance de obra';
+            tipoMap[t] = (tipoMap[t] || 0) + 1;
+        });
+
+        const tipoLabels = Object.keys(tipoMap);
+        const tipoData = Object.values(tipoMap);
+
+        vtCharts.tipo = new Chart(ctxTipo, {
+            type: 'bar',
+            data: {
+                labels: tipoLabels,
+                datasets: [{
+                    label: 'Cantidad de Visitas',
+                    data: tipoData,
+                    backgroundColor: ['#0B5640', '#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } },
+                    y: { ticks: { font: { size: 9.5, weight: '600' } } }
+                }
+            }
+        });
+    }
+}
+
+/**
+ * Renderiza el listado detallado de visitas en tarjetas o en tabla
+ */
+function renderVisitasList(filteredVisits) {
+    const listCountEl = document.getElementById('vt-list-count');
+    if (listCountEl) listCountEl.textContent = filteredVisits.length;
+
+    const cardsContainer = document.getElementById('vt-cards-container');
+    const tableBody = document.getElementById('vt-table-body');
+    const paginationControls = document.getElementById('vt-pagination-controls');
+    const paginationInfo = document.getElementById('vt-pagination-info');
+
+    // Paginación
+    const totalPages = Math.max(1, Math.ceil(filteredVisits.length / vtRowsPerPage));
+    if (vtCurrentPage > totalPages) vtCurrentPage = totalPages;
+
+    const startIdx = (vtCurrentPage - 1) * vtRowsPerPage;
+    const endIdx = startIdx + vtRowsPerPage;
+    const pageVisits = filteredVisits.slice(startIdx, endIdx);
+
+    if (paginationInfo) {
+        paginationInfo.textContent = `Mostrando ${filteredVisits.length > 0 ? startIdx + 1 : 0} a ${Math.min(endIdx, filteredVisits.length)} de ${filteredVisits.length} visitas (Página ${vtCurrentPage} de ${totalPages})`;
+    }
+
+    // Renderizar controles de paginación
+    if (paginationControls) {
+        paginationControls.innerHTML = '';
+        if (totalPages > 1) {
+            const btnPrev = document.createElement('button');
+            btnPrev.className = 'px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-40 font-bold';
+            btnPrev.innerHTML = '<i class="fa-solid fa-chevron-left"></i>';
+            btnPrev.disabled = (vtCurrentPage === 1);
+            btnPrev.addEventListener('click', () => {
+                if (vtCurrentPage > 1) {
+                    vtCurrentPage--;
+                    renderVisitasTab();
+                }
+            });
+            paginationControls.appendChild(btnPrev);
+
+            for (let p = 1; p <= totalPages; p++) {
+                if (p === 1 || p === totalPages || (p >= vtCurrentPage - 1 && p <= vtCurrentPage + 1)) {
+                    const btnP = document.createElement('button');
+                    btnP.className = `px-3 py-1 rounded border font-bold ${p === vtCurrentPage ? 'bg-institutional-primary text-white border-institutional-primary' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`;
+                    btnP.textContent = p;
+                    btnP.addEventListener('click', () => {
+                        vtCurrentPage = p;
+                        renderVisitasTab();
+                    });
+                    paginationControls.appendChild(btnP);
+                } else if (p === vtCurrentPage - 2 || p === vtCurrentPage + 2) {
+                    const span = document.createElement('span');
+                    span.className = 'px-1 text-slate-400 font-bold';
+                    span.textContent = '...';
+                    paginationControls.appendChild(span);
+                }
+            }
+
+            const btnNext = document.createElement('button');
+            btnNext.className = 'px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-40 font-bold';
+            btnNext.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
+            btnNext.disabled = (vtCurrentPage === totalPages);
+            btnNext.addEventListener('click', () => {
+                if (vtCurrentPage < totalPages) {
+                    vtCurrentPage++;
+                    renderVisitasTab();
+                }
+            });
+            paginationControls.appendChild(btnNext);
+        }
+    }
+
+    // --- VISTA 1: TARJETAS (CARDS) ---
+    if (cardsContainer) {
+        cardsContainer.innerHTML = '';
+        if (pageVisits.length === 0) {
+            cardsContainer.innerHTML = `
+                <div class="col-span-1 md:col-span-2 xl:col-span-3 py-16 text-center text-slate-400 font-medium text-xs italic bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    <i class="fa-solid fa-clipboard-question text-3xl mb-2 text-slate-300"></i>
+                    <p>No se encontraron visitas técnicas con los filtros seleccionados.</p>
+                </div>
+            `;
+        } else {
+            pageVisits.forEach(v => {
+                const isRealizada = (v.estado === 'Realizada');
+                const card = document.createElement('div');
+                card.className = `vt-card ${isRealizada ? 'realizada' : 'programada'}`;
+
+                // Miniatura de fotos
+                let photosMiniHtml = '';
+                if (v.photos && v.photos.length > 0) {
+                    photosMiniHtml = `
+                        <div class="mt-3 grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-100">
+                            ${v.photos.slice(0, 4).map((p, idx) => `
+                                <img src="${p}" class="w-full aspect-square object-cover rounded-lg border border-slate-200 cursor-pointer hover:ring-2 hover:ring-emerald-500 transition-all"
+                                    onclick="event.stopPropagation(); window.openVisitPhotoLightbox('${v.id}', ${idx})" />
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                // Prioridad badge
+                const prioColor = v.prioridad === 'Alta' ? 'text-red-700 bg-red-50 border-red-200' : 'text-slate-600 bg-slate-100 border-slate-200';
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start gap-2 mb-2">
+                            <span class="vt-badge-${isRealizada ? 'realizada' : 'programada'}">
+                                <i class="fa-solid ${isRealizada ? 'fa-circle-check' : 'fa-calendar-days'}"></i>
+                                ${v.estado}
+                            </span>
+                            <span class="px-2 py-0.5 rounded text-[9.5px] font-bold border ${prioColor}">
+                                ${v.prioridad || 'Media'}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between items-baseline mt-2">
+                            <h4 class="text-sm font-black text-slate-800 hover:text-emerald-700 cursor-pointer transition-colors"
+                                onclick="window.openConvenioModalFromVisit('${v.convenioId}')">
+                                <i class="fa-solid fa-file-signature mr-1 text-slate-400"></i>${v.convenioId}
+                            </h4>
+                            <span class="text-[11px] font-bold text-slate-500">${v.fecha}</span>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 flex-wrap mt-1 text-[11px] text-slate-500">
+                            <span class="font-bold text-slate-700">${v.municipio}</span>
+                            <span class="text-slate-300">•</span>
+                            <span class="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-semibold text-slate-600">${v.subregion}</span>
+                        </div>
+
+                        <div class="mt-2 text-xs text-slate-700">
+                            <p class="font-bold text-emerald-800 text-[11px] uppercase tracking-wide">
+                                <i class="fa-solid fa-tag text-emerald-600 mr-1"></i>${v.tipo}
+                            </p>
+                            <p class="text-slate-600 text-[11.5px] mt-1 line-clamp-3 leading-relaxed">
+                                ${v.observaciones || 'Sin observaciones detalladas.'}
+                            </p>
+                        </div>
+
+                        ${v.compromisos ? `
+                            <div class="mt-2 p-2 bg-slate-50 rounded-lg border border-slate-100 text-[10.5px] text-slate-600">
+                                <strong class="text-slate-700">Compromiso:</strong> ${v.compromisos.slice(0, 80)}...
+                            </div>
+                        ` : ''}
+
+                        ${photosMiniHtml}
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <div class="flex items-center gap-1.5 text-slate-500 text-[10.5px]">
+                            <i class="fa-solid fa-user-shield text-slate-400"></i>
+                            <span class="font-medium truncate max-w-[110px]" title="${v.usuario}">${v.usuario}</span>
+                        </div>
+
+                        <div class="flex items-center gap-1">
+                            <button type="button" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs transition-all"
+                                title="Ubicar en Mapa" onclick="window.flyToVisitOnMap('${v.id}')">
+                                <i class="fa-solid fa-location-dot text-emerald-600"></i>
+                            </button>
+                            <button type="button" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition-all flex items-center gap-1"
+                                onclick="window.openVisitDetailModal('${v.id}')">
+                                <i class="fa-solid fa-eye"></i> Ficha
+                            </button>
+                            ${!isRealizada ? `
+                                <button type="button" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1"
+                                    title="Marcar como Realizada" onclick="window.markVisitAsCompleted('${v.id}')">
+                                    <i class="fa-solid fa-check"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+
+                cardsContainer.appendChild(card);
+            });
+        }
+    }
+
+    // --- VISTA 2: TABLA DETALLADA ---
+    if (tableBody) {
+        tableBody.innerHTML = '';
+        if (pageVisits.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-400 font-medium text-xs italic">No se encontraron visitas técnicas.</td></tr>`;
+        } else {
+            pageVisits.forEach(v => {
+                const isRealizada = (v.estado === 'Realizada');
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50/80 transition-colors cursor-pointer';
+                tr.addEventListener('click', (e) => {
+                    if (e.target.closest('button') || e.target.closest('img')) return;
+                    window.openVisitDetailModal(v.id);
+                });
+
+                const photoCount = (v.photos && v.photos.length) || parseInt(v.photoCount) || 0;
+
+                tr.innerHTML = `
+                    <td class="p-3 whitespace-nowrap">
+                        <span class="vt-badge-${isRealizada ? 'realizada' : 'programada'}">${v.estado}</span>
+                    </td>
+                    <td class="p-3 font-bold text-slate-800 whitespace-nowrap">${v.convenioId}</td>
+                    <td class="p-3 text-slate-600">
+                        <span class="font-bold text-slate-700">${v.municipio}</span>
+                        <span class="block text-[10px] text-slate-400 font-medium">${v.subregion}</span>
+                    </td>
+                    <td class="p-3 text-center whitespace-nowrap font-medium text-slate-600">${v.fecha}</td>
+                    <td class="p-3 text-slate-700 font-semibold">${v.usuario}</td>
+                    <td class="p-3 text-slate-600 font-bold"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px]">${v.tipo}</span></td>
+                    <td class="p-3 text-slate-600 max-w-xs truncate" title="${v.observaciones}">${v.observaciones || '--'}</td>
+                    <td class="p-3 text-center whitespace-nowrap">
+                        <span class="font-bold ${photoCount > 0 ? 'text-emerald-700' : 'text-slate-400'}">
+                            <i class="fa-solid fa-camera mr-1"></i>${photoCount}
+                        </span>
+                    </td>
+                    <td class="p-3 text-center whitespace-nowrap">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <button type="button" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs"
+                                title="Ubicar en Mapa" onclick="event.stopPropagation(); window.flyToVisitOnMap('${v.id}')">
+                                <i class="fa-solid fa-location-dot text-emerald-600"></i>
+                            </button>
+                            <button type="button" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10.5px]"
+                                onclick="event.stopPropagation(); window.openVisitDetailModal('${v.id}')">
+                                Ficha
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+    }
+}
+
+/**
+ * Solicita y valida la clave de autorización para registrar visitas realizadas
+ */
+function checkOrPromptAuthPassword(actionTitle = "registrar una visita técnica realizada") {
+    const entered = prompt(`🔐 AUTORIZACIÓN DIAT REQUERIDA\n\nPara ${actionTitle}, por favor ingrese la clave de supervisor:`);
+    if (entered === null) return false;
+    if (entered.trim() === "DIAT2026") {
+        return true;
+    }
+    alertToast("Acceso Denegado", "Clave incorrecta. Se requiere la clave de autorización DIAT2026.", "error");
+    return false;
+}
+
+/**
+ * Muestra u oculta secciones del modal según si la visita es Programada o Realizada
+ */
+function updateVisitModalSectionsByState(estado) {
+    const secObs = document.getElementById('visit-seccion-observaciones');
+    const secFotos = document.getElementById('visit-seccion-fotos');
+    const titleEl = document.getElementById('modal-registrar-visita-title');
+    const descEl = document.getElementById('modal-registrar-visita-desc');
+    const btnSave = document.getElementById('btn-save-visit');
+
+    if (estado === 'Programada') {
+        if (secObs) secObs.style.display = 'none';
+        if (secFotos) secFotos.style.display = 'none';
+        if (titleEl) titleEl.textContent = "Programar Nueva Visita Técnica";
+        if (descEl) descEl.textContent = "Planificación, fecha estimada y asignación de equipo técnico en territorio";
+        if (btnSave) btnSave.innerHTML = '<i class="fa-solid fa-calendar-check mr-1.5"></i>Programar Visita';
+    } else {
+        if (secObs) secObs.style.display = 'block';
+        if (secFotos) secFotos.style.display = 'block';
+        if (titleEl) titleEl.textContent = "Registrar Visita Técnica Realizada";
+        if (descEl) descEl.textContent = "Informe técnico de campo, registro fotográfico y compromisos";
+        if (btnSave) btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1.5"></i>Guardar Visita Realizada';
+    }
+}
+
+/**
+ * Obtiene el catálogo consolidado y actualizado de todos los supervisores DIAT
+ */
+function getAllSupervisoresFromDB() {
+    const supSet = new Set();
+
+    // 1. Desde rawData (base de datos de convenios en memoria)
+    if (typeof rawData !== 'undefined' && Array.isArray(rawData)) {
+        rawData.forEach(r => {
+            const rawSup = String(r['SUPERVISOR'] || r['SUPERVISOR RESPONSABLE'] || r['SUPERVISORES'] || '').trim();
+            if (rawSup && rawSup !== '-' && rawSup !== '0') {
+                rawSup.split(/[,;\/]+/).forEach(part => {
+                    const s = part.trim();
+                    if (s && s.length > 2 && !s.toUpperCase().includes('POR ASIGNAR') && !s.toUpperCase().includes('S/D') && !s.toUpperCase().includes('SIN ASIGNAR')) {
+                        supSet.add(s);
+                    }
+                });
+            }
+        });
+    }
+
+    // 2. Desde el filtro general de supervisores del dashboard
+    const filterSup = document.getElementById('filter-supervisor');
+    if (filterSup && filterSup.options) {
+        Array.from(filterSup.options).forEach(opt => {
+            const val = opt.value.trim();
+            if (val && val !== 'Todos' && !val.toUpperCase().includes('POR ASIGNAR') && !val.toUpperCase().includes('S/D')) {
+                supSet.add(val);
+            }
+        });
+    }
+
+    // 3. Desde PORTAL_USERS
+    if (typeof PORTAL_USERS !== 'undefined') {
+        Object.values(PORTAL_USERS).forEach(u => {
+            if (u.name) supSet.add(u.name.trim());
+        });
+    }
+
+    // 4. Desde las visitas técnicas registradas
+    if (window.DIATDataService) {
+        const existing = window.DIATDataService.getTechnicalVisits() || [];
+        existing.forEach(v => {
+            if (Array.isArray(v.supervisores)) {
+                v.supervisores.forEach(s => {
+                    const str = String(s).trim();
+                    if (str && str.length > 2) supSet.add(str);
+                });
+            } else if (v.usuario) {
+                String(v.usuario).split(/[,;\/]+/).forEach(s => {
+                    const str = s.trim();
+                    if (str && str.length > 2) supSet.add(str);
+                });
+            }
+        });
+    }
+
+    return [...supSet].filter(Boolean).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+}
+
+/**
+ * Manejo del componente de selección múltiple y búsqueda de supervisores en el modal
+ */
+let selectedSupervisorsInModal = [];
+
+function initVisitSupervisorMultiSelect() {
+    const searchInput = document.getElementById('visit-supervisor-search');
+    const toggleBtn = document.getElementById('btn-toggle-supervisor-dropdown');
+    const dropdown = document.getElementById('visit-supervisor-dropdown');
+    const chipsContainer = document.getElementById('visit-supervisor-chips');
+    const hiddenInput = document.getElementById('visit-supervisor-input');
+    const badge = document.getElementById('visit-supervisor-count-badge');
+
+    if (!searchInput || !dropdown) return;
+
+    function renderDropdown(filterText = '') {
+        dropdown.innerHTML = '';
+        const allSupervisores = getAllSupervisoresFromDB();
+        const q = filterText.toLowerCase().trim();
+        const filtered = allSupervisores.filter(s => s.toLowerCase().includes(q));
+
+        if (filtered.length === 0) {
+            dropdown.innerHTML = `
+                <div class="p-3 text-center text-xs text-slate-400 italic">
+                    <p>No se encontraron supervisores coincidentes.</p>
+                    ${q ? `<button type="button" class="mt-2 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg font-bold text-xs border border-purple-200" id="btn-add-custom-sup">
+                        <i class="fa-solid fa-user-plus mr-1"></i>Agregar "${filterText}" al equipo
+                    </button>` : ''}
+                </div>
+            `;
+            const btnAdd = document.getElementById('btn-add-custom-sup');
+            if (btnAdd) {
+                btnAdd.addEventListener('click', () => {
+                    addSupervisor(filterText.trim());
+                    searchInput.value = '';
+                    renderDropdown('');
+                });
+            }
+            return;
+        }
+
+        filtered.forEach(sup => {
+            const isSelected = selectedSupervisorsInModal.includes(sup);
+            const row = document.createElement('div');
+            row.className = `vt-sup-option ${isSelected ? 'selected' : ''}`;
+            row.innerHTML = `
+                <input type="checkbox" ${isSelected ? 'checked' : ''} class="rounded text-purple-600 focus:ring-purple-500 pointer-events-none w-3.5 h-3.5">
+                <span class="flex-1 text-slate-700 text-xs font-medium">${sup}</span>
+                ${isSelected ? '<span class="text-[10px] text-purple-600 font-bold uppercase">Asignado</span>' : ''}
+            `;
+            row.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleSupervisor(sup);
+            });
+            dropdown.appendChild(row);
+        });
+    }
+
+    function addSupervisor(sup) {
+        if (!sup || selectedSupervisorsInModal.includes(sup)) return;
+        selectedSupervisorsInModal.push(sup);
+        syncSupervisorState();
+    }
+
+    function removeSupervisor(sup) {
+        selectedSupervisorsInModal = selectedSupervisorsInModal.filter(s => s !== sup);
+        syncSupervisorState();
+    }
+
+    function toggleSupervisor(sup) {
+        if (selectedSupervisorsInModal.includes(sup)) {
+            removeSupervisor(sup);
+        } else {
+            addSupervisor(sup);
+        }
+    }
+
+    function syncSupervisorState() {
+        if (hiddenInput) hiddenInput.value = selectedSupervisorsInModal.join(', ');
+        if (badge) badge.textContent = `${selectedSupervisorsInModal.length} seleccionado${selectedSupervisorsInModal.length === 1 ? '' : 's'}`;
+
+        if (chipsContainer) {
+            chipsContainer.innerHTML = '';
+            if (selectedSupervisorsInModal.length === 0) {
+                chipsContainer.innerHTML = '<span class="text-[11px] text-slate-400 italic font-normal" id="visit-supervisor-chips-placeholder">Ningún supervisor asignado aún. Selecciona o busca en el catálogo inferior.</span>';
+            } else {
+                selectedSupervisorsInModal.forEach(sup => {
+                    const chip = document.createElement('div');
+                    chip.className = 'vt-sup-chip';
+                    chip.innerHTML = `
+                        <i class="fa-solid fa-user-check text-[10px] text-purple-600"></i>
+                        <span>${sup}</span>
+                        <button type="button" title="Quitar supervisor">✕</button>
+                    `;
+                    chip.querySelector('button').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        removeSupervisor(sup);
+                    });
+                    chipsContainer.appendChild(chip);
+                });
+            }
+        }
+        renderDropdown(searchInput.value);
+    }
+
+    window.setVisitSelectedSupervisors = function (supArray) {
+        if (Array.isArray(supArray)) {
+            selectedSupervisorsInModal = [...supArray];
+        } else if (typeof supArray === 'string' && supArray.trim()) {
+            selectedSupervisorsInModal = supArray.split(/[,;\/]+/).map(s => s.trim()).filter(Boolean);
+        } else {
+            selectedSupervisorsInModal = [];
+        }
+        syncSupervisorState();
+    };
+
+    searchInput.addEventListener('focus', () => {
+        dropdown.classList.remove('hidden');
+        renderDropdown(searchInput.value);
+    });
+
+    searchInput.addEventListener('input', (e) => {
+        dropdown.classList.remove('hidden');
+        renderDropdown(e.target.value);
+    });
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('hidden');
+            if (!dropdown.classList.contains('hidden')) {
+                renderDropdown(searchInput.value);
+            }
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#visit-supervisor-search') && !e.target.closest('#visit-supervisor-dropdown') && !e.target.closest('#btn-toggle-supervisor-dropdown')) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    syncSupervisorState();
+}
+
+/**
+ * Combobox Unificado e Inteligente para Selección de Convenios
+ */
+function initVisitConvenioCombobox() {
+    const searchInput = document.getElementById('visit-convenio-search');
+    const toggleBtn = document.getElementById('btn-toggle-convenio-dropdown');
+    const clearBtn = document.getElementById('btn-clear-convenio');
+    const dropdown = document.getElementById('visit-convenio-dropdown');
+    const selectEl = document.getElementById('visit-convenio-select');
+    const muniSelect = document.getElementById('visit-municipio-select');
+
+    if (!searchInput || !dropdown) return;
+
+    function renderDropdown(query = '') {
+        dropdown.innerHTML = '';
+        const q = String(query || '').toLowerCase().trim();
+        const selectedMuni = muniSelect ? muniSelect.value : '';
+
+        let rows = (rawData || []);
+        if (selectedMuni) {
+            rows = rows.filter(r => normCanonicalMuni(r['MUNICIPIO']) === normCanonicalMuni(selectedMuni));
+        }
+
+        if (q) {
+            rows = rows.filter(r => {
+                const id = String(r['CONVENIO'] || '').toLowerCase();
+                const mun = String(r['MUNICIPIO'] || '').toLowerCase();
+                const sub = String(r['SUBREGION'] || '').toLowerCase();
+                const via = String(r['VIA_PRIORIZADA'] || '').toLowerCase();
+                const obj = String(r['OBJETO'] || '').toLowerCase();
+                return id.includes(q) || mun.includes(q) || sub.includes(q) || via.includes(q) || obj.includes(q);
+            });
+        }
+
+        if (rows.length === 0) {
+            dropdown.innerHTML = `
+                <div class="p-3 text-center text-xs text-slate-400 italic">
+                    <p>No se encontraron convenios ${selectedMuni ? `en ${selectedMuni}` : ''} coincidentes.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const displayRows = rows.slice(0, 60);
+        displayRows.forEach(r => {
+            const id = String(r['CONVENIO']).trim();
+            const muni = String(r['MUNICIPIO'] || 'Antioquia').trim();
+            const subreg = String(r['SUBREGION'] || '').trim();
+            const via = String(r['VIA_PRIORIZADA'] || '').trim();
+            const fisico = r['FISICO_NORM'] ? `${Math.round(r['FISICO_NORM'])}% Físico` : '';
+            const isSelected = selectEl && selectEl.value === id;
+
+            const item = document.createElement('div');
+            item.className = `vt-combobox-item ${isSelected ? 'selected' : ''}`;
+            item.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="vt-combobox-badge">${id}</span>
+                        <span class="vt-combobox-muni">${muni}</span>
+                    </div>
+                    ${subreg ? `<span class="vt-combobox-subregion">${subreg}</span>` : ''}
+                </div>
+                ${via ? `<div class="vt-combobox-via" title="${via}"><i class="fa-solid fa-road text-[10px] text-slate-400 mr-1"></i>${via}</div>` : ''}
+                ${fisico ? `<div class="text-[10px] text-right font-bold text-emerald-700">${fisico}</div>` : ''}
+            `;
+
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectConvenio(r);
+            });
+            dropdown.appendChild(item);
+        });
+    }
+
+    function selectConvenio(convRow) {
+        const id = String(convRow['CONVENIO']).trim();
+        const muni = String(convRow['MUNICIPIO'] || '').trim();
+
+        if (selectEl) {
+            selectEl.innerHTML = `<option value="${id}" selected>${id}</option>`;
+            selectEl.value = id;
+            selectEl.dispatchEvent(new Event('change'));
+        }
+
+        searchInput.value = `${id} — ${muni}`;
+        if (clearBtn) clearBtn.classList.remove('hidden');
+        dropdown.classList.add('hidden');
+
+        // Sincronizar selector de municipio
+        if (muni && muniSelect) {
+            muniSelect.value = muni;
+        }
+
+        // Si tiene coordenadas, centrar mapa y actualizar inputs
+        const lat = parseFloat(convRow['LATITUD']) || 0;
+        const lng = parseFloat(convRow['LONGITUD']) || 0;
+        if (lat !== 0 && lng !== 0) {
+            updateVisitGpsAndMap(lat, lng, 14);
+        } else if (muni) {
+            focusVisitMapOnMunicipio(muni);
+        }
+    }
+
+    function clearConvenioSelection() {
+        searchInput.value = '';
+        if (selectEl) selectEl.value = '';
+        if (clearBtn) clearBtn.classList.add('hidden');
+        renderDropdown('');
+    }
+
+    searchInput.addEventListener('focus', () => {
+        dropdown.classList.remove('hidden');
+        renderDropdown(searchInput.value);
+    });
+
+    searchInput.addEventListener('input', (e) => {
+        dropdown.classList.remove('hidden');
+        if (clearBtn) {
+            if (e.target.value) clearBtn.classList.remove('hidden');
+            else clearBtn.classList.add('hidden');
+        }
+        renderDropdown(e.target.value);
+    });
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('hidden');
+            if (!dropdown.classList.contains('hidden')) {
+                renderDropdown(searchInput.value);
+            }
+        });
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearConvenioSelection();
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.vt-combobox-wrapper')) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    window.refreshVisitConvenioCombobox = function (filterMuni = '') {
+        renderDropdown(searchInput.value);
+    };
+}
+
+// 125 Municipios oficiales de Antioquia ordenados alfabéticamente
+const ALL_ANTIOQUIA_MUNICIPIOS = [
+    "Abejorral", "Abriaquí", "Alejandría", "Amagá", "Amalfi", "Andes", "Angelópolis", "Angostura", "Anorí", "Anzá",
+    "Apartadó", "Arboletes", "Argelia", "Armenia", "Barbosa", "Bello", "Belmira", "Betania", "Betulia", "Briceño",
+    "Buriticá", "Cáceres", "Caicedo", "Caldas", "Campamento", "Cañasgordas", "Caracolí", "Caramanta", "Carepa", "Carolina del Príncipe",
+    "Caucasia", "Chigorodó", "Cisneros", "Ciudad Bolívar", "Cocorná", "Concepción", "Concordia", "Copacabana", "Dabeiba", "Donmatías",
+    "Ebéjico", "El Bagre", "El Carmen de Viboral", "El Peñol", "El Retiro", "El Santuario", "Entrerríos", "Envigado", "Fredonia", "Frontino",
+    "Giraldo", "Girardota", "Gómez Plata", "Granada", "Guadalupe", "Guarne", "Guatapé", "Heliconia", "Hispania", "Itagüí",
+    "Ituango", "Jardín", "Jericó", "La Ceja", "La Estrella", "La Pintada", "La Unión", "Liborina", "Maceo", "Marinilla",
+    "Medellín", "Montebello", "Murindó", "Mutatá", "Nariño", "Nechí", "Necoclí", "Olaya", "Peque", "Pueblorrico",
+    "Puerto Berrío", "Puerto Nare", "Puerto Triunfo", "Remedios", "Rionegro", "Sabanalarga", "Sabaneta", "Salgar", "San Andrés de Cuerquia", "San Carlos",
+    "San Francisco", "San Jerónimo", "San José de la Montaña", "San Juan de Urabá", "San Luis", "San Pedro de los Milagros", "San Pedro de Urabá", "San Rafael", "San Roque", "San Vicente Ferrer",
+    "Santa Bárbara", "Santa Fe de Antioquia", "Santa Rosa de Osos", "Santo Domingo", "Segovia", "Sonsón", "Sopetrán", "Támesis", "Tarazá", "Tarso",
+    "Titiribí", "Toledo", "Turbo", "Uramita", "Urrao", "Valdivia", "Valparaíso", "Vegachí", "Venecia", "Vigía del Fuerte",
+    "Yalí", "Yarumal", "Yolombó", "Yondó", "Zaragoza"
+];
+
+function updateVisitGpsAndMap(lat, lng, zoom = 13, bounds = null) {
+    const latEl = document.getElementById('visit-gps-lat');
+    const lngEl = document.getElementById('visit-gps-lng');
+    if (latEl) latEl.value = Number(lat).toFixed(6);
+    if (lngEl) lngEl.value = Number(lng).toFixed(6);
+
+    const pos = L.latLng(lat, lng);
+    if (typeof window.initVisitMap === 'function') {
+        window.initVisitMap(lat, lng);
+    }
+    if (window.visitMapInstance) {
+        if (bounds) {
+            window.visitMapInstance.fitBounds(bounds, { maxZoom: 13, padding: [20, 20] });
+        } else {
+            window.visitMapInstance.flyTo(pos, zoom, { duration: 1 });
+        }
+        if (window.visitMarker) {
+            window.visitMarker.setLatLng(pos);
+        }
+        setTimeout(() => {
+            window.visitMapInstance.invalidateSize();
+        }, 150);
+    }
+}
+
+async function focusVisitMapOnMunicipio(muniName) {
+    if (!muniName) return;
+    const cleanMuni = normCanonicalMuni(muniName);
+
+    // 1. Intentar con coordenadas de convenio en rawData para ese municipio
+    const matchRow = (rawData || []).find(r => normCanonicalMuni(r['MUNICIPIO']) === cleanMuni && r['LATITUD'] && r['LONGITUD']);
+    if (matchRow) {
+        const lat = parseFloat(matchRow['LATITUD']) || 0;
+        const lng = parseFloat(matchRow['LONGITUD']) || 0;
+        if (lat !== 0 && lng !== 0) {
+            updateVisitGpsAndMap(lat, lng, 13);
+            return;
+        }
+    }
+
+    // 2. Intentar obtener polígono/centroide desde GeoJSON mpio.json
+    try {
+        const mpioData = window.cachedAntioquiaMpio || (typeof getAntioquiaMpioData === 'function' ? await getAntioquiaMpioData() : null);
+        if (mpioData && mpioData.features) {
+            const feat = mpioData.features.find(f => {
+                const nom = f.properties.NOMBRE_MPI || f.properties.MPIO_CNMBR || f.properties.NOM_MPIO || '';
+                return normCanonicalMuni(nom) === cleanMuni;
+            });
+            if (feat && typeof L !== 'undefined') {
+                const tempLayer = L.geoJSON(feat);
+                const bounds = tempLayer.getBounds();
+                const center = bounds.getCenter();
+                if (center && !isNaN(center.lat) && !isNaN(center.lng)) {
+                    updateVisitGpsAndMap(center.lat, center.lng, 12, bounds);
+                    return;
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("No se pudo obtener GeoJSON para centrar municipio:", e);
+    }
+}
+
+/**
+ * Llena el selector de municipios del modal de visita con los 125 municipios oficiales
+ */
+function populateVisitMunicipioDropdown(selectedMunicipio = '') {
+    const muniSelect = document.getElementById('visit-municipio-select');
+    if (!muniSelect) return;
+
+    muniSelect.innerHTML = '';
+    const optDefault = document.createElement('option');
+    optDefault.value = '';
+    optDefault.textContent = '-- Seleccionar Municipio (125) --';
+    muniSelect.appendChild(optDefault);
+
+    // Consolidar 125 municipios oficiales + cualquier municipio adicional en rawData
+    const muniSet = new Set(ALL_ANTIOQUIA_MUNICIPIOS);
+    if (typeof rawData !== 'undefined' && Array.isArray(rawData)) {
+        rawData.forEach(r => {
+            const m = String(r['MUNICIPIO'] || '').trim();
+            if (m) muniSet.add(m);
+        });
+    }
+
+    const munis = [...muniSet].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+    munis.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        if (selectedMunicipio && normCanonicalMuni(m) === normCanonicalMuni(selectedMunicipio)) {
+            opt.selected = true;
+        }
+        muniSelect.appendChild(opt);
+    });
+
+    muniSelect.onchange = function () {
+        const chosenMuni = this.value;
+        // Filtrar convenios en combobox
+        if (typeof window.refreshVisitConvenioCombobox === 'function') {
+            window.refreshVisitConvenioCombobox(chosenMuni);
+        }
+        populateVisitConvenioDropdown('', chosenMuni);
+
+        // Centrar y ubicar automáticamente en el mapa
+        if (chosenMuni) {
+            focusVisitMapOnMunicipio(chosenMuni);
+        }
+    };
+}
+
+/**
+ * Llena el selector de convenios del modal de visita, opcionalmente filtrado por municipio
+ */
+function populateVisitConvenioDropdown(selectedConvenioId = '', filterMunicipio = '') {
+    const selectEl = document.getElementById('visit-convenio-select');
+    const searchInput = document.getElementById('visit-convenio-search');
+    const clearBtn = document.getElementById('btn-clear-convenio');
+    if (!selectEl) return;
+
+    selectEl.innerHTML = '';
+    const optDefault = document.createElement('option');
+    optDefault.value = '';
+    optDefault.textContent = filterMunicipio ? `-- Convenios de ${filterMunicipio} --` : '-- Seleccione un convenio --';
+    selectEl.appendChild(optDefault);
+
+    let rows = (rawData || []);
+    if (filterMunicipio) {
+        rows = rows.filter(r => normCanonicalMuni(r['MUNICIPIO']) === normCanonicalMuni(filterMunicipio));
+    }
+
+    rows.forEach(r => {
+        const id = String(r['CONVENIO']).trim();
+        if (id) {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = `${id} — ${r['MUNICIPIO'] || 'Antioquia'} (${r['SUBREGION'] || ''})`;
+            if (id === String(selectedConvenioId).trim()) {
+                opt.selected = true;
+                if (searchInput) {
+                    searchInput.value = `${id} — ${r['MUNICIPIO'] || ''}`;
+                    if (clearBtn) clearBtn.classList.remove('hidden');
+                }
+            }
+            selectEl.appendChild(opt);
+        }
+    });
+
+    if (!selectedConvenioId && searchInput && !searchInput.value) {
+        if (clearBtn) clearBtn.classList.add('hidden');
+    }
+}
+
+/**
+ * Abre el modal para programar una nueva visita técnica
+ */
+window.openScheduleVisitModal = function (convenioId = '', municipio = '') {
+    window.editingVisitId = null;
+
+    // Ajustar visibilidad: en Programada NO debe aparecer observaciones, compromisos ni fotos
+    updateVisitModalSectionsByState('Programada');
+
+    // Determinar municipio inicial si viene por convenio
+    let initialMuni = municipio;
+    if (convenioId && !initialMuni) {
+        const r = (rawData || []).find(row => String(row['CONVENIO']).trim() === String(convenioId).trim());
+        if (r && r['MUNICIPIO']) initialMuni = r['MUNICIPIO'].trim();
+    }
+
+    // Poblar selector de municipios y convenios
+    populateVisitMunicipioDropdown(initialMuni);
+    populateVisitConvenioDropdown(convenioId, initialMuni);
+
+    // Ajustar estado a Programada
+    const estadoEl = document.getElementById('visit-estado');
+    if (estadoEl) estadoEl.value = 'Programada';
+
+    const fechaEl = document.getElementById('visit-fecha');
+    if (fechaEl) {
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        fechaEl.value = toDateInputValue(nextWeek.toLocaleDateString('es-CO'));
+    }
+
+    const tipoEl = document.getElementById('visit-tipo');
+    if (tipoEl) tipoEl.value = 'Avance de obra';
+
+    const prioEl = document.getElementById('visit-prioridad');
+    if (prioEl) prioEl.value = 'Alta';
+
+    // Al programar visita NO debe haber supervisor asignado por defecto (iniciar en 0)
+    if (typeof window.setVisitSelectedSupervisors === 'function') {
+        window.setVisitSelectedSupervisors([]);
+    }
+
+    // Limpiar campos
+    document.getElementById('visit-obs').value = '';
+    document.getElementById('visit-compromisos').value = '';
+    document.getElementById('visit-riesgos').value = '';
+    window.visitUploadedPhotos = [];
+    renderVisitPhotoPreviews();
+
+    // Mostrar modal
+    const modalEl = document.getElementById('modal-registrar-visita');
+    if (modalEl) {
+        modalEl.style.display = 'flex';
+        modalEl.classList.remove('hidden');
+    }
+
+    setTimeout(() => {
+        if (initialMuni) {
+            focusVisitMapOnMunicipio(initialMuni);
+        } else {
+            if (typeof window.initVisitMap === 'function') {
+                window.initVisitMap(6.25184, -75.56359);
+            }
+        }
+    }, 200);
+};
+
+/**
+ * Abre el modal para registrar una visita técnica ya realizada
+ */
+window.openRegisterCompletedVisitModal = function (convenioId = '', municipio = '') {
+    window.editingVisitId = null;
+
+    // Ajustar visibilidad: en Realizada SÍ aparecen observaciones, compromisos y fotos
+    updateVisitModalSectionsByState('Realizada');
+
+    // Determinar municipio inicial si viene por convenio
+    let initialMuni = municipio;
+    if (convenioId && !initialMuni) {
+        const r = (rawData || []).find(row => String(row['CONVENIO']).trim() === String(convenioId).trim());
+        if (r && r['MUNICIPIO']) initialMuni = r['MUNICIPIO'].trim();
+    }
+
+    // Poblar selector de municipios y convenios
+    populateVisitMunicipioDropdown(initialMuni);
+    populateVisitConvenioDropdown(convenioId, initialMuni);
+
+    // Ajustar estado a Realizada
+    const estadoEl = document.getElementById('visit-estado');
+    if (estadoEl) estadoEl.value = 'Realizada';
+
+    const fechaEl = document.getElementById('visit-fecha');
+    if (fechaEl) fechaEl.value = toDateInputValue(new Date().toLocaleDateString('es-CO'));
+
+    // Sin supervisor por defecto
+    if (typeof window.setVisitSelectedSupervisors === 'function') {
+        window.setVisitSelectedSupervisors([]);
+    }
+
+    // Limpiar campos
+    document.getElementById('visit-obs').value = '';
+    document.getElementById('visit-compromisos').value = '';
+    document.getElementById('visit-riesgos').value = '';
+    window.visitUploadedPhotos = [];
+    renderVisitPhotoPreviews();
+
+    // Mostrar modal
+    const modalEl = document.getElementById('modal-registrar-visita');
+    if (modalEl) {
+        modalEl.style.display = 'flex';
+        modalEl.classList.remove('hidden');
+    }
+
+    setTimeout(() => {
+        if (initialMuni) {
+            focusVisitMapOnMunicipio(initialMuni);
+        } else {
+            if (typeof window.initVisitMap === 'function') {
+                window.initVisitMap(6.25184, -75.56359);
+            }
+        }
+    }, 200);
+};
+
+/**
+ * Abre el modal técnico de un convenio a partir de su ID
+ */
+window.openConvenioModalFromVisit = function (convenioId) {
+    const row = (rawData || []).find(r => String(r['CONVENIO']).trim() === String(convenioId).trim());
+    if (row && typeof openModal === 'function') {
+        openModal(row);
+    }
+};
+
+/**
+ * Marca una visita programada como realizada directamente (requiere clave DIAT2026)
+ */
+window.markVisitAsCompleted = async function (visitId) {
+    if (!checkOrPromptAuthPassword("marcar la visita como realizada")) return;
+
+    const visits = (window.DIATDataService ? window.DIATDataService.getTechnicalVisits() : []) || [];
+    const v = visits.find(visit => visit.id === visitId);
+    if (!v) return;
+
+    const confirmAction = confirm(`¿Deseas marcar la visita programada del convenio ${v.convenioId} como REALIZADA hoy?`);
+    if (!confirmAction) return;
+
+    if (window.DIATDataService) {
+        await window.DIATDataService.markVisitAsCompleted(visitId, {
+            fecha: new Date().toLocaleDateString('es-CO')
+        });
+        alertToast("Visita Completada", `La visita técnica de ${v.convenioId} ha sido marcada como Realizada.`);
+        renderVisitasTab();
+        if (typeof renderSupervisorPortal === 'function') renderSupervisorPortal();
+    }
+};
+
+/**
+ * Genera un mapa vectorial sobre Canvas de Antioquia con los puntos georreferenciados
+ */
+function generateVisitsVectorMapCanvas(visits, width = 1100, height = 620) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+
+    // Fondo ejecutivo
+    ctx.fillStyle = '#F8FAFC';
+    ctx.fillRect(0, 0, width, height);
+
+    // Coordenadas extremas de Antioquia
+    const minLat = 5.4, maxLat = 8.9;
+    const minLng = -77.1, maxLng = -73.8;
+    const padding = 55;
+
+    function project(lat, lng) {
+        const x = padding + ((lng - minLng) / (maxLng - minLng)) * (width - 2 * padding);
+        const y = height - padding - ((lat - minLat) / (maxLat - minLat)) * (height - 2 * padding);
+        return { x, y };
+    }
+
+    // Dibujar polígonos vectoriales de municipios si están en memoria
+    if (window.antioquiaGeojsonFeatures && window.antioquiaGeojsonFeatures.length > 0) {
+        ctx.fillStyle = '#EEF2F6';
+        ctx.strokeStyle = '#CBD5E1';
+        ctx.lineWidth = 0.8;
+
+        window.antioquiaGeojsonFeatures.forEach(feat => {
+            const geom = feat.geometry;
+            if (!geom) return;
+
+            const drawRing = (coords) => {
+                ctx.beginPath();
+                coords.forEach((pt, i) => {
+                    const p = project(pt[1], pt[0]);
+                    if (i === 0) ctx.moveTo(p.x, p.y);
+                    else ctx.lineTo(p.x, p.y);
+                });
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            };
+
+            if (geom.type === 'Polygon') {
+                geom.coordinates.forEach(ring => drawRing(ring));
+            } else if (geom.type === 'MultiPolygon') {
+                geom.coordinates.forEach(poly => {
+                    poly.forEach(ring => drawRing(ring));
+                });
+            }
+        });
+    } else {
+        // Silueta base estilizada de Antioquia
+        ctx.fillStyle = '#EEF2F6';
+        ctx.strokeStyle = '#94A3B8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        const coords = [
+            [5.6, -75.8], [5.8, -76.3], [6.5, -76.8], [7.8, -76.8],
+            [8.8, -76.5], [8.6, -74.8], [7.4, -74.0], [6.0, -74.5]
+        ];
+        coords.forEach((c, i) => {
+            const p = project(c[0], c[1]);
+            if (i === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+        });
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+    }
+
+    // Cabecera en el canvas
+    ctx.fillStyle = '#0F172A';
+    ctx.font = "bold 15px 'Plus Jakarta Sans', Arial, sans-serif";
+    ctx.fillText("MAPA VECTORIAL DE CONTROL TERRITORIAL DE VISITAS TÉCNICAS — ANTIOQUIA", 24, 30);
+
+    ctx.fillStyle = '#64748B';
+    ctx.font = "10.5px 'Plus Jakarta Sans', Arial, sans-serif";
+    ctx.fillText("Gobernación de Antioquia · Secretaría de Infraestructura Física · DIAT", 24, 46);
+
+    // Dibujar puntos de visitas
+    const validVisits = visits.filter(v => (v.lat && v.lng && v.lat !== 0 && v.lng !== 0));
+    const sortedVisits = [...validVisits].sort((a, b) => (a.estado === 'Programada' ? -1 : 1));
+
+    sortedVisits.forEach(v => {
+        const p = project(v.lat, v.lng);
+        const isRealizada = (v.estado === 'Realizada');
+        const color = isRealizada ? '#10B981' : '#F59E0B';
+
+        // Sombra de marcador
+        ctx.beginPath();
+        ctx.arc(p.x, p.y + 1, 7, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fill();
+
+        // Círculo exterior
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 6.5, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Punto interior blanco
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, 2 * Math.PI);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fill();
+
+        // Etiqueta legible
+        const label = `${v.convenioId} · ${v.municipio || ''}`;
+        ctx.font = "bold 9px Arial, sans-serif";
+        const textWidth = ctx.measureText(label).width;
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+        ctx.fillRect(p.x + 8, p.y - 7, textWidth + 8, 14);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(p.x + 8, p.y - 7, textWidth + 8, 14);
+
+        ctx.fillStyle = '#0F172A';
+        ctx.fillText(label, p.x + 12, p.y + 3.5);
+    });
+
+    // Leyenda inferior
+    const legX = 24, legY = height - 52;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.strokeStyle = '#CBD5E1';
+    ctx.lineWidth = 1;
+    ctx.fillRect(legX, legY, 340, 38);
+    ctx.strokeRect(legX, legY, 340, 38);
+
+    const realCount = visits.filter(v => v.estado === 'Realizada').length;
+    const progCount = visits.filter(v => v.estado === 'Programada').length;
+
+    // Pin Realizada
+    ctx.beginPath();
+    ctx.arc(legX + 16, legY + 18, 5.5, 0, 2 * Math.PI);
+    ctx.fillStyle = '#10B981';
+    ctx.fill();
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#0F172A';
+    ctx.font = "bold 10px Arial, sans-serif";
+    ctx.fillText(`Realizadas (${realCount})`, legX + 26, legY + 21);
+
+    // Pin Programada
+    ctx.beginPath();
+    ctx.arc(legX + 140, legY + 18, 5.5, 0, 2 * Math.PI);
+    ctx.fillStyle = '#F59E0B';
+    ctx.fill();
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#0F172A';
+    ctx.fillText(`Programadas (${progCount})`, legX + 150, legY + 21);
+
+    return canvas.toDataURL('image/png');
+}
+
+/**
+ * Genera y descarga el informe ejecutivo en PDF con el mapa vectorial y listado tipo tabla
+ */
+function exportVisitsToPDF() {
+    if (typeof pdfMake === 'undefined') {
+        alertToast("Error", "La biblioteca de exportación a PDF no se encuentra disponible. Por favor recarga la página.", "error");
+        return;
+    }
+
+    const { filteredVisits } = getVisitasDataset();
+    if (filteredVisits.length === 0) {
+        alertToast("Sin Datos", "No hay visitas técnicas registradas con los filtros actuales.", "error");
+        return;
+    }
+
+    alertToast("Generando PDF", "Construyendo documento con mapa vectorial y tabla de visitas...", "info");
+
+    const mapDataUrl = generateVisitsVectorMapCanvas(filteredVisits);
+
+    const total = filteredVisits.length;
+    const totalRealizadas = filteredVisits.filter(v => v.estado === 'Realizada').length;
+    const totalProgramadas = filteredVisits.filter(v => v.estado === 'Programada').length;
+    const totalMunis = new Set(filteredVisits.map(v => v.municipio).filter(Boolean)).size;
+
+    // Construir tabla detallada
+    const tableBody = [
+        [
+            { text: 'CONVENIO', style: 'tableHeader' },
+            { text: 'MUNICIPIO / SUBREGIÓN', style: 'tableHeader' },
+            { text: 'ESTADO', style: 'tableHeader' },
+            { text: 'FECHA', style: 'tableHeader' },
+            { text: 'SUPERVISOR(ES)', style: 'tableHeader' },
+            { text: 'TIPO DE VISITA', style: 'tableHeader' },
+            { text: 'DETALLES / OBSERVACIONES', style: 'tableHeader' }
+        ]
+    ];
+
+    filteredVisits.forEach((v, idx) => {
+        const isRealizada = (v.estado === 'Realizada');
+        const bg = (idx % 2 === 0) ? '#FFFFFF' : '#F8FAFC';
+        const obsComp = [
+            v.observaciones ? `Obs: ${v.observaciones}` : '',
+            v.compromisos ? `Compromisos: ${v.compromisos}` : ''
+        ].filter(Boolean).join('\n') || '--';
+
+        tableBody.push([
+            { text: v.convenioId || '--', bold: true, fillColor: bg, fontSize: 8 },
+            { text: `${v.municipio || 'Antioquia'}\n(${v.subregion || '--'})`, fillColor: bg, fontSize: 7.5 },
+            {
+                text: isRealizada ? 'REALIZADA' : 'PROGRAMADA',
+                bold: true,
+                color: isRealizada ? '#065F46' : '#92400E',
+                fillColor: isRealizada ? '#D1FAE5' : '#FEF3C7',
+                fontSize: 7.5,
+                alignment: 'center'
+            },
+            { text: v.fecha || '--', fillColor: bg, fontSize: 8, alignment: 'center' },
+            { text: v.usuario || '--', fillColor: bg, fontSize: 7.5 },
+            { text: v.tipo || '--', fillColor: bg, fontSize: 7.5 },
+            { text: obsComp, fillColor: bg, fontSize: 7 }
+        ]);
+    });
+
+    const docDefinition = {
+        pageSize: 'A4',
+        pageOrientation: 'landscape',
+        pageMargins: [28, 28, 28, 30],
+        header: function (currentPage, pageCount) {
+            return {
+                text: 'GOBERNACIÓN DE ANTIOQUIA — SECRETARÍA DE INFRAESTRUCTURA FÍSICA · DIAT',
+                fontSize: 7.5,
+                color: '#94A3B8',
+                margin: [28, 12, 28, 0]
+            };
+        },
+        footer: function (currentPage, pageCount) {
+            return {
+                columns: [
+                    { text: `Reporte Territorial DIAT · Generado el ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO')}`, fontSize: 7.5, color: '#94A3B8' },
+                    { text: `Página ${currentPage} de ${pageCount}`, alignment: 'right', fontSize: 7.5, color: '#94A3B8' }
+                ],
+                margin: [28, 0, 28, 12]
+            };
+        },
+        content: [
+            {
+                columns: [
+                    {
+                        width: '*',
+                        stack: [
+                            { text: 'CENTRO DE CONTROL TERRITORIAL DE VISITAS TÉCNICAS', fontSize: 13, bold: true, color: '#0B5640' },
+                            { text: 'Informe Ejecutivo de Seguimiento en Terreno y Planificación de Supervisores', fontSize: 9, color: '#475569', margin: [0, 2, 0, 0] }
+                        ]
+                    },
+                    {
+                        width: 'auto',
+                        stack: [
+                            { text: `Total Visitas: ${total}`, bold: true, fontSize: 9, color: '#0F172A', alignment: 'right' },
+                            { text: `Realizadas: ${totalRealizadas} | Programadas: ${totalProgramadas} | Municipios: ${totalMunis}`, fontSize: 8, color: '#64748B', alignment: 'right' }
+                        ]
+                    }
+                ],
+                margin: [0, 0, 0, 10]
+            },
+            {
+                image: mapDataUrl,
+                width: 785,
+                alignment: 'center',
+                margin: [0, 0, 0, 12]
+            },
+            { text: 'LISTADO DETALLADO DE VISITAS TÉCNICAS', fontSize: 10.5, bold: true, color: '#0B5640', margin: [0, 0, 0, 6], pageBreak: 'before' },
+            {
+                table: {
+                    headerRows: 1,
+                    widths: [70, 95, 75, 60, 110, 85, '*'],
+                    body: tableBody
+                },
+                layout: {
+                    hLineWidth: () => 0.5,
+                    vLineWidth: () => 0.5,
+                    hLineColor: () => '#E2E8F0',
+                    vLineColor: () => '#E2E8F0',
+                    paddingLeft: () => 4,
+                    paddingRight: () => 4,
+                    paddingTop: () => 4,
+                    paddingBottom: () => 4
+                }
+            }
+        ],
+        styles: {
+            tableHeader: {
+                bold: true,
+                fontSize: 8,
+                color: '#FFFFFF',
+                fillColor: '#0B5640',
+                alignment: 'center'
+            }
+        }
+    };
+
+    pdfMake.createPdf(docDefinition).download(`DIAT_Control_Visitas_${new Date().toISOString().slice(0, 10)}.pdf`);
+    alertToast("PDF Descargado", "El reporte ha sido generado y descargado correctamente.", "success");
+}
+
+/**
+ * Exporta el listado filtrado de visitas técnicas a archivo CSV
+ */
+function exportVisitsToCSV() {
+    const { filteredVisits } = getVisitasDataset();
+    if (filteredVisits.length === 0) {
+        alertToast("Sin Datos", "No hay visitas técnicas disponibles para exportar con los filtros actuales.", "error");
+        return;
+    }
+
+    const headers = ["ID", "CONVENIO", "ESTADO", "PRIORIDAD", "FECHA", "SUPERVISOR", "MUNICIPIO", "SUBREGION", "TIPO_VISITA", "OBSERVACIONES", "COMPROMISOS", "RIESGOS", "LATITUD", "LONGITUD", "TOTAL_FOTOS"];
+
+    const rows = filteredVisits.map(v => [
+        v.id || '',
+        v.convenioId || '',
+        v.estado || 'Realizada',
+        v.prioridad || 'Media',
+        v.fecha || '',
+        `"${(v.usuario || '').replace(/"/g, '""')}"`,
+        `"${(v.municipio || '').replace(/"/g, '""')}"`,
+        `"${(v.subregion || '').replace(/"/g, '""')}"`,
+        `"${(v.tipo || '').replace(/"/g, '""')}"`,
+        `"${(v.observaciones || '').replace(/"/g, '""')}"`,
+        `"${(v.compromisos || '').replace(/"/g, '""')}"`,
+        `"${(v.riesgos || '').replace(/"/g, '""')}"`,
+        v.lat || 0,
+        v.lng || 0,
+        (v.photos ? v.photos.length : 0)
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `DIAT_Visitas_Tecnicas_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+
 
 
 

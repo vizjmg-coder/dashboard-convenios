@@ -17,10 +17,27 @@ class DIATDataService {
 
     static getTechnicalVisits() {
         try {
-            return JSON.parse(localStorage.getItem('diat_technical_visits')) || [];
+            const raw = localStorage.getItem('diat_technical_visits');
+            if (raw) {
+                const stored = JSON.parse(raw);
+                if (Array.isArray(stored)) {
+                    // Purga de seguridad si detecta visitas simuladas previas con fotos de Unsplash
+                    const hasMock = stored.some(v => v.id && (v.id.includes('VT-25AS111B2809-') || v.id.includes('VT-25AS111B2780-') || (v.photos && v.photos.some(p => typeof p === 'string' && p.includes('unsplash')))));
+                    if (hasMock) {
+                        localStorage.removeItem('diat_technical_visits');
+                    } else {
+                        return stored.filter(v => v && v.id && v.id.startsWith('VT-') && v.id !== 'TEST-ID').map(v => ({
+                            ...v,
+                            estado: v.estado || 'Realizada',
+                            prioridad: v.prioridad || 'Media'
+                        }));
+                    }
+                }
+            }
         } catch (e) {
-            return [];
+            console.error('Error leyendo diat_technical_visits:', e);
         }
+        return [];
     }
 
     static saveTechnicalVisits(visits) {
@@ -243,22 +260,83 @@ class DIATDataService {
     }
 
     /**
+     * Ubicación oficial del archivo visitas.json en Google Drive
+     */
+    static DRIVE_VISITAS_FOLDER_ID = "1CxF2U_2FlvWMClR-esobPlEoyeWgZsBu";
+    static DRIVE_VISITAS_FOLDER_URL = "https://drive.google.com/drive/folders/1CxF2U_2FlvWMClR-esobPlEoyeWgZsBu?usp=sharing";
+    static DRIVE_VISITAS_FILENAME = "visitas.json";
+
+    /**
+     * Retorna los metadatos de ubicación de visitas.json en Google Drive
+     */
+    static getVisitasDriveLocation() {
+        return {
+            folderId: this.DRIVE_VISITAS_FOLDER_ID,
+            folderUrl: this.DRIVE_VISITAS_FOLDER_URL,
+            filename: this.DRIVE_VISITAS_FILENAME
+        };
+    }
+
+    /**
      * Sincroniza las visitas técnicas registradas desde el archivo visitas.json de Google Drive
      */
     static async syncTechnicalVisitsFromServer() {
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXBFslIOCwVCyAae8-FG0VL5pqotLkjejwJhavm5xoGU4SlyVETwRkGCmDNVkcRPw4/exec";
         try {
-            const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getVisits`);
+            const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getVisits&folderId=${this.DRIVE_VISITAS_FOLDER_ID}&folderUrl=${encodeURIComponent(this.DRIVE_VISITAS_FOLDER_URL)}&file=${encodeURIComponent(this.DRIVE_VISITAS_FILENAME)}`);
             if (response.ok) {
                 const visits = await response.json();
-                if (Array.isArray(visits)) {
-                    this.saveTechnicalVisits(visits);
+                if (Array.isArray(visits) && visits.length > 0) {
+                    const validServerVisits = visits.filter(v => v && v.id && v.id.startsWith('VT-') && v.id !== 'TEST-ID').map(v => ({
+                        ...v,
+                        estado: v.estado || 'Realizada',
+                        prioridad: v.prioridad || 'Media'
+                    }));
+
+                    const localVisits = this.getTechnicalVisits();
+                    const visitMap = new Map();
+                    validServerVisits.forEach(v => visitMap.set(v.id, v));
+                    localVisits.forEach(v => {
+                        if (!visitMap.has(v.id)) {
+                            visitMap.set(v.id, v);
+                        }
+                    });
+
+                    const merged = Array.from(visitMap.values());
+                    this.saveTechnicalVisits(merged);
                     return true;
                 }
             }
         } catch (e) {
-            console.error("Error sincronizando visitas desde Google Drive:", e);
+            console.error("Error sincronizando visitas desde Google Drive (visitas.json):", e);
         }
+
+        // Fallback: cargar archivo local visitas.json
+        try {
+            const localResp = await fetch('./visitas.json');
+            if (localResp.ok) {
+                const localVisits = await localResp.json();
+                if (Array.isArray(localVisits) && localVisits.length > 0) {
+                    const current = this.getTechnicalVisits();
+                    const visitMap = new Map();
+                    current.forEach(v => visitMap.set(v.id, v));
+                    localVisits.filter(v => v && v.id && v.id.startsWith('VT-') && v.id !== 'TEST-ID').forEach(v => {
+                        if (!visitMap.has(v.id)) {
+                            visitMap.set(v.id, {
+                                ...v,
+                                estado: v.estado || 'Realizada',
+                                prioridad: v.prioridad || 'Media'
+                            });
+                        }
+                    });
+                    this.saveTechnicalVisits(Array.from(visitMap.values()));
+                    return true;
+                }
+            }
+        } catch (localErr) {
+            console.warn("Fallback local de visitas.json no disponible:", localErr);
+        }
+
         return false;
     }
 
@@ -269,16 +347,20 @@ class DIATDataService {
         const newVisit = {
             id: 'VT-' + Date.now(),
             convenioId: String(convenioId).trim(),
-            usuario: username,
+            usuario: username || 'Jonathan Marín Gallego',
+            estado: visitData.estado || 'Realizada', // 'Realizada' | 'Programada'
+            prioridad: visitData.prioridad || 'Media',
             fecha: visitData.fecha || new Date().toLocaleDateString('es-CO'),
             tipo: visitData.tipo || 'Avance de obra',
+            municipio: visitData.municipio || '',
+            subregion: visitData.subregion || '',
             observaciones: visitData.observaciones || '',
             compromisos: visitData.compromisos || '',
             riesgos: visitData.riesgos || '',
             lat: parseFloat(visitData.lat) || 0,
             lng: parseFloat(visitData.lng) || 0,
-            photoCount: parseInt(visitData.photoCount) || 0,
-            photos: visitData.photos || []
+            photoCount: Array.isArray(visitData.photos) ? visitData.photos.length : (parseInt(visitData.photoCount) || 0),
+            photos: Array.isArray(visitData.photos) ? visitData.photos : []
         };
 
         // Guardar en caché local
@@ -297,6 +379,9 @@ class DIATDataService {
                 },
                 body: JSON.stringify({
                     action: "saveVisit",
+                    folderId: this.DRIVE_VISITAS_FOLDER_ID,
+                    folderUrl: this.DRIVE_VISITAS_FOLDER_URL,
+                    file: this.DRIVE_VISITAS_FILENAME,
                     visit: newVisit
                 })
             }).catch(e => console.error("Error asíncrono enviando visita a Drive:", e));
@@ -317,8 +402,12 @@ class DIATDataService {
 
         const updatedVisit = {
             ...visits[idx],
+            estado: visitData.estado !== undefined ? visitData.estado : visits[idx].estado || 'Realizada',
+            prioridad: visitData.prioridad !== undefined ? visitData.prioridad : visits[idx].prioridad || 'Media',
             fecha: visitData.fecha !== undefined ? visitData.fecha : visits[idx].fecha,
             tipo: visitData.tipo !== undefined ? visitData.tipo : visits[idx].tipo,
+            municipio: visitData.municipio !== undefined ? visitData.municipio : visits[idx].municipio,
+            subregion: visitData.subregion !== undefined ? visitData.subregion : visits[idx].subregion,
             observaciones: visitData.observaciones !== undefined ? visitData.observaciones : visits[idx].observaciones,
             compromisos: visitData.compromisos !== undefined ? visitData.compromisos : visits[idx].compromisos,
             riesgos: visitData.riesgos !== undefined ? visitData.riesgos : visits[idx].riesgos,
@@ -343,6 +432,9 @@ class DIATDataService {
                 },
                 body: JSON.stringify({
                     action: "saveVisit",
+                    folderId: this.DRIVE_VISITAS_FOLDER_ID,
+                    folderUrl: this.DRIVE_VISITAS_FOLDER_URL,
+                    file: this.DRIVE_VISITAS_FILENAME,
                     visit: updatedVisit
                 })
             }).catch(e => console.error("Error asíncrono actualizando visita en Drive:", e));
@@ -352,7 +444,92 @@ class DIATDataService {
 
         return updatedVisit;
     }
+
+    /**
+     * Marca una visita programada como realizada
+     */
+    static async markVisitAsCompleted(visitId, completionData = {}) {
+        return this.updateTechnicalVisit(visitId, {
+            estado: 'Realizada',
+            fecha: completionData.fecha || new Date().toLocaleDateString('es-CO'),
+            observaciones: completionData.observaciones || undefined,
+            compromisos: completionData.compromisos || undefined,
+            riesgos: completionData.riesgos || undefined,
+            photos: completionData.photos || undefined
+        });
+    }
+
+    /**
+     * Elimina una visita técnica localmente
+     */
+    static deleteTechnicalVisit(visitId) {
+        let visits = this.getTechnicalVisits();
+        visits = visits.filter(v => v.id !== visitId);
+        this.saveTechnicalVisits(visits);
+        return true;
+    }
 }
 
 // Exponer la clase globalmente para su uso en index.html y script.js
 window.DIATDataService = DIATDataService;
+
+// Purga de visitas simuladas y carga inicial automatica de visitas.json autentico
+(function initVisitasData() {
+    try {
+        const raw = localStorage.getItem('diat_technical_visits');
+        let needsReload = false;
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.some(v => v.id && (v.id.includes('VT-25AS111B2809-') || v.id.includes('VT-25AS111B2780-') || (v.photos && v.photos.some(p => typeof p === 'string' && p.includes('unsplash')))))) {
+                console.log('[DIAT] Purgando visitas simuladas no autenticas de localStorage...');
+                localStorage.removeItem('diat_technical_visits');
+                needsReload = true;
+            } else if (!Array.isArray(parsed) || parsed.filter(v => v && v.id && v.id.startsWith('VT-') && v.id !== 'TEST-ID').length < 5) {
+                needsReload = true;
+            }
+        } else {
+            needsReload = true;
+        }
+
+        // Cargar fallback local enriqueciendo lo que falte
+        if (needsReload) {
+            fetch('./visitas.json')
+                .then(r => r.ok ? r.json() : null)
+                .then(data => {
+                    if (Array.isArray(data) && data.length > 0) {
+                        const current = DIATDataService.getTechnicalVisits();
+                        const visitMap = new Map();
+                        data.filter(v => v && v.id && v.id.startsWith('VT-') && v.id !== 'TEST-ID').forEach(v => {
+                            visitMap.set(v.id, {
+                                ...v,
+                                estado: v.estado || 'Realizada',
+                                prioridad: v.prioridad || 'Media'
+                            });
+                        });
+                        current.forEach(v => visitMap.set(v.id, v));
+                        const unified = Array.from(visitMap.values());
+                        DIATDataService.saveTechnicalVisits(unified);
+                        console.log('[DIAT] Archivo visitas.json cargado exitosamente (' + unified.length + ' visitas organizadas).');
+                        if (typeof renderVisitasTab === 'function') renderVisitasTab();
+                        if (typeof renderSupervisorPortal === 'function') renderSupervisorPortal();
+                    }
+                })
+                .catch(e => console.warn('[DIAT] Error precargando visitas.json:', e))
+                .finally(() => {
+                    // Sincronizar en lnea con Google Drive en tiempo real
+                    DIATDataService.syncTechnicalVisitsFromServer().then(() => {
+                        if (typeof renderVisitasTab === 'function') renderVisitasTab();
+                        if (typeof renderSupervisorPortal === 'function') renderSupervisorPortal();
+                    });
+                });
+        } else {
+            // Sincronizar en lnea con Google Drive en tiempo real
+            DIATDataService.syncTechnicalVisitsFromServer().then(() => {
+                if (typeof renderVisitasTab === 'function') renderVisitasTab();
+                if (typeof renderSupervisorPortal === 'function') renderSupervisorPortal();
+            });
+        }
+    } catch (e) {
+        console.error('[DIAT] Error inicializando visitas:', e);
+    }
+})();
