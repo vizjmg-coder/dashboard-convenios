@@ -9441,16 +9441,15 @@ function toDateInputValue(str) {
 // Catálogo de usuarios del portal — añadir más supervisores aquí
 const PORTAL_USERS = {
     'JMARINGA': {
-        password: '1037653193',
+        password: 'DIAT2026',
         name: 'Jonathan Marín Gallego',
-        // supervisorExcelName: nombre EXACTO como aparece en la columna SUPERVISOR del Excel
         supervisorExcelName: 'JONATHAN MARÍN GALLEGO',
         role: 'Supervisor Técnico DIAT',
         email: 'jmarin@antioquia.gov.co',
         initials: 'JM'
     },
     'CQUIRAMAH': {
-        password: '1041610570',
+        password: 'DIAT2026',
         name: 'Cristian Camilo Quirama Henao',
         supervisorExcelName: 'CRISTIAN CAMILO QUIRAMA HENAO',
         role: 'Supervisor Técnico DIAT',
@@ -9500,18 +9499,50 @@ function initSupervisorPortal() {
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const userInp = document.getElementById('login-username').value.trim().toUpperCase();
-            const passInp = document.getElementById('login-password').value.trim();
+            const rawInp = (document.getElementById('login-username')?.value || '').trim();
+            const userInp = rawInp.toUpperCase();
+            const passInp = (document.getElementById('login-password')?.value || '').trim();
+            const passUpper = passInp.toUpperCase();
 
-            const userDef = PORTAL_USERS[userInp];
-            if (userDef && passInp === userDef.password) {
+            // Buscar por clave de usuario o por email o por nombre
+            let userKey = Object.keys(PORTAL_USERS).find(k => k === userInp);
+            if (!userKey) {
+                userKey = Object.keys(PORTAL_USERS).find(k => {
+                    const u = PORTAL_USERS[k];
+                    return (u.email && u.email.toUpperCase() === userInp) ||
+                           (u.name && normalizeSupervisorName(u.name) === normalizeSupervisorName(userInp)) ||
+                           (userInp.includes(k));
+                });
+            }
+
+            // Si no coincide con predefinidos pero la clave es DIAT2026, buscar en rawData o asignar supervisor
+            let userDef = userKey ? PORTAL_USERS[userKey] : null;
+            if (!userDef && (passUpper === 'DIAT2026')) {
+                const supRow = (typeof rawData !== 'undefined' && Array.isArray(rawData)) ? 
+                    rawData.find(r => normalizeSupervisorName(r['SUPERVISOR']) === normalizeSupervisorName(userInp)) : null;
+                const supName = supRow ? supRow['SUPERVISOR'] : (rawInp || 'Supervisor DIAT');
+                userDef = {
+                    password: 'DIAT2026',
+                    name: supName,
+                    supervisorExcelName: supName.toUpperCase(),
+                    role: 'Supervisor Técnico DIAT',
+                    email: rawInp.includes('@') ? rawInp : 'diat@antioquia.gov.co',
+                    initials: supName.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'DI'
+                };
+                userKey = userDef.initials || 'SUPERVISOR';
+            }
+
+            // Validar clave: DIAT2026 es universal, o la clave registrada del usuario
+            const isPasswordValid = (passUpper === 'DIAT2026' || (userDef && passInp === userDef.password));
+
+            if (userDef && isPasswordValid) {
                 const userObj = {
-                    username: userInp,
+                    username: userKey,
                     name: userDef.name,
                     supervisorExcelName: userDef.supervisorExcelName,
                     role: userDef.role,
                     email: userDef.email,
-                    initials: userDef.initials || userDef.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                    initials: userDef.initials || userDef.name.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase()
                 };
 
                 const rememberMe = document.getElementById('login-remember') && document.getElementById('login-remember').checked;
@@ -9533,7 +9564,7 @@ function initSupervisorPortal() {
 
                 alertToast('Sesión Iniciada', 'Bienvenido, ' + userDef.name + '.');
             } else {
-                alertToast('Credenciales Incorrectas', 'Usuario o contraseña inválidos.', 'error');
+                alertToast('Credenciales Incorrectas', 'Clave incorrecta. Recuerda que la clave para ingresar es DIAT2026.', 'error');
             }
         });
     }
@@ -9825,14 +9856,15 @@ function initSupervisorPortal() {
         const v = visits.find(visit => visit.id === visitId);
         if (!v) return;
 
+        const clean = (typeof cleanMojibake === 'function') ? cleanMojibake : (str => str || '');
         const estadoLabel = (v.estado === 'Programada' ? 'PROGRAMADA' : 'REALIZADA');
-        document.getElementById('visit-detail-title').textContent = `Visita Técnica (${estadoLabel}) - Convenio N° ${v.convenioId}`;
+        document.getElementById('visit-detail-title').textContent = `Visita Técnica (${estadoLabel}) - Convenio N° ${clean(v.convenioId)}`;
         document.getElementById('visit-detail-subtitle').textContent = `${v.estado === 'Programada' ? 'Fecha Estimada' : 'Fecha de Visita'}: ${v.fecha}`;
-        document.getElementById('visit-detail-tipo').textContent = v.tipo;
-        document.getElementById('visit-detail-usuario').textContent = v.usuario || 'N/A';
-        document.getElementById('visit-detail-obs').textContent = v.observaciones || (v.estado === 'Programada' ? 'Visita técnica programada. Las observaciones se registrarán una vez realizada.' : '--');
-        document.getElementById('visit-detail-compromisos').textContent = v.compromisos || (v.estado === 'Programada' ? 'Compromisos a definir en terreno.' : '--');
-        document.getElementById('visit-detail-riesgos').textContent = v.riesgos || '--';
+        document.getElementById('visit-detail-tipo').textContent = clean(v.tipo);
+        document.getElementById('visit-detail-usuario').textContent = clean(v.usuario) || 'N/A';
+        document.getElementById('visit-detail-obs').textContent = clean(v.observaciones) || (v.estado === 'Programada' ? 'Visita técnica programada. Las observaciones se registrarán una vez realizada.' : '--');
+        document.getElementById('visit-detail-compromisos').textContent = clean(v.compromisos) || (v.estado === 'Programada' ? 'Compromisos a definir en terreno.' : '--');
+        document.getElementById('visit-detail-riesgos').textContent = clean(v.riesgos) || '--';
 
         // Mostrar botón de editar si el usuario logueado es el creador de la visita
         const loggedUser = getLoggedUser();
@@ -9901,61 +9933,8 @@ function initSupervisorPortal() {
     window.editingVisitId = null;
 
     window.openEditVisitModal = function (visitId) {
-        const visits = window.DIATDataService.getTechnicalVisits();
-        const v = visits.find(visit => visit.id === visitId);
-        if (!v) return;
-
-        window.editingVisitId = v.id;
-
-        // Cambiar título del modal
-        const titleEl = document.getElementById('modal-registrar-visita-title');
-        const descEl = document.getElementById('modal-registrar-visita-desc');
-        if (titleEl) titleEl.textContent = "Editar Visita Técnica";
-        if (descEl) descEl.textContent = "Modificación de informe de supervisión y geolocalización";
-
-        // Poblar select
-        const selectEl = document.getElementById('visit-convenio-select');
-        if (selectEl) {
-            selectEl.innerHTML = '';
-            const opt = document.createElement('option');
-            opt.value = v.convenioId;
-            opt.textContent = `Convenio ${v.convenioId}`;
-            selectEl.appendChild(opt);
-            selectEl.disabled = true;
-        }
-
-        // Poblar campos
-        document.getElementById('visit-fecha').value = toDateInputValue(v.fecha);
-        document.getElementById('visit-tipo').value = v.tipo || 'Avance de obra';
-        if (document.getElementById('visit-estado')) {
-            document.getElementById('visit-estado').value = v.estado || 'Realizada';
-        }
-        if (document.getElementById('visit-prioridad')) {
-            document.getElementById('visit-prioridad').value = v.prioridad || 'Media';
-        }
-        if (document.getElementById('visit-supervisor-input')) {
-            document.getElementById('visit-supervisor-input').value = v.usuario || '';
-        }
-        document.getElementById('visit-obs').value = v.observaciones || '';
-        document.getElementById('visit-compromisos').value = v.compromisos || '';
-        document.getElementById('visit-riesgos').value = v.riesgos || '';
-
-        window.visitUploadedPhotos = v.photos || [];
-        renderVisitPhotoPreviews();
-
-        const lat = parseFloat(v.lat) || 0;
-        const lng = parseFloat(v.lng) || 0;
-        document.getElementById('visit-gps-lat').value = lat !== 0 ? lat.toFixed(6) : '';
-        document.getElementById('visit-gps-lng').value = lng !== 0 ? lng.toFixed(6) : '';
-
-        // Mostrar modal
-        document.getElementById('modal-registrar-visita').style.display = 'flex';
-        document.getElementById('modal-registrar-visita').classList.remove('hidden');
-
-        // Inicializar mapa
-        setTimeout(() => {
-            initVisitMap(lat, lng);
-        }, 200);
+        if (!checkOrPromptAuthPassword('editar esta visita técnica')) return;
+        window.openControlVisitasHub('editar_especifica', visitId);
     };
 
     const btnEditVisitDetail = document.getElementById('btn-edit-visit-detail');
@@ -9963,9 +9942,10 @@ function initSupervisorPortal() {
         btnEditVisitDetail.addEventListener('click', () => {
             const visitId = btnEditVisitDetail.dataset.visitId;
             if (visitId) {
+                if (!checkOrPromptAuthPassword('editar esta visita técnica')) return;
                 document.getElementById('modal-detalle-visita').style.display = 'none';
                 document.getElementById('modal-detalle-visita').classList.add('hidden');
-                window.openEditVisitModal(visitId);
+                window.openControlVisitasHub('editar_especifica', visitId);
             }
         });
     }
@@ -10089,6 +10069,12 @@ function initSupervisorPortal() {
                 alertToast('Visita Registrada', 'La visita técnica ha sido guardada con éxito.');
             }
             window.editingVisitId = null;
+            const hubBanner = document.getElementById('hub-editing-banner');
+            if (hubBanner) {
+                hubBanner.classList.add('hidden');
+                hubBanner.classList.remove('flex');
+            }
+            if (typeof renderHubVisitsList === 'function') renderHubVisitsList();
 
             // Recargar datos y fusionar
             if (window.baseExcelData && window.DIATDataService) {
@@ -14807,6 +14793,9 @@ let vtCurrentPage = 1;
 const vtRowsPerPage = 9;
 let vtCharts = { supervisor: null, subregion: null, timeline: null, tipo: null };
 let vtMarkersMap = {}; // visitId -> marker instance
+let vtMapInitialCentered = false;
+let vtMapTimeFilter = 'mes';   // 'mes' | 'ano' | 'todas' (Filtro sincronizado con calendario)
+let vtMapRawVisits = [];       // Cache de visitas técnicas para renderizado del mapa
 
 /**
  * Inicializa los eventos de la barra de control, filtros, mapa y acciones de visitas
@@ -14890,19 +14879,61 @@ function initVisitasControl() {
         });
     }
 
-    // 5. Botones de Control del Mapa
+    // 5. Botones de Control del Mapa y Filtros Temporales Sincronizados
+    const btnMapFilterMes = document.getElementById('btn-vt-map-filter-mes');
+    if (btnMapFilterMes) {
+        btnMapFilterMes.addEventListener('click', () => {
+            vtMapTimeFilter = 'mes';
+            if (typeof renderVisitasMapPinsOnly === 'function') renderVisitasMapPinsOnly();
+        });
+    }
+
+    const btnMapFilterAno = document.getElementById('btn-vt-map-filter-ano');
+    if (btnMapFilterAno) {
+        btnMapFilterAno.addEventListener('click', () => {
+            vtMapTimeFilter = 'ano';
+            if (typeof renderVisitasMapPinsOnly === 'function') renderVisitasMapPinsOnly();
+        });
+    }
+
+    const btnMapFilterTodas = document.getElementById('btn-vt-map-filter-todas');
+    if (btnMapFilterTodas) {
+        btnMapFilterTodas.addEventListener('click', () => {
+            vtMapTimeFilter = 'todas';
+            if (typeof renderVisitasMapPinsOnly === 'function') renderVisitasMapPinsOnly();
+        });
+    }
+
     const btnMapCenter = document.getElementById('btn-vt-map-center');
     if (btnMapCenter) {
         btnMapCenter.addEventListener('click', () => {
-            if (vtMap) vtMap.setView([6.8, -75.4], 7.8, { animate: true });
+            if (!vtMap) return;
+            if (vtMpioGeojsonLayer && typeof vtMpioGeojsonLayer.getBounds === 'function' && vtMpioGeojsonLayer.getLayers().length > 0) {
+                vtMap.fitBounds(vtMpioGeojsonLayer.getBounds(), { padding: [20, 20], animate: true });
+            } else {
+                vtMap.setView([7.0, -75.4], 7.75, { animate: true });
+            }
         });
     }
 
     const btnMapFit = document.getElementById('btn-vt-map-fit');
     if (btnMapFit) {
         btnMapFit.addEventListener('click', () => {
-            if (vtMap && vtMarkersLayer && vtMarkersLayer.getLayers().length > 0) {
-                vtMap.fitBounds(vtMarkersLayer.getBounds(), { padding: [35, 35], maxZoom: 14, animate: true });
+            if (!vtMap) return;
+            if (vtMarkersLayer && vtMarkersLayer.getLayers().length > 0) {
+                const layers = vtMarkersLayer.getLayers();
+                if (layers.length === 1) {
+                    const ll = layers[0].getLatLng();
+                    vtMap.setView([ll.lat, ll.lng], 12, { animate: true });
+                } else {
+                    vtMap.fitBounds(vtMarkersLayer.getBounds(), { padding: [35, 35], maxZoom: 13, animate: true });
+                }
+            } else {
+                if (vtMpioGeojsonLayer && typeof vtMpioGeojsonLayer.getBounds === 'function' && vtMpioGeojsonLayer.getLayers().length > 0) {
+                    vtMap.fitBounds(vtMpioGeojsonLayer.getBounds(), { padding: [20, 20], animate: true });
+                } else {
+                    vtMap.setView([7.0, -75.4], 7.75, { animate: true });
+                }
             }
         });
     }
@@ -14929,18 +14960,34 @@ function initVisitasControl() {
         });
     }
 
-    // 6. Botones de Acción de la Cabecera
+    // 6. Botón Maestro: CONTROL DE VISITAS (Abre el Centro de Control con clave DIAT2026)
+    const btnControlHub = document.getElementById('btn-vt-control-hub');
+    if (btnControlHub) {
+        btnControlHub.addEventListener('click', () => {
+            if (!checkOrPromptAuthPassword('ingresar al Centro de Control y Gestión de Visitas')) return;
+            window.openControlVisitasHub('registrar');
+        });
+    }
+
     const btnProgramar = document.getElementById('btn-vt-programar-modal');
     if (btnProgramar) {
-        btnProgramar.addEventListener('click', () => window.openScheduleVisitModal());
+        btnProgramar.addEventListener('click', () => {
+            if (!checkOrPromptAuthPassword('programar una visita técnica')) return;
+            window.openControlVisitasHub('programar');
+        });
     }
 
     const btnRegistrar = document.getElementById('btn-vt-registrar-modal');
     if (btnRegistrar) {
         btnRegistrar.addEventListener('click', () => {
             if (!checkOrPromptAuthPassword('registrar una visita técnica como realizada')) return;
-            window.openRegisterCompletedVisitModal();
+            window.openControlVisitasHub('registrar');
         });
+    }
+
+    // Inicializar eventos de pestañas y filtros del Centro de Control de Visitas
+    if (typeof initControlVisitasHubEvents === 'function') {
+        initControlVisitasHubEvents();
     }
 
     const btnExportarPdf = document.getElementById('btn-vt-exportar-pdf');
@@ -15192,17 +15239,245 @@ function renderVisitasKPIs(filteredVisits, allVisits) {
 }
 
 /**
+ * Renderiza exclusivamente los pines del mapa de visitas técnicas según el filtro temporal activo
+ */
+function renderVisitasMapPinsOnly() {
+    if (!vtMap || !vtMarkersLayer) return;
+
+    // Limpiar marcadores anteriores
+    vtMarkersLayer.clearLayers();
+    vtMarkersMap = {};
+
+    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const curMonthName = monthNames[vtCalCurrentMonth] || 'Mes';
+
+    // 1. Filtrar visitas según el filtro temporal seleccionado
+    let displayVisits = [...(vtMapRawVisits || [])];
+
+    if (vtMapTimeFilter === 'mes') {
+        displayVisits = displayVisits.filter(v => {
+            const p = parseVisitDateObj(v.fecha);
+            return p && p.year === vtCalCurrentYear && p.month === vtCalCurrentMonth;
+        });
+    } else if (vtMapTimeFilter === 'ano') {
+        displayVisits = displayVisits.filter(v => {
+            const p = parseVisitDateObj(v.fecha);
+            return p && p.year === vtCalCurrentYear;
+        });
+    }
+
+    // 2. Actualizar textos de los botones de filtro temporal
+    const mesBtnText = document.getElementById('vt-map-filter-mes-text');
+    if (mesBtnText) {
+        mesBtnText.textContent = `${curMonthName.slice(0, 3)} ${vtCalCurrentYear}`;
+    }
+    const anoBtnText = document.getElementById('vt-map-filter-ano-text');
+    if (anoBtnText) {
+        anoBtnText.textContent = `Año ${vtCalCurrentYear}`;
+    }
+
+    // 3. Actualizar estilos visuales de botones de filtro
+    const btnMes = document.getElementById('btn-vt-map-filter-mes');
+    const btnAno = document.getElementById('btn-vt-map-filter-ano');
+    const btnTodas = document.getElementById('btn-vt-map-filter-todas');
+
+    const activeClasses = ['bg-white', 'text-emerald-700', 'font-bold', 'shadow-sm'];
+    const inactiveClasses = ['text-slate-600', 'hover:text-slate-900', 'font-medium'];
+
+    [btnMes, btnAno, btnTodas].forEach(b => {
+        if (!b) return;
+        b.classList.remove(...activeClasses);
+        b.classList.add(...inactiveClasses);
+    });
+
+    if (vtMapTimeFilter === 'mes' && btnMes) {
+        btnMes.classList.remove(...inactiveClasses);
+        btnMes.classList.add(...activeClasses);
+    } else if (vtMapTimeFilter === 'ano' && btnAno) {
+        btnAno.classList.remove(...inactiveClasses);
+        btnAno.classList.add(...activeClasses);
+    } else if (vtMapTimeFilter === 'todas' && btnTodas) {
+        btnTodas.classList.remove(...inactiveClasses);
+        btnTodas.classList.add(...activeClasses);
+    }
+
+    // 4. Actualizar subtítulo dinámico del mapa
+    const subtitleEl = document.getElementById('vt-map-subtitle');
+    if (subtitleEl) {
+        if (vtMapTimeFilter === 'mes') {
+            subtitleEl.innerHTML = `Mostrando <strong class="text-emerald-700 font-bold">${displayVisits.length} visita(s)</strong> de <strong class="text-slate-700 font-bold">${curMonthName} ${vtCalCurrentYear}</strong> (sincronizado con calendario)`;
+        } else if (vtMapTimeFilter === 'ano') {
+            subtitleEl.innerHTML = `Mostrando <strong class="text-emerald-700 font-bold">${displayVisits.length} visita(s)</strong> del año <strong class="text-slate-700 font-bold">${vtCalCurrentYear}</strong>`;
+        } else {
+            subtitleEl.innerHTML = `Mostrando <strong class="text-emerald-700 font-bold">${displayVisits.length} visita(s)</strong> en total (histórico completo)`;
+        }
+    }
+
+    // 5. Aviso flotante si no hay visitas en el período seleccionado
+    const emptyNotice = document.getElementById('vt-map-empty-notice');
+    const emptyText = document.getElementById('vt-map-empty-text');
+    if (emptyNotice && emptyText) {
+        if (displayVisits.length === 0) {
+            emptyNotice.classList.remove('hidden');
+            if (vtMapTimeFilter === 'mes') {
+                emptyText.textContent = `Sin visitas registradas en ${curMonthName} ${vtCalCurrentYear}`;
+            } else if (vtMapTimeFilter === 'ano') {
+                emptyText.textContent = `Sin visitas registradas en el año ${vtCalCurrentYear}`;
+            } else {
+                emptyText.textContent = 'Sin visitas con los filtros actuales';
+            }
+        } else {
+            emptyNotice.classList.add('hidden');
+        }
+    }
+
+    // 6. Agregar pines compactos desaturados (22px) con tooltips hover
+    const coordCountMap = {};
+
+    displayVisits.forEach(v => {
+        let lat = parseFloat(v.lat) || 0;
+        let lng = parseFloat(v.lng) || 0;
+
+        // Fallback de coordenadas si lat/lng son 0 usando convenio
+        if ((lat === 0 || lng === 0 || isNaN(lat) || isNaN(lng)) && v.convenioRow) {
+            lat = parseFloat(v.convenioRow['LATITUD']) || 0;
+            lng = parseFloat(v.convenioRow['LONGITUD']) || 0;
+        }
+
+        // Fallback a centroide del municipio desde mpio.json si aún es 0
+        if ((lat === 0 || lng === 0 || isNaN(lat) || isNaN(lng)) && window.antioquiaGeojsonFeatures && v.municipio) {
+            const feat = window.antioquiaGeojsonFeatures.find(f => {
+                const m = (f.properties.NOMBRE_MPI || f.properties.NOM_MUNICI || '').toUpperCase().trim();
+                return isSameMuni(m, v.municipio);
+            });
+            if (feat && typeof L !== 'undefined') {
+                try {
+                    const tempLayer = L.geoJSON(feat);
+                    const center = tempLayer.getBounds().getCenter();
+                    lat = center.lat;
+                    lng = center.lng;
+                } catch (e) { }
+            }
+        }
+
+        if (lat !== 0 && lng !== 0 && !isNaN(lat) && !isNaN(lng)) {
+            // Desplazamiento radial fino para evitar superposición exacta de coordenadas
+            const coordKey = `${lat.toFixed(4)}_${lng.toFixed(4)}`;
+            if (coordCountMap[coordKey]) {
+                const offsetIdx = coordCountMap[coordKey];
+                coordCountMap[coordKey]++;
+                const angle = (offsetIdx * Math.PI) / 3;
+                lat += 0.0035 * Math.sin(angle);
+                lng += 0.0035 * Math.cos(angle);
+            } else {
+                coordCountMap[coordKey] = 1;
+            }
+
+            const isRealizada = (v.estado === 'Realizada');
+            const pinClass = isRealizada ? 'realizada' : 'programada';
+            const iconGlyph = isRealizada
+                ? '<i class="fa-solid fa-check text-[9px]"></i>'
+                : '<i class="fa-solid fa-calendar-days text-[9px]"></i>';
+
+            const supName = String(v.usuario || 'Supervisor')
+                .replace(/MarÃ­n|Mar\?n|Marn/g, 'Marín')
+                .replace(/GÃ³mez|G\?mez|Gmez/g, 'Gómez')
+                .replace(/"/g, '&quot;').trim();
+            const fechaText = String(v.fecha || '').replace(/"/g, '&quot;').trim();
+            const muniName = String(v.municipio || 'Antioquia')
+                .replace(/YOLOMBÃ“|YOLOMB/g, 'YOLOMBÓ')
+                .replace(/"/g, '&quot;').trim();
+
+            // Pin estético en cápsula horizontal con icono, municipio y subtítulo de supervisor
+            const customIcon = L.divIcon({
+                className: 'custom-vt-div-icon',
+                html: `
+                    <div class="vt-map-pin-pill ${pinClass}">
+                        <span class="vt-map-pin-icon">${iconGlyph}</span>
+                        <div class="vt-map-pin-content">
+                            <span class="vt-map-pin-text" title="${muniName}">${muniName}</span>
+                            <span class="vt-map-pin-sub" title="${supName}"><i class="fa-solid fa-user-shield text-[7px] mr-0.5 opacity-70"></i>${supName}</span>
+                        </div>
+                    </div>
+                `,
+                iconSize: [125, 32],
+                iconAnchor: [14, 16],
+                popupAnchor: [45, -16]
+            });
+
+            const marker = L.marker([lat, lng], { icon: customIcon });
+
+            // Tooltip interactivo flotante al pasar el ratón (hover limpio)
+            marker.bindTooltip(`
+                <div style="text-align: center; line-height: 1.35; padding: 2px 4px;">
+                    <div style="font-weight: 800; font-size: 11px; text-transform: uppercase; color: #F8FAFC; letter-spacing: 0.5px;">${muniName}</div>
+                    <div style="font-weight: 600; font-size: 10px; color: ${isRealizada ? '#34D399' : '#FBBF24'}; margin-top: 1px;">
+                        ${isRealizada ? '✓ Realizada' : '📅 Programada'} • ${fechaText}
+                    </div>
+                    <div style="font-size: 9.5px; color: #94A3B8; margin-top: 2px;">${supName}</div>
+                </div>
+            `, {
+                direction: 'top',
+                offset: [0, -11],
+                className: 'vt-leaflet-tooltip'
+            });
+
+            // Contenido completo del Popup al hacer clic
+            const photoCount = (v.photos && v.photos.length) || parseInt(v.photoCount) || 0;
+            const photoThumbnail = (v.photos && v.photos.length > 0)
+                ? `<div class="mt-2"><img src="${v.photos[0]}" class="w-full h-24 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-95" onclick="window.openVisitPhotoLightbox('${v.id}', 0)" /></div>`
+                : '';
+
+            const popupHtml = `
+                <div class="vt-popup-card">
+                    <div class="vt-popup-header ${pinClass}">
+                        <div>
+                            <span class="vt-badge-${pinClass}">${v.estado}</span>
+                            <span class="text-[10px] text-slate-500 font-bold ml-1">${v.fecha}</span>
+                        </div>
+                        <span class="text-xs font-black text-slate-800">${v.convenioId}</span>
+                    </div>
+                    <div class="vt-popup-body">
+                        <p class="font-bold text-slate-800 text-xs">${v.municipio} <span class="text-[10px] text-slate-400 font-normal">(${v.subregion})</span></p>
+                        <p class="text-[11px] text-slate-600"><strong class="text-slate-700">Supervisor:</strong> ${v.usuario}</p>
+                        <p class="text-[11px] text-slate-600"><strong class="text-slate-700">Tipo:</strong> ${v.tipo}</p>
+                        <p class="text-[10.5px] text-slate-500 mt-1 italic line-clamp-2">"${(v.observaciones || 'Sin observaciones registradas').slice(0, 110)}..."</p>
+                        ${photoThumbnail}
+                    </div>
+                    <div class="vt-popup-footer">
+                        <button type="button" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10.5px] transition-all"
+                            onclick="window.openVisitDetailModal('${v.id}')">
+                            <i class="fa-solid fa-eye mr-1"></i>Ver Ficha
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            marker.bindPopup(popupHtml, { maxWidth: 320 });
+            marker.addTo(vtMarkersLayer);
+            vtMarkersMap[v.id] = marker;
+        }
+    });
+}
+
+/**
  * Inicializa o actualiza el mapa Leaflet de Antioquia con los pines de visitas
  */
 function initOrUpdateVisitasMap(visits) {
     const mapContainer = document.getElementById('visitas-map-container');
     if (!mapContainer || typeof L === 'undefined') return;
 
+    if (visits && Array.isArray(visits)) {
+        vtMapRawVisits = visits;
+    }
+
     if (!vtMap) {
-        // Inicializar mapa de Antioquia centrado
+        // Inicializar mapa de Antioquia centrado con zoomSnap fractional
         vtMap = L.map('visitas-map-container', {
-            center: [6.8, -75.4],
-            zoom: 7.8,
+            center: [7.0, -75.4],
+            zoom: 7.75,
+            zoomSnap: 0.25,
+            zoomDelta: 0.5,
             zoomControl: true,
             attributionControl: false
         });
@@ -15256,140 +15531,32 @@ function initOrUpdateVisitasMap(visits) {
                             }
                         }).addTo(vtMap);
                         vtMpioGeojsonLayer.bringToBack();
+
+                        // Centrar mapa de Antioquia en la primera carga
+                        if (!vtMapInitialCentered && vtMap) {
+                            vtMap.fitBounds(vtMpioGeojsonLayer.getBounds(), { padding: [20, 20] });
+                            vtMapInitialCentered = true;
+                        }
                     }
                 }
             })
             .catch(e => console.warn("No se pudo cargar mpio.json en el mapa de visitas:", e));
     }
 
-    // Limpiar marcadores anteriores
-    if (vtMarkersLayer) {
-        vtMarkersLayer.clearLayers();
-    }
-    vtMarkersMap = {};
+    // Renderizar pines con el filtro temporal activo
+    renderVisitasMapPinsOnly();
 
-    // Agregar pines de visitas técnicas
-    const validMarkers = [];
-    const coordCountMap = {};
-
-    visits.forEach(v => {
-        let lat = parseFloat(v.lat) || 0;
-        let lng = parseFloat(v.lng) || 0;
-
-        // Fallback de coordenadas si lat/lng son 0 usando convenio
-        if ((lat === 0 || lng === 0 || isNaN(lat) || isNaN(lng)) && v.convenioRow) {
-            lat = parseFloat(v.convenioRow['LATITUD']) || 0;
-            lng = parseFloat(v.convenioRow['LONGITUD']) || 0;
-        }
-
-        // Fallback a centroide del municipio desde mpio.json si aún es 0
-        if ((lat === 0 || lng === 0 || isNaN(lat) || isNaN(lng)) && window.antioquiaGeojsonFeatures && v.municipio) {
-            const feat = window.antioquiaGeojsonFeatures.find(f => {
-                const m = (f.properties.NOMBRE_MPI || f.properties.NOM_MUNICI || '').toUpperCase().trim();
-                return isSameMuni(m, v.municipio);
-            });
-            if (feat && typeof L !== 'undefined') {
-                try {
-                    const tempLayer = L.geoJSON(feat);
-                    const center = tempLayer.getBounds().getCenter();
-                    lat = center.lat;
-                    lng = center.lng;
-                } catch(e) {}
-            }
-        }
-
-        if (lat !== 0 && lng !== 0 && !isNaN(lat) && !isNaN(lng)) {
-            // Evitar solapamiento exacto si varias visitas comparten las mismas coordenadas
-            const coordKey = `${lat.toFixed(4)}_${lng.toFixed(4)}`;
-            if (coordCountMap[coordKey]) {
-                const offsetIdx = coordCountMap[coordKey];
-                coordCountMap[coordKey]++;
-                const angle = (offsetIdx * Math.PI) / 3;
-                lat += 0.0028 * Math.sin(angle);
-                lng += 0.0028 * Math.cos(angle);
-            } else {
-                coordCountMap[coordKey] = 1;
-            }
-
-            const isRealizada = (v.estado === 'Realizada');
-            const pinClass = isRealizada ? 'realizada' : 'programada';
-            const iconGlyph = isRealizada ? '<i class="fa-solid fa-check text-[11px]"></i>' : '<i class="fa-solid fa-calendar-days text-[11px]"></i>';
-
-            const supName = String(v.usuario || 'Supervisor')
-                .replace(/MarÃ­n|Mar\?n|Marn/g, 'Marín')
-                .replace(/GÃ³mez|G\?mez|Gmez/g, 'Gómez')
-                .replace(/"/g, '&quot;').trim();
-            const fechaText = String(v.fecha || '').replace(/"/g, '&quot;').trim();
-            const muniName = String(v.municipio || 'Antioquia')
-                .replace(/YOLOMBÃ“|YOLOMB/g, 'YOLOMBÓ')
-                .replace(/"/g, '&quot;').trim();
-
-            const customIcon = L.divIcon({
-                className: 'custom-vt-div-icon',
-                html: `
-                    <div class="vt-marker-pin-wrap">
-                        <div class="vt-map-pin ${pinClass}" style="width: 32px; height: 32px; position: relative;">
-                            <div class="vt-map-pin-pulse"></div>
-                            ${iconGlyph}
-                        </div>
-                        <div class="vt-pin-info-card ${pinClass}">
-                            <span class="vt-pin-muni" title="${muniName}">${muniName}</span>
-                            <span class="vt-pin-sup" title="${supName}"><i class="fa-solid fa-user-shield text-[8px] mr-0.5 opacity-70"></i>${supName}</span>
-                            <span class="vt-pin-date" title="${fechaText}"><i class="fa-regular fa-calendar text-[8px] mr-0.5 opacity-70"></i>${fechaText}</span>
-                        </div>
-                    </div>
-                `,
-                iconSize: [140, 82],
-                iconAnchor: [70, 16],
-                popupAnchor: [0, -20]
-            });
-
-            const marker = L.marker([lat, lng], { icon: customIcon });
-
-            // Contenido del Popup
-            const photoCount = (v.photos && v.photos.length) || parseInt(v.photoCount) || 0;
-            const photoThumbnail = (v.photos && v.photos.length > 0)
-                ? `<div class="mt-2"><img src="${v.photos[0]}" class="w-full h-24 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-95" onclick="window.openVisitPhotoLightbox('${v.id}', 0)" /></div>`
-                : '';
-
-            const popupHtml = `
-                <div class="vt-popup-card">
-                    <div class="vt-popup-header ${pinClass}">
-                        <div>
-                            <span class="vt-badge-${pinClass}">${v.estado}</span>
-                            <span class="text-[10px] text-slate-500 font-bold ml-1">${v.fecha}</span>
-                        </div>
-                        <span class="text-xs font-black text-slate-800">${v.convenioId}</span>
-                    </div>
-                    <div class="vt-popup-body">
-                        <p class="font-bold text-slate-800 text-xs">${v.municipio} <span class="text-[10px] text-slate-400 font-normal">(${v.subregion})</span></p>
-                        <p class="text-[11px] text-slate-600"><strong class="text-slate-700">Supervisor:</strong> ${v.usuario}</p>
-                        <p class="text-[11px] text-slate-600"><strong class="text-slate-700">Tipo:</strong> ${v.tipo}</p>
-                        <p class="text-[10.5px] text-slate-500 mt-1 italic line-clamp-2">"${(v.observaciones || 'Sin observaciones registradas').slice(0, 110)}..."</p>
-                        ${photoThumbnail}
-                    </div>
-                    <div class="vt-popup-footer">
-                        <button type="button" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10.5px] transition-all"
-                            onclick="window.openVisitDetailModal('${v.id}')">
-                            <i class="fa-solid fa-eye mr-1"></i>Ver Ficha
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            marker.bindPopup(popupHtml, { maxWidth: 320 });
-            marker.addTo(vtMarkersLayer);
-            vtMarkersMap[v.id] = marker;
-            validMarkers.push(marker);
-        }
-    });
-
-    // Ajustar zoom para mostrar los puntos si hay marcadores
+    // Redimensionar y ajustar Leaflet
     setTimeout(() => {
         if (vtMap) {
             vtMap.invalidateSize();
-            if (validMarkers.length > 0 && vtMarkersLayer) {
-                vtMap.fitBounds(vtMarkersLayer.getBounds(), { padding: [35, 35], maxZoom: 13 });
+            if (!vtMapInitialCentered) {
+                if (vtMpioGeojsonLayer && typeof vtMpioGeojsonLayer.getBounds === 'function' && vtMpioGeojsonLayer.getLayers().length > 0) {
+                    vtMap.fitBounds(vtMpioGeojsonLayer.getBounds(), { padding: [20, 20] });
+                } else {
+                    vtMap.setView([7.0, -75.4], 7.75);
+                }
+                vtMapInitialCentered = true;
             }
         }
     }, 250);
@@ -15588,45 +15755,364 @@ function renderVisitasCharts(filteredVisits) {
         });
     }
 
-    // --- GRÁFICO 4: TIPOLOGÍA DE VISITAS ---
-    const ctxTipo = document.getElementById('chart-vt-tipo')?.getContext('2d');
-    if (ctxTipo) {
-        if (vtCharts.tipo) vtCharts.tipo.destroy();
+    // --- CALENDARIO MENSUAL DE VISITAS ---
+    renderVisitasCalendar(filteredVisits);
+}
 
-        const tipoMap = {};
-        filteredVisits.forEach(v => {
-            const t = v.tipo || 'Avance de obra';
-            tipoMap[t] = (tipoMap[t] || 0) + 1;
+// =============================================================================
+// COMPONENTE: CALENDARIO MENSUAL DE VISITAS TÉCNICAS
+// =============================================================================
+let vtCalCurrentYear = 2026;
+let vtCalCurrentMonth = 8; // 0-indexed: 8 = Septiembre
+let vtCalSelectedDay = null; // Día seleccionado actualmente por clic
+let vtCalInitialized = false;
+let vtCalLastVisits = [];
+
+function parseVisitDateObj(fechaStr) {
+    if (!fechaStr) return null;
+    const str = String(fechaStr).trim();
+    if (/^\d{4}-\d{1,2}-\d{1,2}/.test(str)) {
+        const parts = str.split('-');
+        return { year: parseInt(parts[0], 10), month: parseInt(parts[1], 10) - 1, day: parseInt(parts[2], 10) };
+    }
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(str)) {
+        const parts = str.split('/');
+        return { year: parseInt(parts[2], 10), month: parseInt(parts[1], 10) - 1, day: parseInt(parts[0], 10) };
+    }
+    if (/^\d{1,2}-\d{1,2}-\d{4}/.test(str)) {
+        const parts = str.split('-');
+        return { year: parseInt(parts[2], 10), month: parseInt(parts[1], 10) - 1, day: parseInt(parts[0], 10) };
+    }
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+        return { year: d.getFullYear(), month: d.getMonth(), day: d.getDate() };
+    }
+    return null;
+}
+
+function initVisitasCalendarEvents() {
+    if (vtCalInitialized) return;
+    vtCalInitialized = true;
+
+    const prevBtn = document.getElementById('vt-cal-prev-btn');
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            vtCalCurrentMonth--;
+            if (vtCalCurrentMonth < 0) {
+                vtCalCurrentMonth = 11;
+                vtCalCurrentYear--;
+            }
+            vtCalSelectedDay = null;
+            const p = document.getElementById('vt-cal-day-detail');
+            if (p) p.classList.add('hidden');
+            renderVisitasCalendar(vtCalLastVisits);
         });
+    }
 
-        const tipoLabels = Object.keys(tipoMap);
-        const tipoData = Object.values(tipoMap);
+    const nextBtn = document.getElementById('vt-cal-next-btn');
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            vtCalCurrentMonth++;
+            if (vtCalCurrentMonth > 11) {
+                vtCalCurrentMonth = 0;
+                vtCalCurrentYear++;
+            }
+            vtCalSelectedDay = null;
+            const p = document.getElementById('vt-cal-day-detail');
+            if (p) p.classList.add('hidden');
+            renderVisitasCalendar(vtCalLastVisits);
+        });
+    }
 
-        vtCharts.tipo = new Chart(ctxTipo, {
-            type: 'bar',
-            data: {
-                labels: tipoLabels,
-                datasets: [{
-                    label: 'Cantidad de Visitas',
-                    data: tipoData,
-                    backgroundColor: ['#0B5640', '#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899'],
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    x: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } },
-                    y: { ticks: { font: { size: 9.5, weight: '600' } } }
+    const todayBtn = document.getElementById('vt-cal-today-btn');
+    if (todayBtn) {
+        todayBtn.addEventListener('click', () => {
+            const now = new Date();
+            vtCalCurrentYear = now.getFullYear();
+            vtCalCurrentMonth = now.getMonth();
+            vtCalSelectedDay = now.getDate();
+            renderVisitasCalendar(vtCalLastVisits);
+            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            const todayVisits = (vtCalLastVisits || []).filter(v => {
+                const p = parseVisitDateObj(v.fecha);
+                return p && p.year === vtCalCurrentYear && p.month === vtCalCurrentMonth && p.day === vtCalSelectedDay;
+            });
+            showCalendarDayDetail(vtCalSelectedDay, monthNames[vtCalCurrentMonth], vtCalCurrentYear, todayVisits);
+        });
+    }
+
+    const closeDetail = document.getElementById('vt-cal-detail-close');
+    if (closeDetail) {
+        closeDetail.addEventListener('click', () => {
+            const panel = document.getElementById('vt-cal-day-detail');
+            if (panel) panel.classList.add('hidden');
+            vtCalSelectedDay = null;
+            const grid = document.getElementById('vt-calendar-grid');
+            if (grid) {
+                grid.querySelectorAll('.vt-cal-day-cell.selected').forEach(c => c.classList.remove('selected'));
+            }
+        });
+    }
+
+    // Botón de sincronización con Google Drive
+    const syncDriveBtn = document.getElementById('btn-vt-sync-drive');
+    if (syncDriveBtn) {
+        syncDriveBtn.addEventListener('click', async () => {
+            const icon = syncDriveBtn.querySelector('i');
+            if (icon) icon.classList.add('fa-spin');
+            if (window.DIATDataService) {
+                const ok = await window.DIATDataService.syncTechnicalVisitsFromServer();
+                if (icon) icon.classList.remove('fa-spin');
+                if (ok) {
+                    alertToast('Google Drive Sincronizado', 'Visitas técnicas actualizadas exitosamente en tiempo real.');
+                    if (typeof renderVisitasTab === 'function') renderVisitasTab();
+                } else {
+                    alertToast('Aviso de Conexión', 'Se sincronizaron los datos almacenados localmente.', 'info');
                 }
             }
         });
     }
+
+    // Escuchar eventos de actualización de visitas en tiempo real
+    window.addEventListener('diat:visitasUpdated', (e) => {
+        if (typeof renderVisitasTab === 'function') {
+            renderVisitasTab();
+        }
+    });
+}
+
+function renderVisitasCalendar(filteredVisits) {
+    initVisitasCalendarEvents();
+    vtCalLastVisits = filteredVisits || [];
+
+    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    
+    // Si es la primera carga y hay visitas, centrar en el mes más relevante con visitas
+    if (!window.vtCalUserHasNavigated && filteredVisits && filteredVisits.length > 0) {
+        const sortedVisits = [...filteredVisits].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+        const latest = parseVisitDateObj(sortedVisits[0].fecha);
+        if (latest) {
+            vtCalCurrentYear = latest.year;
+            vtCalCurrentMonth = latest.month;
+            window.vtCalUserHasNavigated = true;
+        }
+    }
+
+    const monthLabelEl = document.getElementById('vt-cal-month-label');
+    if (monthLabelEl) {
+        monthLabelEl.textContent = `${monthNames[vtCalCurrentMonth]} ${vtCalCurrentYear}`;
+    }
+
+    // Mapear visitas del mes actual por día
+    const dayVisits = {};
+    let totalMonthVisits = 0;
+    let monthRealizadas = 0;
+    let monthProgramadas = 0;
+
+    (filteredVisits || []).forEach(v => {
+        const p = parseVisitDateObj(v.fecha);
+        if (p && p.year === vtCalCurrentYear && p.month === vtCalCurrentMonth) {
+            if (!dayVisits[p.day]) dayVisits[p.day] = [];
+            dayVisits[p.day].push(v);
+            totalMonthVisits++;
+            if (v.estado === 'Programada') monthProgramadas++;
+            else monthRealizadas++;
+        }
+    });
+
+    const badgeEl = document.getElementById('vt-cal-total-badge');
+    if (badgeEl) {
+        badgeEl.textContent = `${totalMonthVisits} visitas (${monthRealizadas} real. / ${monthProgramadas} prog.)`;
+    }
+
+    const grid = document.getElementById('vt-calendar-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const firstDayIndex = (new Date(vtCalCurrentYear, vtCalCurrentMonth, 1).getDay() + 6) % 7; // Lunes = 0
+    const daysInMonth = new Date(vtCalCurrentYear, vtCalCurrentMonth + 1, 0).getDate();
+    const prevMonthDays = new Date(vtCalCurrentYear, vtCalCurrentMonth, 0).getDate();
+
+    const today = new Date();
+    const isCurrentRealMonth = (today.getFullYear() === vtCalCurrentYear && today.getMonth() === vtCalCurrentMonth);
+    const todayDate = today.getDate();
+
+    // Días del mes anterior (padding)
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+        const dayNum = prevMonthDays - i;
+        const cell = document.createElement('div');
+        cell.className = 'p-1.5 min-h-[64px] sm:min-h-[72px] rounded-xl text-slate-300 flex flex-col items-start justify-start text-[10px] border border-slate-100/60 bg-slate-50/40 select-none';
+        cell.innerHTML = `<span class="opacity-35 font-semibold text-[10px]">${dayNum}</span>`;
+        grid.appendChild(cell);
+    }
+
+    // Días del mes actual ampliados con detalle interno de visita y selección dinámica
+    for (let day = 1; day <= daysInMonth; day++) {
+        const cell = document.createElement('div');
+        const vList = dayVisits[day] || [];
+        const hasVisits = vList.length > 0;
+        const isToday = isCurrentRealMonth && (day === todayDate);
+        const isSelected = (vtCalSelectedDay === day);
+
+        let cellClasses = 'vt-cal-day-cell p-1.5 min-h-[64px] sm:min-h-[72px] rounded-xl flex flex-col justify-between text-[11px] font-semibold transition-all relative select-none border ';
+
+        if (isSelected) {
+            cellClasses += 'selected ';
+        } else if (hasVisits) {
+            const hasProg = vList.some(v => v.estado === 'Programada');
+            const hasReal = vList.some(v => v.estado === 'Realizada');
+
+            if (hasProg && !hasReal) {
+                cellClasses += 'bg-amber-50/70 border-amber-200/80 shadow-2xs ';
+            } else {
+                cellClasses += 'bg-emerald-50/70 border-emerald-200/80 shadow-2xs ';
+            }
+        } else {
+            cellClasses += 'border-slate-100 bg-white text-slate-700 ';
+        }
+
+        cell.className = cellClasses;
+
+        // Cabecera del día (número + punto indicador discreto de hoy + badge de conteo)
+        // NOTA: El día 8 / "hoy" NO tiene anillo ni fondo verde automático; solo se resalta si el usuario lo selecciona o pasa el ratón por encima
+        const headerHtml = `
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center gap-1">
+                    <span class="vt-cal-day-num ${hasVisits ? 'has-visits' : ''}">${day}</span>
+                    ${isToday ? '<span class="w-1.5 h-1.5 rounded-full bg-blue-500/80 shrink-0" title="Hoy"></span>' : ''}
+                </div>
+                ${hasVisits ? `<span class="text-[8.5px] font-black px-1.5 py-0.2 rounded-full ${vList.every(v => v.estado === 'Programada') ? 'bg-amber-200 text-amber-900' : 'bg-emerald-200 text-emerald-900'}">${vList.length}</span>` : ''}
+            </div>
+        `;
+
+        // Micro-etiquetas con el texto de la visita dentro del recuadro
+        let visitsCardsHtml = '';
+        if (hasVisits) {
+            visitsCardsHtml = '<div class="w-full space-y-1 mt-1 overflow-hidden">';
+            const displayList = vList.slice(0, 2);
+            displayList.forEach(v => {
+                const isProg = (v.estado === 'Programada');
+                const pillClass = isProg ? 'programada' : 'realizada';
+                const icon = isProg ? '<i class="fa-solid fa-calendar-days text-[7.5px] shrink-0"></i>' : '<i class="fa-solid fa-check text-[7.5px] shrink-0"></i>';
+                const cleanMuni = String(v.municipio || 'Visita').replace(/YOLOMBÃ“|YOLOMB/g, 'YOLOMBÓ').trim();
+                const supName = String(v.usuario || 'Supervisor')
+                    .replace(/MarÃ­n|Mar\?n|Marn/g, 'Marín')
+                    .replace(/GÃ³mez|G\?mez|Gmez/g, 'Gómez')
+                    .replace(/"/g, '&quot;').trim();
+                visitsCardsHtml += `
+                    <div class="vt-cal-visit-pill ${pillClass}" title="${cleanMuni} - ${supName} (${v.estado})">
+                        ${icon}
+                        <div class="vt-cal-pill-content">
+                            <span class="pill-muni">${cleanMuni}</span>
+                            <span class="pill-sup">${supName}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (vList.length > 2) {
+                visitsCardsHtml += `<div class="text-[7.5px] font-black text-slate-500 text-center leading-none mt-0.5">+${vList.length - 2} más</div>`;
+            }
+            visitsCardsHtml += '</div>';
+        } else {
+            visitsCardsHtml = '<div class="flex-1"></div>';
+        }
+
+        cell.innerHTML = `${headerHtml}${visitsCardsHtml}`;
+
+        cell.title = hasVisits
+            ? `${day} de ${monthNames[vtCalCurrentMonth]}: ${vList.length} visita(s) técnica(s)`
+            : `${day} de ${monthNames[vtCalCurrentMonth]}`;
+
+        // Evento de clic: seleccionar día, aplicar clase selected dinámicamente y abrir detalle
+        cell.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const allCells = grid.querySelectorAll('.vt-cal-day-cell');
+            allCells.forEach(c => c.classList.remove('selected'));
+
+            cell.classList.add('selected');
+            vtCalSelectedDay = day;
+
+            showCalendarDayDetail(day, monthNames[vtCalCurrentMonth], vtCalCurrentYear, vList);
+        });
+
+        grid.appendChild(cell);
+    }
+
+    // Días del siguiente mes para completar la cuadrícula (múltiplo de 7)
+    const totalCells = firstDayIndex + daysInMonth;
+    const nextDaysCount = (7 - (totalCells % 7)) % 7;
+    for (let d = 1; d <= nextDaysCount; d++) {
+        const cell = document.createElement('div');
+        cell.className = 'p-1.5 min-h-[64px] sm:min-h-[72px] rounded-xl text-slate-300 flex flex-col items-start justify-start text-[10px] border border-slate-100/60 bg-slate-50/40 select-none';
+        cell.innerHTML = `<span class="opacity-35 font-semibold text-[10px]">${d}</span>`;
+        grid.appendChild(cell);
+    }
+
+    // Sincronizar pines del mapa con el mes/año seleccionado en el calendario
+    if (typeof renderVisitasMapPinsOnly === 'function' && vtMap) {
+        renderVisitasMapPinsOnly();
+    }
+}
+
+function showCalendarDayDetail(day, monthName, year, visits) {
+    const detailPanel = document.getElementById('vt-cal-day-detail');
+    const titleDate = document.getElementById('vt-cal-detail-date');
+    const listContainer = document.getElementById('vt-cal-detail-list');
+
+    if (!detailPanel || !listContainer) return;
+
+    detailPanel.classList.remove('hidden');
+    const vCount = (visits || []).length;
+    if (titleDate) {
+        titleDate.innerHTML = `<i class="fa-solid fa-calendar-check text-emerald-600"></i> ${day} de ${monthName} de ${year} (${vCount} visita${vCount === 1 ? '' : 's'})`;
+    }
+
+    listContainer.innerHTML = '';
+    const clean = (typeof cleanMojibake === 'function') ? cleanMojibake : (str => str || '');
+
+    if (!visits || visits.length === 0) {
+        listContainer.innerHTML = `
+            <div class="py-3 text-center text-xs text-slate-400 font-medium italic flex items-center justify-center gap-1.5">
+                <i class="fa-regular fa-calendar-xmark text-slate-300"></i>
+                Sin visitas técnicas registradas para este día.
+            </div>
+        `;
+        return;
+    }
+
+    visits.forEach(v => {
+        const isProg = (v.estado === 'Programada');
+        const item = document.createElement('div');
+        item.className = `p-2 bg-white rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-between gap-2 hover:border-${isProg ? 'amber' : 'emerald'}-400 transition-all`;
+        item.innerHTML = `
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-extrabold text-[11px] text-slate-800">Convenio ${clean(v.convenioId)}</span>
+                    <span class="px-1.5 py-0.5 rounded text-[9.5px] font-bold ${isProg ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'}">
+                        ${isProg ? 'Programada' : 'Realizada'}
+                    </span>
+                    <span class="text-[10px] text-slate-500 font-medium">${clean(v.municipio || '')}</span>
+                </div>
+                <p class="text-[10px] text-slate-500 truncate mt-0.5">
+                    <i class="fa-solid fa-user text-slate-400 mr-1"></i>${clean(v.usuario || 'N/A')}
+                    <span class="mx-1">•</span>
+                    <i class="fa-solid fa-tag text-slate-400 mr-1"></i>${clean(v.tipo || 'Inspección')}
+                </p>
+            </div>
+            <div class="flex items-center gap-1 flex-shrink-0">
+                <button type="button" class="p-1.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 rounded-md text-[10.5px] font-bold transition-all"
+                    title="Ubicar en Mapa" onclick="event.stopPropagation(); window.flyToVisitOnMap('${v.id}')">
+                    <i class="fa-solid fa-location-dot"></i>
+                </button>
+                <button type="button" class="px-2 py-1 bg-institutional-primary hover:bg-institutional-light text-white rounded-md text-[10px] font-bold transition-all"
+                    onclick="event.stopPropagation(); window.openVisitDetailModal('${v.id}')">
+                    Ficha
+                </button>
+            </div>
+        `;
+        listContainer.appendChild(item);
+    });
 }
 
 /**
@@ -15733,6 +16219,14 @@ function renderVisitasList(filteredVisits) {
                 // Prioridad badge
                 const prioColor = v.prioridad === 'Alta' ? 'text-red-700 bg-red-50 border-red-200' : 'text-slate-600 bg-slate-100 border-slate-200';
 
+                const clean = (typeof cleanMojibake === 'function') ? cleanMojibake : (s => s || '');
+                const uMunicipio = clean(v.municipio);
+                const uSubregion = clean(v.subregion);
+                const uTipo = clean(v.tipo);
+                const uObs = clean(v.observaciones);
+                const uCompromisos = clean(v.compromisos);
+                const uUsuario = clean(v.usuario);
+
                 card.innerHTML = `
                     <div>
                         <div class="flex justify-between items-start gap-2 mb-2">
@@ -15754,23 +16248,23 @@ function renderVisitasList(filteredVisits) {
                         </div>
 
                         <div class="flex items-center gap-1.5 flex-wrap mt-1 text-[11px] text-slate-500">
-                            <span class="font-bold text-slate-700">${v.municipio}</span>
+                            <span class="font-bold text-slate-700">${uMunicipio}</span>
                             <span class="text-slate-300">•</span>
-                            <span class="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-semibold text-slate-600">${v.subregion}</span>
+                            <span class="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-semibold text-slate-600">${uSubregion}</span>
                         </div>
 
                         <div class="mt-2 text-xs text-slate-700">
                             <p class="font-bold text-emerald-800 text-[11px] uppercase tracking-wide">
-                                <i class="fa-solid fa-tag text-emerald-600 mr-1"></i>${v.tipo}
+                                <i class="fa-solid fa-tag text-emerald-600 mr-1"></i>${uTipo}
                             </p>
                             <p class="text-slate-600 text-[11.5px] mt-1 line-clamp-3 leading-relaxed">
-                                ${v.observaciones || 'Sin observaciones detalladas.'}
+                                ${uObs || 'Sin observaciones detalladas.'}
                             </p>
                         </div>
 
-                        ${v.compromisos ? `
+                        ${uCompromisos ? `
                             <div class="mt-2 p-2 bg-slate-50 rounded-lg border border-slate-100 text-[10.5px] text-slate-600">
-                                <strong class="text-slate-700">Compromiso:</strong> ${v.compromisos.slice(0, 80)}...
+                                <strong class="text-slate-700">Compromiso:</strong> ${uCompromisos.slice(0, 80)}...
                             </div>
                         ` : ''}
 
@@ -15780,7 +16274,7 @@ function renderVisitasList(filteredVisits) {
                     <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
                         <div class="flex items-center gap-1.5 text-slate-500 text-[10.5px]">
                             <i class="fa-solid fa-user-shield text-slate-400"></i>
-                            <span class="font-medium truncate max-w-[110px]" title="${v.usuario}">${v.usuario}</span>
+                            <span class="font-medium truncate max-w-[110px]" title="${uUsuario}">${uUsuario}</span>
                         </div>
 
                         <div class="flex items-center gap-1">
@@ -15823,6 +16317,12 @@ function renderVisitasList(filteredVisits) {
                 });
 
                 const photoCount = (v.photos && v.photos.length) || parseInt(v.photoCount) || 0;
+                const clean = (typeof cleanMojibake === 'function') ? cleanMojibake : (s => s || '');
+                const uMunicipio = clean(v.municipio);
+                const uSubregion = clean(v.subregion);
+                const uTipo = clean(v.tipo);
+                const uObs = clean(v.observaciones);
+                const uUsuario = clean(v.usuario);
 
                 tr.innerHTML = `
                     <td class="p-3 whitespace-nowrap">
@@ -15830,13 +16330,13 @@ function renderVisitasList(filteredVisits) {
                     </td>
                     <td class="p-3 font-bold text-slate-800 whitespace-nowrap">${v.convenioId}</td>
                     <td class="p-3 text-slate-600">
-                        <span class="font-bold text-slate-700">${v.municipio}</span>
-                        <span class="block text-[10px] text-slate-400 font-medium">${v.subregion}</span>
+                        <span class="font-bold text-slate-700">${uMunicipio}</span>
+                        <span class="block text-[10px] text-slate-400 font-medium">${uSubregion}</span>
                     </td>
                     <td class="p-3 text-center whitespace-nowrap font-medium text-slate-600">${v.fecha}</td>
-                    <td class="p-3 text-slate-700 font-semibold">${v.usuario}</td>
-                    <td class="p-3 text-slate-600 font-bold"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px]">${v.tipo}</span></td>
-                    <td class="p-3 text-slate-600 max-w-xs truncate" title="${v.observaciones}">${v.observaciones || '--'}</td>
+                    <td class="p-3 text-slate-700 font-semibold">${uUsuario}</td>
+                    <td class="p-3 text-slate-600 font-bold"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px]">${uTipo}</span></td>
+                    <td class="p-3 text-slate-600 max-w-xs truncate" title="${uObs}">${uObs || '--'}</td>
                     <td class="p-3 text-center whitespace-nowrap">
                         <span class="font-bold ${photoCount > 0 ? 'text-emerald-700' : 'text-slate-400'}">
                             <i class="fa-solid fa-camera mr-1"></i>${photoCount}
@@ -15864,13 +16364,19 @@ function renderVisitasList(filteredVisits) {
 /**
  * Solicita y valida la clave de autorización para registrar visitas realizadas
  */
-function checkOrPromptAuthPassword(actionTitle = "registrar una visita técnica realizada") {
-    const entered = prompt(`🔐 AUTORIZACIÓN DIAT REQUERIDA\n\nPara ${actionTitle}, por favor ingrese la clave de supervisor:`);
+function checkOrPromptAuthPassword(actionTitle = "acceder al Control de Visitas") {
+    // Si ya ha iniciado sesión como supervisor en el portal o se validó en esta sesión, permitir inmediatamente
+    const logged = getLoggedUser();
+    if (logged) return true;
+    if (window.diatAuthorizedSession) return true;
+
+    const entered = prompt(`🔐 AUTORIZACIÓN DIAT REQUERIDA\n\nPara ${actionTitle}, por favor ingrese la contraseña (DIAT2026):`);
     if (entered === null) return false;
-    if (entered.trim() === "DIAT2026") {
+    if (entered.trim().toUpperCase() === "DIAT2026") {
+        window.diatAuthorizedSession = true;
         return true;
     }
-    alertToast("Acceso Denegado", "Clave incorrecta. Se requiere la clave de autorización DIAT2026.", "error");
+    alertToast("Acceso Denegado", "Contraseña incorrecta. Se requiere la clave de autorización DIAT2026.", "error");
     return false;
 }
 
@@ -15883,21 +16389,348 @@ function updateVisitModalSectionsByState(estado) {
     const titleEl = document.getElementById('modal-registrar-visita-title');
     const descEl = document.getElementById('modal-registrar-visita-desc');
     const btnSave = document.getElementById('btn-save-visit');
+    const saveBtnText = document.getElementById('btn-save-visit-text');
 
     if (estado === 'Programada') {
         if (secObs) secObs.style.display = 'none';
         if (secFotos) secFotos.style.display = 'none';
-        if (titleEl) titleEl.textContent = "Programar Nueva Visita Técnica";
+        if (titleEl) titleEl.textContent = "Control de Visitas: Programar Nueva Visita";
         if (descEl) descEl.textContent = "Planificación, fecha estimada y asignación de equipo técnico en territorio";
-        if (btnSave) btnSave.innerHTML = '<i class="fa-solid fa-calendar-check mr-1.5"></i>Programar Visita';
+        if (saveBtnText) saveBtnText.textContent = "Programar Visita";
+        else if (btnSave) btnSave.innerHTML = '<i class="fa-solid fa-calendar-check mr-1.5"></i>Programar Visita';
     } else {
         if (secObs) secObs.style.display = 'block';
         if (secFotos) secFotos.style.display = 'block';
-        if (titleEl) titleEl.textContent = "Registrar Visita Técnica Realizada";
+        if (titleEl) titleEl.textContent = "Control de Visitas: Registrar Visita Realizada";
         if (descEl) descEl.textContent = "Informe técnico de campo, registro fotográfico y compromisos";
-        if (btnSave) btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1.5"></i>Guardar Visita Realizada';
+        if (saveBtnText) saveBtnText.textContent = "Guardar Visita Realizada";
+        else if (btnSave) btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1.5"></i>Guardar Visita Realizada';
     }
 }
+
+// =============================================================================
+// CENTRO DE CONTROL Y GESTIÓN DE VISITAS TÉCNICAS (DIAT ANTIOQUIA)
+// =============================================================================
+let currentHubTab = 'registrar';
+let hubFilterState = 'todos';
+let hubEventsInitialized = false;
+
+function initControlVisitasHubEvents() {
+    if (hubEventsInitialized) return;
+    hubEventsInitialized = true;
+
+    const tabReg = document.getElementById('hub-tab-registrar');
+    const tabProg = document.getElementById('hub-tab-programar');
+    const tabEdit = document.getElementById('hub-tab-editar');
+    const btnCancelEdit = document.getElementById('btn-cancel-edit-visit');
+    const btnNewShortcut = document.getElementById('btn-hub-new-visit-shortcut');
+    const searchInput = document.getElementById('hub-filter-search');
+
+    if (tabReg) {
+        tabReg.addEventListener('click', () => switchHubTab('registrar'));
+    }
+    if (tabProg) {
+        tabProg.addEventListener('click', () => switchHubTab('programar'));
+    }
+    if (tabEdit) {
+        tabEdit.addEventListener('click', () => switchHubTab('editar'));
+    }
+    if (btnCancelEdit) {
+        btnCancelEdit.addEventListener('click', () => cancelHubEditMode());
+    }
+    if (btnNewShortcut) {
+        btnNewShortcut.addEventListener('click', () => switchHubTab('registrar'));
+    }
+    if (searchInput) {
+        searchInput.addEventListener('input', () => renderHubVisitsList());
+    }
+
+    const filterChips = document.querySelectorAll('.hub-filter-chip');
+    filterChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            filterChips.forEach(c => {
+                c.classList.remove('active', 'bg-white', 'text-slate-800', 'shadow-xs');
+                c.classList.add('text-slate-500');
+            });
+            chip.classList.add('active', 'bg-white', 'text-slate-800', 'shadow-xs');
+            chip.classList.remove('text-slate-500');
+            hubFilterState = chip.dataset.estado || 'todos';
+            renderHubVisitsList();
+        });
+    });
+}
+
+function switchHubTab(target) {
+    currentHubTab = target;
+    const viewForm = document.getElementById('hub-view-form');
+    const viewList = document.getElementById('hub-view-list');
+    const tabReg = document.getElementById('hub-tab-registrar');
+    const tabProg = document.getElementById('hub-tab-programar');
+    const tabEdit = document.getElementById('hub-tab-editar');
+    const saveBtn = document.getElementById('btn-save-visit');
+    const saveBtnText = document.getElementById('btn-save-visit-text');
+
+    const setActiveTab = (activeEl, ...inactiveEls) => {
+        if (activeEl) {
+            activeEl.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 bg-institutional-primary text-white shadow-2xs';
+        }
+        inactiveEls.forEach(el => {
+            if (el) el.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all flex items-center gap-1.5 hover:bg-slate-100';
+        });
+    };
+
+    if (target === 'registrar') {
+        if (viewForm) viewForm.classList.remove('hidden');
+        if (viewList) viewList.classList.add('hidden');
+        setActiveTab(tabReg, tabProg, tabEdit);
+        if (saveBtn) saveBtn.style.display = 'inline-flex';
+
+        if (!window.editingVisitId) {
+            updateVisitModalSectionsByState('Realizada');
+            const estadoEl = document.getElementById('visit-estado');
+            if (estadoEl) estadoEl.value = 'Realizada';
+            if (saveBtnText) saveBtnText.textContent = 'Guardar Visita Realizada';
+        }
+    } else if (target === 'programar') {
+        if (viewForm) viewForm.classList.remove('hidden');
+        if (viewList) viewList.classList.add('hidden');
+        setActiveTab(tabProg, tabReg, tabEdit);
+        if (saveBtn) saveBtn.style.display = 'inline-flex';
+
+        if (!window.editingVisitId) {
+            updateVisitModalSectionsByState('Programada');
+            const estadoEl = document.getElementById('visit-estado');
+            if (estadoEl) estadoEl.value = 'Programada';
+            if (saveBtnText) saveBtnText.textContent = 'Programar Visita';
+        }
+    } else if (target === 'editar') {
+        if (viewForm) viewForm.classList.add('hidden');
+        if (viewList) viewList.classList.remove('hidden');
+        setActiveTab(tabEdit, tabReg, tabProg);
+        if (saveBtn) saveBtn.style.display = 'none';
+        renderHubVisitsList();
+    }
+}
+
+function cancelHubEditMode() {
+    window.editingVisitId = null;
+    const banner = document.getElementById('hub-editing-banner');
+    if (banner) {
+        banner.classList.add('hidden');
+        banner.classList.remove('flex');
+    }
+
+    const selectEl = document.getElementById('visit-convenio-select');
+    if (selectEl) selectEl.disabled = false;
+
+    // Limpiar campos
+    document.getElementById('visit-obs').value = '';
+    document.getElementById('visit-compromisos').value = '';
+    document.getElementById('visit-riesgos').value = '';
+    window.visitUploadedPhotos = [];
+    renderVisitPhotoPreviews();
+
+    switchHubTab('registrar');
+    alertToast('Edición Cancelada', 'Se ha restablecido el formulario para nuevo registro.', 'info');
+}
+
+window.startEditVisitFromHub = function (visitId) {
+    const visits = (window.DIATDataService ? window.DIATDataService.getTechnicalVisits() : []) || [];
+    const v = visits.find(item => item.id === visitId);
+    if (!v) {
+        alertToast("No encontrada", "No se encontró la visita técnica seleccionada.", "error");
+        return;
+    }
+
+    window.editingVisitId = v.id;
+
+    // Cambiar a pestaña del formulario
+    switchHubTab(v.estado === 'Programada' ? 'programar' : 'registrar');
+
+    // Mostrar banner de edición
+    const banner = document.getElementById('hub-editing-banner');
+    const textEl = document.getElementById('hub-editing-convenio-text');
+    if (banner && textEl) {
+        textEl.textContent = `Convenio ${v.convenioId} (${v.municipio || 'Antioquia'}) - ${v.fecha || ''}`;
+        banner.classList.remove('hidden');
+        banner.classList.add('flex');
+    }
+
+    // Poblar campos del formulario
+    populateVisitMunicipioDropdown(v.municipio || '');
+    populateVisitConvenioDropdown(v.convenioId || '', v.municipio || '');
+
+    const fechaEl = document.getElementById('visit-fecha');
+    if (fechaEl) fechaEl.value = toDateInputValue(v.fecha);
+
+    const tipoEl = document.getElementById('visit-tipo');
+    if (tipoEl) tipoEl.value = v.tipo || 'Avance de obra';
+
+    const estadoEl = document.getElementById('visit-estado');
+    if (estadoEl) estadoEl.value = v.estado || 'Realizada';
+
+    const prioridadEl = document.getElementById('visit-prioridad');
+    if (prioridadEl) prioridadEl.value = v.prioridad || 'Media';
+
+    // Supervisores
+    if (typeof window.setVisitSelectedSupervisors === 'function') {
+        const supArray = Array.isArray(v.supervisores) && v.supervisores.length > 0
+            ? v.supervisores
+            : (v.usuario ? [v.usuario] : []);
+        window.setVisitSelectedSupervisors(supArray);
+    }
+
+    updateVisitModalSectionsByState(v.estado || 'Realizada');
+
+    document.getElementById('visit-obs').value = v.observaciones || '';
+    document.getElementById('visit-compromisos').value = v.compromisos || '';
+    document.getElementById('visit-riesgos').value = v.riesgos || '';
+
+    window.visitUploadedPhotos = Array.isArray(v.photos) ? [...v.photos] : [];
+    renderVisitPhotoPreviews();
+
+    const lat = parseFloat(v.lat) || 0;
+    const lng = parseFloat(v.lng) || 0;
+    const latInput = document.getElementById('visit-gps-lat');
+    const lngInput = document.getElementById('visit-gps-lng');
+    if (latInput) latInput.value = lat !== 0 ? lat.toFixed(6) : '';
+    if (lngInput) lngInput.value = lng !== 0 ? lng.toFixed(6) : '';
+
+    const saveBtnText = document.getElementById('btn-save-visit-text');
+    if (saveBtnText) saveBtnText.textContent = 'Guardar Cambios en Visita';
+
+    setTimeout(() => {
+        if (typeof window.initVisitMap === 'function') {
+            window.initVisitMap(lat !== 0 ? lat : 6.25184, lng !== 0 ? lng : -75.56359);
+        }
+    }, 200);
+
+    alertToast("Modo Edición", `Cargada la visita del Convenio ${v.convenioId} para edición.`);
+};
+
+window.deleteVisitFromHub = async function (visitId) {
+    if (!checkOrPromptAuthPassword("eliminar una visita técnica")) return;
+
+    const visits = (window.DIATDataService ? window.DIATDataService.getTechnicalVisits() : []) || [];
+    const v = visits.find(item => item.id === visitId);
+    const conv = v ? v.convenioId : '';
+    const mun = v ? v.municipio : '';
+
+    if (!confirm(`⚠️ ¿Está seguro de eliminar la visita técnica del Convenio ${conv} en ${mun}?\n\nEsta acción se sincronizará con Google Drive en tiempo real.`)) {
+        return;
+    }
+
+    if (window.DIATDataService) {
+        window.DIATDataService.deleteTechnicalVisit(visitId);
+        alertToast("Visita Eliminada", `Se ha eliminado la visita técnica del Convenio ${conv}.`, "info");
+        renderHubVisitsList();
+        if (typeof renderVisitasTab === 'function') renderVisitasTab();
+        if (typeof applyFilters === 'function') applyFilters();
+    }
+};
+
+function renderHubVisitsList() {
+    const container = document.getElementById('hub-visits-table-container');
+    const badgeCount = document.getElementById('hub-badge-count-visitas');
+    if (!container) return;
+
+    const visits = (window.DIATDataService ? window.DIATDataService.getTechnicalVisits() : []) || [];
+    if (badgeCount) badgeCount.textContent = visits.length;
+
+    const searchInput = document.getElementById('hub-filter-search');
+    const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+    const filtered = visits.filter(v => {
+        if (hubFilterState !== 'todos' && v.estado !== hubFilterState) return false;
+        if (term) {
+            const matchConv = String(v.convenioId || '').toLowerCase().includes(term);
+            const matchMuni = String(v.municipio || '').toLowerCase().includes(term);
+            const matchSup = String(v.usuario || '').toLowerCase().includes(term);
+            const matchObs = String(v.observaciones || '').toLowerCase().includes(term);
+            if (!matchConv && !matchMuni && !matchSup && !matchObs) return false;
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="p-8 text-center bg-white rounded-xl border border-dashed border-slate-200 text-slate-400">
+                <i class="fa-solid fa-clipboard-question text-3xl mb-2 text-slate-300"></i>
+                <p class="font-bold text-xs text-slate-600">No se encontraron visitas con este criterio.</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Puedes programar o registrar una nueva visita usando las pestañas superiores.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const clean = (typeof cleanMojibake === 'function') ? cleanMojibake : (str => str || '');
+
+    container.innerHTML = filtered.map(v => {
+        const isProg = (v.estado === 'Programada');
+        const photoCount = (v.photos && v.photos.length) || parseInt(v.photoCount) || 0;
+        const photoBadge = photoCount > 0 
+            ? `<span class="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200"><i class="fa-solid fa-camera"></i> ${photoCount} foto(s)</span>`
+            : '';
+
+        return `
+            <div class="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs hover:border-emerald-300 hover:shadow-xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-extrabold text-xs text-slate-900">Convenio ${clean(v.convenioId)}</span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isProg ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'}">
+                            ${v.estado}
+                        </span>
+                        <span class="text-xs font-bold text-slate-700">${clean(v.municipio || '')}</span>
+                        <span class="text-[10.5px] text-slate-400 font-medium">(${clean(v.subregion || 'Antioquia')})</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-[11px] text-slate-500 mt-1 flex-wrap font-medium">
+                        <span><i class="fa-regular fa-calendar text-slate-400 mr-1"></i>${v.fecha || 'Sin fecha'}</span>
+                        <span><i class="fa-solid fa-user-shield text-slate-400 mr-1"></i>${clean(v.usuario || 'N/A')}</span>
+                        <span><i class="fa-solid fa-tag text-slate-400 mr-1"></i>${clean(v.tipo || 'Inspección')}</span>
+                        ${photoBadge}
+                    </div>
+                    ${v.observaciones ? `<p class="text-[11px] text-slate-500 italic mt-1.5 line-clamp-1">"${clean(v.observaciones)}"</p>` : ''}
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0 self-end md:self-center">
+                    <button type="button" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-2xs"
+                        onclick="window.startEditVisitFromHub('${v.id}')" title="Editar datos, fotos o estado de esta visita">
+                        <i class="fa-solid fa-pen-to-square text-[11px]"></i> Editar
+                    </button>
+                    <button type="button" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition-all flex items-center gap-1"
+                        onclick="window.openVisitDetailModal('${v.id}')" title="Ver ficha técnica completa">
+                        <i class="fa-solid fa-eye text-[11px]"></i> Ficha
+                    </button>
+                    <button type="button" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-lg text-xs transition-all"
+                        onclick="window.deleteVisitFromHub('${v.id}')" title="Eliminar visita de Google Drive">
+                        <i class="fa-solid fa-trash-can text-[11px]"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+window.openControlVisitasHub = function (mode = 'registrar', visitIdToEdit = null) {
+    const modalEl = document.getElementById('modal-registrar-visita');
+    if (!modalEl) return;
+
+    initControlVisitasHubEvents();
+    modalEl.style.display = 'flex';
+    modalEl.classList.remove('hidden');
+
+    if (mode === 'editar_especifica' && visitIdToEdit) {
+        window.startEditVisitFromHub(visitIdToEdit);
+    } else if (mode === 'lista_editar') {
+        switchHubTab('editar');
+    } else if (mode === 'programar') {
+        switchHubTab('programar');
+    } else {
+        switchHubTab('registrar');
+    }
+
+    populateVisitMunicipioDropdown();
+    populateVisitConvenioDropdown();
+};
 
 /**
  * Obtiene el catálogo consolidado y actualizado de todos los supervisores DIAT
@@ -16431,9 +17264,7 @@ function populateVisitConvenioDropdown(selectedConvenioId = '', filterMunicipio 
  */
 window.openScheduleVisitModal = function (convenioId = '', municipio = '') {
     window.editingVisitId = null;
-
-    // Ajustar visibilidad: en Programada NO debe aparecer observaciones, compromisos ni fotos
-    updateVisitModalSectionsByState('Programada');
+    window.openControlVisitasHub('programar');
 
     // Determinar municipio inicial si viene por convenio
     let initialMuni = municipio;
@@ -16475,13 +17306,6 @@ window.openScheduleVisitModal = function (convenioId = '', municipio = '') {
     window.visitUploadedPhotos = [];
     renderVisitPhotoPreviews();
 
-    // Mostrar modal
-    const modalEl = document.getElementById('modal-registrar-visita');
-    if (modalEl) {
-        modalEl.style.display = 'flex';
-        modalEl.classList.remove('hidden');
-    }
-
     setTimeout(() => {
         if (initialMuni) {
             focusVisitMapOnMunicipio(initialMuni);
@@ -16498,9 +17322,7 @@ window.openScheduleVisitModal = function (convenioId = '', municipio = '') {
  */
 window.openRegisterCompletedVisitModal = function (convenioId = '', municipio = '') {
     window.editingVisitId = null;
-
-    // Ajustar visibilidad: en Realizada SÍ aparecen observaciones, compromisos y fotos
-    updateVisitModalSectionsByState('Realizada');
+    window.openControlVisitasHub('registrar');
 
     // Determinar municipio inicial si viene por convenio
     let initialMuni = municipio;
@@ -16531,13 +17353,6 @@ window.openRegisterCompletedVisitModal = function (convenioId = '', municipio = 
     document.getElementById('visit-riesgos').value = '';
     window.visitUploadedPhotos = [];
     renderVisitPhotoPreviews();
-
-    // Mostrar modal
-    const modalEl = document.getElementById('modal-registrar-visita');
-    if (modalEl) {
-        modalEl.style.display = 'flex';
-        modalEl.classList.remove('hidden');
-    }
 
     setTimeout(() => {
         if (initialMuni) {

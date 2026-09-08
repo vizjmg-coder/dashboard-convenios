@@ -2,7 +2,67 @@
  * DIATDataService - Capa de servicios para la administración de datos del Portal de Supervisores
  * Diseñado para desacoplar el frontend del almacenamiento físico (Excel / Google Sheets / Base de datos)
  */
+/**
+ * Utilidad universal para corregir doble codificación UTF-8 / Mojibake
+ */
+function cleanMojibake(str) {
+    if (typeof str !== 'string' || !str) return str || '';
+    let result = str;
+    try {
+        if (/[\u00C2\u00C3]/.test(result)) {
+            result = decodeURIComponent(escape(result));
+        }
+    } catch (e) {}
+
+    return result
+        .replace(/Jonathan Mar[ÃA][\xad\s.]*n Gallego/g, 'Jonathan Marín Gallego')
+        .replace(/MarÃ­n/g, 'Marín').replace(/MarÃ.n/g, 'Marín')
+        .replace(/FÃ­sico/g, 'Físico').replace(/fÃ­sico/g, 'físico')
+        .replace(/evidenciÃ³/g, 'evidenció').replace(/verificÃ³/g, 'verificó')
+        .replace(/InspecciÃ³n/g, 'Inspección').replace(/inspecciÃ³n/g, 'inspección')
+        .replace(/tÃ©cnica/g, 'técnica').replace(/tÃ©cnico/g, 'técnico').replace(/tÃ©cnicas/g, 'técnicas')
+        .replace(/TÃ©cnica/g, 'Técnica').replace(/TÃ©cnico/g, 'Técnico').replace(/TÃ©cnicas/g, 'Técnicas')
+        .replace(/TÃ@cnic/gi, 'Técnic').replace(/tÃ@cnic/gi, 'técnic')
+        .replace(/ejecuciÃ³n/g, 'ejecución').replace(/priorizaciÃ³n/g, 'priorización')
+        .replace(/dosificaciÃ³n/g, 'dosificación').replace(/articulaciÃ³n/g, 'articulación')
+        .replace(/AcciÃ³n/g, 'Acción').replace(/acciÃ³n/g, 'acción')
+        .replace(/dÃ­a/g, 'día').replace(/realizÃ³/g, 'realizó')
+        .replace(/verificaciÃ³n/g, 'verificación').replace(/vÃ­as/g, 'vías')
+        .replace(/intervenciÃ³n/g, 'intervención').replace(/jurisdicciÃ³n/g, 'jurisdicción')
+        .replace(/acompaÃ±amiento/g, 'acompañamiento').replace(/cumpliÃ³/g, 'cumplió')
+        .replace(/Ã¡/g, 'á').replace(/Ã/g, 'Á')
+        .replace(/Ã©/g, 'é').replace(/Ã/g, 'É')
+        .replace(/Ã­/g, 'í').replace(/Ã/g, 'Í')
+        .replace(/Ã³/g, 'ó').replace(/Ã/g, 'Ó')
+        .replace(/Ãº/g, 'ú').replace(/Ã/g, 'Ú')
+        .replace(/Ã±/g, 'ñ').replace(/Ã/g, 'Ñ')
+        .replace(/Ã¼/g, 'ü').replace(/Ã/g, 'Ü')
+        .replace(/Â°/g, '°').replace(/Â¿/g, '¿')
+        .replace(/Â¡/g, '¡');
+}
+
+function sanitizeVisit(v) {
+    if (!v) return v;
+    return {
+        ...v,
+        usuario: cleanMojibake(v.usuario || ''),
+        tipo: cleanMojibake(v.tipo || ''),
+        municipio: cleanMojibake(v.municipio || ''),
+        subregion: cleanMojibake(v.subregion || ''),
+        observaciones: cleanMojibake(v.observaciones || ''),
+        compromisos: cleanMojibake(v.compromisos || ''),
+        riesgos: cleanMojibake(v.riesgos || '')
+    };
+}
+
+window.cleanMojibake = cleanMojibake;
+window.sanitizeVisit = sanitizeVisit;
+
 class DIATDataService {
+    static cleanText(str) {
+        return cleanMojibake(str);
+    }
+
     static getChanges() {
         try {
             return JSON.parse(localStorage.getItem('diat_convenio_changes')) || {};
@@ -26,7 +86,7 @@ class DIATDataService {
                     if (hasMock) {
                         localStorage.removeItem('diat_technical_visits');
                     } else {
-                        return stored.filter(v => v && v.id && v.id.startsWith('VT-') && v.id !== 'TEST-ID').map(v => ({
+                        return stored.filter(v => v && v.id && v.id.startsWith('VT-') && v.id !== 'TEST-ID').map(v => sanitizeVisit({
                             ...v,
                             estado: v.estado || 'Realizada',
                             prioridad: v.prioridad || 'Media'
@@ -41,7 +101,8 @@ class DIATDataService {
     }
 
     static saveTechnicalVisits(visits) {
-        localStorage.setItem('diat_technical_visits', JSON.stringify(visits));
+        const cleanList = (visits || []).map(v => sanitizeVisit(v));
+        localStorage.setItem('diat_technical_visits', JSON.stringify(cleanList));
     }
 
     static getChangeHistory() {
@@ -287,7 +348,7 @@ class DIATDataService {
             if (response.ok) {
                 const visits = await response.json();
                 if (Array.isArray(visits) && visits.length > 0) {
-                    const validServerVisits = visits.filter(v => v && v.id && v.id.startsWith('VT-') && v.id !== 'TEST-ID').map(v => ({
+                    const validServerVisits = visits.filter(v => v && v.id && v.id.startsWith('VT-') && v.id !== 'TEST-ID').map(v => sanitizeVisit({
                         ...v,
                         estado: v.estado || 'Realizada',
                         prioridad: v.prioridad || 'Media'
@@ -298,12 +359,14 @@ class DIATDataService {
                     validServerVisits.forEach(v => visitMap.set(v.id, v));
                     localVisits.forEach(v => {
                         if (!visitMap.has(v.id)) {
-                            visitMap.set(v.id, v);
+                            visitMap.set(v.id, sanitizeVisit(v));
                         }
                     });
 
                     const merged = Array.from(visitMap.values());
                     this.saveTechnicalVisits(merged);
+
+                    window.dispatchEvent(new CustomEvent('diat:visitasUpdated', { detail: { visits: merged } }));
                     return true;
                 }
             }
@@ -319,17 +382,19 @@ class DIATDataService {
                 if (Array.isArray(localVisits) && localVisits.length > 0) {
                     const current = this.getTechnicalVisits();
                     const visitMap = new Map();
-                    current.forEach(v => visitMap.set(v.id, v));
+                    current.forEach(v => visitMap.set(v.id, sanitizeVisit(v)));
                     localVisits.filter(v => v && v.id && v.id.startsWith('VT-') && v.id !== 'TEST-ID').forEach(v => {
                         if (!visitMap.has(v.id)) {
-                            visitMap.set(v.id, {
+                            visitMap.set(v.id, sanitizeVisit({
                                 ...v,
                                 estado: v.estado || 'Realizada',
                                 prioridad: v.prioridad || 'Media'
-                            });
+                            }));
                         }
                     });
-                    this.saveTechnicalVisits(Array.from(visitMap.values()));
+                    const mergedLocal = Array.from(visitMap.values());
+                    this.saveTechnicalVisits(mergedLocal);
+                    window.dispatchEvent(new CustomEvent('diat:visitasUpdated', { detail: { visits: mergedLocal } }));
                     return true;
                 }
             }
@@ -344,7 +409,7 @@ class DIATDataService {
      * Registra una visita técnica localmente y la sincroniza con Google Drive
      */
     static async addTechnicalVisit(username, convenioId, visitData) {
-        const newVisit = {
+        const newVisit = sanitizeVisit({
             id: 'VT-' + Date.now(),
             convenioId: String(convenioId).trim(),
             usuario: username || 'Jonathan Marín Gallego',
@@ -361,12 +426,15 @@ class DIATDataService {
             lng: parseFloat(visitData.lng) || 0,
             photoCount: Array.isArray(visitData.photos) ? visitData.photos.length : (parseInt(visitData.photoCount) || 0),
             photos: Array.isArray(visitData.photos) ? visitData.photos : []
-        };
+        });
 
         // Guardar en caché local
         const visits = this.getTechnicalVisits();
         visits.unshift(newVisit);
         this.saveTechnicalVisits(visits);
+
+        // Notificar cambio inmediato en la UI
+        window.dispatchEvent(new CustomEvent('diat:visitasUpdated', { detail: { visits } }));
 
         // Sincronizar con Google Drive en segundo plano (POST sin bloquear UI)
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXBFslIOCwVCyAae8-FG0VL5pqotLkjejwJhavm5xoGU4SlyVETwRkGCmDNVkcRPw4/exec";
@@ -375,7 +443,7 @@ class DIATDataService {
                 method: "POST",
                 mode: "no-cors",
                 headers: {
-                    "Content-Type": "text/plain"
+                    "Content-Type": "text/plain;charset=utf-8"
                 },
                 body: JSON.stringify({
                     action: "saveVisit",
@@ -400,7 +468,7 @@ class DIATDataService {
         const idx = visits.findIndex(v => v.id === visitId);
         if (idx === -1) return null;
 
-        const updatedVisit = {
+        const updatedVisit = sanitizeVisit({
             ...visits[idx],
             estado: visitData.estado !== undefined ? visitData.estado : visits[idx].estado || 'Realizada',
             prioridad: visitData.prioridad !== undefined ? visitData.prioridad : visits[idx].prioridad || 'Media',
@@ -415,11 +483,14 @@ class DIATDataService {
             lng: visitData.lng !== undefined ? parseFloat(visitData.lng) || 0 : visits[idx].lng,
             photoCount: visitData.photos !== undefined ? visitData.photos.length : visits[idx].photoCount,
             photos: visitData.photos !== undefined ? visitData.photos : visits[idx].photos
-        };
+        });
 
         // Guardar en caché local
         visits[idx] = updatedVisit;
         this.saveTechnicalVisits(visits);
+
+        // Notificar cambio inmediato en la UI
+        window.dispatchEvent(new CustomEvent('diat:visitasUpdated', { detail: { visits } }));
 
         // Sincronizar con Google Drive en segundo plano (POST sin bloquear UI)
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXBFslIOCwVCyAae8-FG0VL5pqotLkjejwJhavm5xoGU4SlyVETwRkGCmDNVkcRPw4/exec";

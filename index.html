@@ -1715,15 +1715,22 @@
 
                                     <!-- Acciones Rápidas -->
                                     <div class="flex items-center gap-2 flex-wrap w-full lg:w-auto">
-                                        <button type="button" id="btn-vt-programar-modal"
-                                            class="flex-1 sm:flex-initial px-4 py-2.5 bg-institutional-primary hover:bg-institutional-light text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2">
-                                            <i class="fa-solid fa-calendar-plus"></i>
-                                            <span>Programar Visita</span>
-                                        </button>
-                                        <button type="button" id="btn-vt-registrar-modal"
-                                            class="flex-1 sm:flex-initial px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider border border-slate-300 shadow-sm transition-all flex items-center justify-center gap-2">
-                                            <i class="fa-solid fa-camera text-emerald-600"></i>
-                                            <span>Registrar Realizada</span>
+                                        <div id="vt-drive-sync-indicator" class="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-bold shadow-2xs" title="Sincronización en tiempo real activa con Google Drive (visitas.json)">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            <i class="fa-brands fa-google-drive text-emerald-600"></i>
+                                            <span>Drive en Vivo</span>
+                                            <button type="button" id="btn-vt-sync-drive" class="ml-1 text-emerald-600 hover:text-emerald-900 transition-colors p-0.5 rounded hover:bg-emerald-100" title="Sincronizar ahora con Google Drive">
+                                                <i class="fa-solid fa-rotate text-xs"></i>
+                                            </button>
+                                        </div>
+                                        <button type="button" id="btn-vt-control-hub"
+                                            class="flex-1 sm:flex-initial px-5 py-2.5 bg-institutional-primary hover:bg-institutional-light text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 border border-emerald-500/30 group"
+                                            title="Centro de Control de Visitas: Registrar, Programar y Editar (Requiere Contraseña)">
+                                            <i class="fa-solid fa-sliders text-emerald-300 text-sm group-hover:rotate-45 transition-transform"></i>
+                                            <span>CONTROL DE VISITAS</span>
+                                            <span class="text-[9.5px] bg-emerald-950/80 text-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-1 font-bold">
+                                                <i class="fa-solid fa-lock text-[8px]"></i> Clave
+                                            </span>
                                         </button>
                                         <button type="button" id="btn-vt-exportar-pdf"
                                             class="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2"
@@ -1735,82 +1742,7 @@
                                 </div>
                             </div>
 
-                            <!-- TARJETAS KPI DE VISITAS TÉCNICAS -->
-                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-                                <!-- KPI 1: Total Visitas -->
-                                <div class="vt-kpi-card bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all">
-                                    <div class="flex justify-between items-start">
-                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Visitas</p>
-                                        <span class="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-xs">
-                                            <i class="fa-solid fa-clipboard-list"></i>
-                                        </span>
-                                    </div>
-                                    <h3 class="text-2xl font-black text-slate-800 mt-1" id="kpi-vt-total">0</h3>
-                                    <p class="text-[10px] text-slate-500 font-semibold mt-1">
-                                        <span id="kpi-vt-pct-total" class="font-bold text-slate-700">100%</span> registradas
-                                    </p>
-                                </div>
 
-                                <!-- KPI 2: Visitas Realizadas -->
-                                <div class="vt-kpi-card bg-white p-4 rounded-2xl border border-emerald-200/70 shadow-xs hover:shadow-md transition-all"
-                                    style="border-left: 4px solid #10B981;">
-                                    <div class="flex justify-between items-start">
-                                        <p class="text-[10px] font-bold text-emerald-800 uppercase tracking-widest">Realizadas</p>
-                                        <span class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs">
-                                            <i class="fa-solid fa-circle-check"></i>
-                                        </span>
-                                    </div>
-                                    <h3 class="text-2xl font-black text-emerald-700 mt-1" id="kpi-vt-realizadas">0</h3>
-                                    <p class="text-[10px] text-emerald-600 font-bold mt-1">
-                                        <span id="kpi-vt-realizadas-pct">0%</span> del total · <span id="kpi-vt-fotos-total">0</span> fotos
-                                    </p>
-                                </div>
-
-                                <!-- KPI 3: Visitas Programadas -->
-                                <div class="vt-kpi-card bg-white p-4 rounded-2xl border border-amber-200/70 shadow-xs hover:shadow-md transition-all"
-                                    style="border-left: 4px solid #F59E0B;">
-                                    <div class="flex justify-between items-start">
-                                        <p class="text-[10px] font-bold text-amber-800 uppercase tracking-widest">Programadas</p>
-                                        <span class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xs">
-                                            <i class="fa-solid fa-calendar-days"></i>
-                                        </span>
-                                    </div>
-                                    <h3 class="text-2xl font-black text-amber-600 mt-1" id="kpi-vt-programadas">0</h3>
-                                    <p class="text-[10px] text-amber-600 font-bold mt-1">
-                                        <span id="kpi-vt-proximas-dias">Próximos 30 días</span>
-                                    </p>
-                                </div>
-
-                                <!-- KPI 4: Cobertura Territorial -->
-                                <div class="vt-kpi-card bg-white p-4 rounded-2xl border border-blue-200/70 shadow-xs hover:shadow-md transition-all"
-                                    style="border-left: 4px solid #3B82F6;">
-                                    <div class="flex justify-between items-start">
-                                        <p class="text-[10px] font-bold text-blue-800 uppercase tracking-widest">Cobertura</p>
-                                        <span class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs">
-                                            <i class="fa-solid fa-map-location-dot"></i>
-                                        </span>
-                                    </div>
-                                    <h3 class="text-2xl font-black text-blue-700 mt-1" id="kpi-vt-municipios">0</h3>
-                                    <p class="text-[10px] text-blue-600 font-semibold mt-1">
-                                        Municipios · <span id="kpi-vt-convenios" class="font-bold">0</span> Convenios
-                                    </p>
-                                </div>
-
-                                <!-- KPI 5: Supervisores y Equipo Técnico en Sitio (Visitas Programadas) -->
-                                <div class="vt-kpi-card bg-white p-4 rounded-2xl border border-purple-200/70 shadow-xs hover:shadow-md transition-all col-span-2 sm:col-span-1"
-                                    style="border-left: 4px solid #8B5CF6;">
-                                    <div class="flex justify-between items-start">
-                                        <p class="text-[10px] font-bold text-purple-800 uppercase tracking-widest">Técnicos en Sitio</p>
-                                        <span class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xs">
-                                            <i class="fa-solid fa-user-helmet-safety"></i>
-                                        </span>
-                                    </div>
-                                    <h3 class="text-2xl font-black text-purple-700 mt-1" id="kpi-vt-supervisores">0</h3>
-                                    <p class="text-[10px] text-purple-600 font-semibold mt-1" id="kpi-vt-supervisores-sub">
-                                        0 en visitas programadas
-                                    </p>
-                                </div>
-                            </div>
 
                             <!-- SECCIÓN DE FILTROS AVANZADOS -->
                             <section class="filter-section">
@@ -1897,23 +1829,43 @@
                                 </div>
                             </section>
 
-                            <!-- SECCIÓN: MAPA TERRITORIAL DE ANTIOQUIA + ANALÍTICA GRÁFICA -->
-                            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                            <!-- SECCIÓN: MAPA TERRITORIAL DE ANTIOQUIA + CALENDARIO DE VISITAS -->
+                            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
 
-                                <!-- MAPA TERRITORIAL DE ANTIOQUIA (7 COLUMNAS) -->
-                                <div class="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                                <!-- MAPA TERRITORIAL DE ANTIOQUIA (6 COLUMNAS EQUILIBRADO) -->
+                                <div class="lg:col-span-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
                                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
                                         <div>
                                             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
                                                 <i class="fa-solid fa-map-location-dot text-emerald-600"></i>
-                                                Georreferenciación de Visitas en Antioquia
+                                                Mapa de Visitas Técnicas
                                             </h3>
-                                            <p class="text-[11px] text-slate-400 font-medium mt-0.5">
+                                            <p class="text-[11px] text-slate-400 font-medium mt-0.5" id="vt-map-subtitle">
                                                 Puntos geolocalizados de inspección técnica en territorio
                                             </p>
                                         </div>
 
-                                        <div class="flex items-center gap-2">
+                                        <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                                            <!-- Filtro Temporal Sincronizado con el Calendario -->
+                                            <div class="inline-flex p-0.5 bg-slate-100 rounded-lg border border-slate-200 text-[11px] font-semibold" id="vt-map-time-filter-group">
+                                                <button type="button" id="btn-vt-map-filter-mes"
+                                                    class="px-2.5 py-1 rounded-md transition-all font-bold bg-white text-emerald-700 shadow-sm flex items-center gap-1"
+                                                    title="Ver visitas del mes visible en el calendario">
+                                                    <i class="fa-regular fa-calendar text-[10px]"></i>
+                                                    <span id="vt-map-filter-mes-text">Mes</span>
+                                                </button>
+                                                <button type="button" id="btn-vt-map-filter-ano"
+                                                    class="px-2.5 py-1 rounded-md transition-all text-slate-600 hover:text-slate-900 font-medium flex items-center gap-1"
+                                                    title="Ver todas las visitas del año visible">
+                                                    <span id="vt-map-filter-ano-text">Año</span>
+                                                </button>
+                                                <button type="button" id="btn-vt-map-filter-todas"
+                                                    class="px-2.5 py-1 rounded-md transition-all text-slate-600 hover:text-slate-900 font-medium"
+                                                    title="Ver todas las visitas históricas registradas">
+                                                    Todas
+                                                </button>
+                                            </div>
+
                                             <button type="button" id="btn-vt-map-center"
                                                 class="px-2.5 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all flex items-center gap-1"
                                                 title="Centrar mapa en Antioquia">
@@ -1932,10 +1884,16 @@
                                         </div>
                                     </div>
 
-                                    <!-- Contenedor del Mapa Leaflet -->
-                                    <div class="relative w-full rounded-xl overflow-hidden border border-slate-200 shadow-inner"
-                                        style="height: 520px;">
+                                    <!-- Contenedor del Mapa Leaflet Ampliado -->
+                                    <div class="relative w-full rounded-xl overflow-hidden border border-slate-200 shadow-inner flex-1 min-h-[580px]"
+                                        style="height: 620px;">
                                         <div id="visitas-map-container" class="w-full h-full" style="z-index: 10;"></div>
+
+                                        <!-- Aviso flotante sutil si el mes no tiene visitas -->
+                                        <div id="vt-map-empty-notice" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-200 shadow-md text-xs font-semibold text-slate-600 z-20 pointer-events-none flex items-center gap-2">
+                                            <i class="fa-regular fa-calendar-xmark text-amber-500"></i>
+                                            <span id="vt-map-empty-text">Sin visitas en este período</span>
+                                        </div>
 
                                         <!-- Leyenda Flotante del Mapa -->
                                         <div class="absolute bottom-3 left-3 bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-slate-200/90 shadow-md text-xs font-semibold z-20 space-y-1.5">
@@ -1952,65 +1910,129 @@
                                     </div>
                                 </div>
 
-                                <!-- PANEL DE ANALÍTICA GRÁFICA (5 COLUMNAS) -->
-                                <div class="lg:col-span-5 space-y-4">
-                                    <!-- Gráfico 1: Visitas por Supervisor -->
-                                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <h4 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                                                <i class="fa-solid fa-user-tie text-emerald-600 mr-1.5"></i> Visitas por Supervisor
-                                            </h4>
-                                            <span class="text-[10px] text-slate-400 font-bold">Realizadas vs Programadas</span>
+                                <!-- COMPONENTE: CALENDARIO MENSUAL DE VISITAS (6 COLUMNAS EQUILIBRADO) -->
+                                <div class="lg:col-span-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between min-h-[620px]" id="vt-calendar-container">
+                                    <div>
+                                        <div class="flex flex-wrap justify-between items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+                                            <div>
+                                                <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <i class="fa-solid fa-calendar-days text-emerald-600"></i>
+                                                    <span>Calendario de Visitas</span>
+                                                </h4>
+                                                <p class="text-[11px] text-slate-400 font-medium">Marcación territorial mensual</p>
+                                            </div>
+
+                                            <!-- Controles de Navegación del Mes -->
+                                            <div class="flex items-center gap-1 bg-slate-50 border border-slate-200/80 p-1 rounded-xl">
+                                                <button type="button" id="vt-cal-prev-btn" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white text-slate-600 hover:text-slate-900 transition-all text-xs" title="Mes anterior">
+                                                    <i class="fa-solid fa-chevron-left"></i>
+                                                </button>
+                                                <span id="vt-cal-month-label" class="text-xs font-black text-slate-800 px-2 min-w-[100px] text-center tracking-wide">
+                                                    --
+                                                </span>
+                                                <button type="button" id="vt-cal-next-btn" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white text-slate-600 hover:text-slate-900 transition-all text-xs" title="Mes siguiente">
+                                                    <i class="fa-solid fa-chevron-right"></i>
+                                                </button>
+                                                <button type="button" id="vt-cal-today-btn" class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md transition-all">
+                                                    Hoy
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div style="height: 200px;" class="relative">
-                                            <canvas id="chart-vt-supervisor"></canvas>
+
+                                        <!-- Leyenda y Resumen -->
+                                        <div class="flex items-center justify-between text-[10px] font-semibold text-slate-500 mb-2 px-1">
+                                            <div class="flex items-center gap-2.5">
+                                                <span class="inline-flex items-center gap-1">
+                                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Realizada
+                                                </span>
+                                                <span class="inline-flex items-center gap-1">
+                                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-100"></span> Programada
+                                                </span>
+                                            </div>
+                                            <span id="vt-cal-total-badge" class="text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">
+                                                0 visitas
+                                            </span>
+                                        </div>
+
+                                        <!-- Encabezados de días -->
+                                        <div class="grid grid-cols-7 gap-1 text-center font-bold text-[9.5px] uppercase text-slate-400 mb-1">
+                                            <div class="py-0.5">Lun</div>
+                                            <div class="py-0.5">Mar</div>
+                                            <div class="py-0.5">Mié</div>
+                                            <div class="py-0.5">Jue</div>
+                                            <div class="py-0.5">Vie</div>
+                                            <div class="py-0.5 text-slate-600">Sáb</div>
+                                            <div class="py-0.5 text-slate-600">Dom</div>
+                                        </div>
+
+                                        <!-- Cuadrícula de días -->
+                                        <div id="vt-calendar-grid" class="grid grid-cols-7 gap-1 text-xs select-none">
+                                            <!-- Días inyectados dinámicamente -->
                                         </div>
                                     </div>
 
-                                    <!-- Gráfico 2: Distribución por Subregión -->
-                                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <h4 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                                                <i class="fa-solid fa-chart-pie text-emerald-600 mr-1.5"></i> Visitas por Subregión
-                                            </h4>
-                                            <span class="text-[10px] text-slate-400 font-bold">Distribución Territorial</span>
+                                    <!-- Panel desplegable de detalle de visitas del día -->
+                                    <div id="vt-cal-day-detail" class="mt-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200 text-xs hidden">
+                                        <div class="flex items-center justify-between mb-1 pb-1 border-b border-slate-200/70">
+                                            <span id="vt-cal-detail-date" class="font-extrabold text-slate-800 text-[10.5px] flex items-center gap-1">
+                                                <i class="fa-regular fa-calendar-check text-emerald-600"></i>
+                                                <span>Visitas del día</span>
+                                            </span>
+                                            <button type="button" id="vt-cal-detail-close" class="text-slate-400 hover:text-slate-700 text-xs p-1">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
                                         </div>
-                                        <div style="height: 200px;" class="relative">
-                                            <canvas id="chart-vt-subregion"></canvas>
+                                        <div id="vt-cal-detail-list" class="space-y-1 max-h-36 overflow-y-auto pr-1">
+                                            <!-- Lista de visitas del día -->
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- GRÁFICOS COMPLEMENTARIOS (CRONOGRAMA Y TIPOLOGÍA) -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- Gráfico 3: Cronograma Mensual -->
-                                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                                    <div class="flex justify-between items-center mb-3">
+                            <!-- SECCIÓN: ANALÍTICA GRÁFICA COMPLEMENTARIA (CRONOGRAMA, SUPERVISORES, SUBREGIONES) -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <!-- Gráfico 1: Cronograma Mensual -->
+                                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                                    <div class="flex justify-between items-center mb-2">
                                         <div>
                                             <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
                                                 <i class="fa-regular fa-calendar-check text-emerald-600 mr-1.5"></i> Cronograma de Visitas
                                             </h4>
-                                            <p class="text-[11px] text-slate-400 font-medium">Evolución y programación temporal de visitas</p>
+                                            <p class="text-[11px] text-slate-400 font-medium">Evolución temporal</p>
                                         </div>
                                     </div>
-                                    <div style="height: 220px;" class="relative">
+                                    <div style="height: 210px;" class="relative">
                                         <canvas id="chart-vt-timeline"></canvas>
                                     </div>
                                 </div>
 
-                                <!-- Gráfico 4: Tipología de Visitas -->
-                                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                                    <div class="flex justify-between items-center mb-3">
+                                <!-- Gráfico 2: Visitas por Supervisor -->
+                                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                                    <div class="flex justify-between items-center mb-2">
                                         <div>
                                             <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
-                                                <i class="fa-solid fa-tags text-emerald-600 mr-1.5"></i> Tipología de Visitas Técnicas
+                                                <i class="fa-solid fa-user-tie text-emerald-600 mr-1.5"></i> Visitas por Supervisor
                                             </h4>
-                                            <p class="text-[11px] text-slate-400 font-medium">Clasificación por objetivo de la inspección</p>
+                                            <p class="text-[11px] text-slate-400 font-medium">Realizadas vs Programadas</p>
                                         </div>
                                     </div>
-                                    <div style="height: 220px;" class="relative">
-                                        <canvas id="chart-vt-tipo"></canvas>
+                                    <div style="height: 210px;" class="relative">
+                                        <canvas id="chart-vt-supervisor"></canvas>
+                                    </div>
+                                </div>
+
+                                <!-- Gráfico 3: Distribución por Subregión -->
+                                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <div>
+                                            <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                                                <i class="fa-solid fa-chart-pie text-emerald-600 mr-1.5"></i> Visitas por Subregión
+                                            </h4>
+                                            <p class="text-[11px] text-slate-400 font-medium">Distribución territorial</p>
+                                        </div>
+                                    </div>
+                                    <div style="height: 210px;" class="relative">
+                                        <canvas id="chart-vt-subregion"></canvas>
                                     </div>
                                 </div>
                             </div>
@@ -2902,23 +2924,63 @@
 
             <!-- Modal Header -->
             <div class="p-5 flex justify-between items-center bg-white shrink-0 z-10 border-b border-slate-200">
-                <div>
-                    <h2 id="modal-registrar-visita-title"
-                        style="font-size:16px;font-weight:800;color:#0F172A;letter-spacing:-0.01em;">Registrar Nueva
-                        Visita Técnica</h2>
-                    <p id="modal-registrar-visita-desc"
-                        style="font-size:10px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;">
-                        Ingreso de informe de supervisión y geolocalización</p>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-institutional-primary border border-emerald-200 flex items-center justify-center text-base shrink-0 shadow-2xs">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <div>
+                        <h2 id="modal-registrar-visita-title"
+                            style="font-size:16px;font-weight:800;color:#0F172A;letter-spacing:-0.01em;">Control y Gestión de Visitas Técnicas</h2>
+                        <p id="modal-registrar-visita-desc"
+                            style="font-size:10px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;">
+                            Registrar visitas realizadas, programar nuevas y editar existentes</p>
+                    </div>
                 </div>
-                <button type="button" id="btn-close-visit-modal"
-                    style="width:32px;height:32px;border-radius:99px;display:flex;align-items:center;justify-content:center;background:#F8FAFC;border:1.5px solid #E2E8F0;color:#94A3B8;cursor:pointer;transition:all 0.2s;"
-                    class="shrink-0">
-                    <i class="fa-solid fa-xmark" style="font-size: 14px;"></i>
-                </button>
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs">
+                        <i class="fa-solid fa-shield-halved text-emerald-600 text-[10px]"></i> Clave DIAT2026
+                    </span>
+                    <button type="button" id="btn-close-visit-modal"
+                        style="width:32px;height:32px;border-radius:99px;display:flex;align-items:center;justify-content:center;background:#F8FAFC;border:1.5px solid #E2E8F0;color:#94A3B8;cursor:pointer;transition:all 0.2s;"
+                        class="shrink-0 hover:bg-slate-100 hover:text-slate-700">
+                        <i class="fa-solid fa-xmark" style="font-size: 14px;"></i>
+                    </button>
+                </div>
             </div>
 
-            <!-- Modal Content (Scrollable) -->
-            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar bg-slate-50/50 space-y-6">
+            <!-- TAB SWITCHER PRINCIPAL DE CONTROL DE VISITAS -->
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-6 py-2.5 bg-slate-50 shrink-0">
+                <div class="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+                    <button type="button" id="hub-tab-registrar"
+                        class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 bg-institutional-primary text-white shadow-2xs">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Registrar Realizada</span>
+                    </button>
+                    <button type="button" id="hub-tab-programar"
+                        class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all flex items-center gap-1.5 hover:bg-slate-100">
+                        <i class="fa-solid fa-calendar-plus text-amber-600"></i>
+                        <span>Programar Visita</span>
+                    </button>
+                    <button type="button" id="hub-tab-editar"
+                        class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all flex items-center gap-1.5 hover:bg-slate-100">
+                        <i class="fa-solid fa-pen-to-square text-indigo-600"></i>
+                        <span>Editar Visitas</span>
+                        <span id="hub-badge-count-visitas" class="px-1.5 py-0.2 text-[9.5px] rounded-full bg-slate-100 text-slate-700 font-black">0</span>
+                    </button>
+                </div>
+
+                <!-- Banner Informativo cuando se está editando una visita específica -->
+                <div id="hub-editing-banner" class="hidden items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-300 rounded-lg text-xs font-bold text-amber-900 shadow-2xs">
+                    <i class="fa-solid fa-pen-to-square text-amber-600"></i>
+                    <span>Modo Edición: <strong id="hub-editing-convenio-text" class="text-amber-950">--</strong></span>
+                    <button type="button" id="btn-cancel-edit-visit" class="text-[10px] uppercase tracking-wider bg-amber-200/80 hover:bg-amber-300 text-amber-900 px-2 py-0.5 rounded font-black ml-1 transition-all">
+                        Cancelar Edición
+                    </button>
+                </div>
+            </div>
+
+            <!-- VISTA 1: FORMULARIO (REGISTRAR / PROGRAMAR / EDITAR) -->
+            <div id="hub-view-form" class="flex-1 overflow-y-auto p-6 custom-scrollbar bg-slate-50/50 space-y-6">
 
                 <!-- TARJETA 1: CONVENIO Y LOCALIZACIÓN TERRITORIAL -->
                 <div class="bg-white p-5 rounded-xl border border-slate-200 space-y-4 shadow-sm">
@@ -3140,17 +3202,51 @@
 
             </div>
 
+            <!-- VISTA 2: LISTADO Y EDICIÓN DE VISITAS EXISTENTES -->
+            <div id="hub-view-list" class="flex-1 overflow-y-auto p-6 custom-scrollbar bg-slate-50/50 space-y-4 hidden">
+                <!-- Barra de búsqueda y filtros rápidos de visitas -->
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                        <input type="text" id="hub-filter-search" class="filter-control text-xs pl-8 pr-3 w-full"
+                            placeholder="Buscar visita por número de convenio, municipio o supervisor...">
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+                            <button type="button" class="hub-filter-chip active px-2.5 py-1 rounded text-[11px] font-bold text-slate-800 bg-white shadow-xs" data-estado="todos">Todas</button>
+                            <button type="button" class="hub-filter-chip px-2.5 py-1 rounded text-[11px] font-bold text-slate-500 hover:text-slate-800" data-estado="Programada">Programadas</button>
+                            <button type="button" class="hub-filter-chip px-2.5 py-1 rounded text-[11px] font-bold text-slate-500 hover:text-slate-800" data-estado="Realizada">Realizadas</button>
+                        </div>
+                        <button type="button" id="btn-hub-new-visit-shortcut"
+                            class="px-3 py-1.5 bg-institutional-primary hover:bg-institutional-light text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1 shadow-2xs">
+                            <i class="fa-solid fa-plus"></i> Nueva Visita
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Contenedor dinámico de tarjetas de visitas -->
+                <div id="hub-visits-table-container" class="space-y-2.5">
+                    <!-- Filas inyectadas por renderHubVisitsList() -->
+                </div>
+            </div>
+
             <!-- Modal Footer -->
-            <div class="p-5 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 shrink-0">
-                <button type="button" id="btn-cancel-visit"
-                    class="px-5 py-2.5 border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold rounded-xl text-xs uppercase tracking-wider transition-all">
-                    Cancelar
-                </button>
-                <button type="button" id="btn-save-visit"
-                    class="px-6 py-2.5 bg-institutional-primary hover:bg-institutional-light text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-md hover:shadow-lg">
-                    <i class="fa-solid fa-floppy-disk"></i>
-                    Guardar Visita
-                </button>
+            <div class="p-4 sm:p-5 bg-slate-50 border-t border-slate-200 flex justify-between items-center shrink-0">
+                <div id="hub-footer-info" class="text-xs text-slate-500 font-medium flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span id="hub-footer-summary">Sincronización en tiempo real con Google Drive</span>
+                </div>
+                <div class="flex items-center gap-2.5">
+                    <button type="button" id="btn-cancel-visit"
+                        class="px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold rounded-xl text-xs uppercase tracking-wider transition-all">
+                        Cerrar
+                    </button>
+                    <button type="button" id="btn-save-visit"
+                        class="px-6 py-2.5 bg-institutional-primary hover:bg-institutional-light text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-md hover:shadow-lg">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span id="btn-save-visit-text">Guardar Visita</span>
+                    </button>
+                </div>
             </div>
 
         </div>
